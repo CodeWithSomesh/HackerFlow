@@ -18,7 +18,7 @@ export function Navbar() {
       <div className="container mx-auto max-w-6xl">
         <div className="flex h-14 items-center justify-between px-6 bg-background/80 backdrop-blur-xl border border-border rounded-full shadow-lg">
           <Link href="/" className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-teal-600 flex items-center justify-center shadow-lg">
+            <div className="h-8 w-8 rounded-lg bg-[#08f8a5] flex items-center justify-center shadow-lg">
               <span className="text-white font-bold text-sm">HF</span>
             </div>
             <span className="font-bold text-lg tracking-tight text-foreground">HackerFlow</span>
@@ -42,13 +42,13 @@ export function Navbar() {
             <Button
               variant="outline"
               asChild
-              className="border-teal-200 text-teal-600 hover:bg-teal-50 dark:border-teal-800 dark:text-teal-400 dark:hover:bg-teal-950 bg-transparent"
+              className="border-teal-400 font-bold text-[#08f8a5] hover:bg-teal-50 dark:border-teal-400 dark:text-[#08f8a5] dark:hover:bg-teal-600 dark:hover:text-white bg-transparent"
             >
               <Link href="#organize">Organize Event</Link>
             </Button>
             <Button
               asChild
-              className="bg-teal-600 text-white hover:bg-teal-700 shadow-lg hover:shadow-xl transition-all"
+              className="bg-[#08f8a5] text-white font-bold hover:bg-teal-600 shadow-lg hover:shadow-xl transition-all"
             >
               <Link href="#join">Join HackerFlow</Link>
             </Button>

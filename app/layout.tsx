@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
+import PlasmaWrapper from "@/components/plasmawrapper"
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -9,8 +10,8 @@ const defaultUrl = process.env.VERCEL_URL
 
 export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
-  title: "Next.js and Supabase Starter Kit",
-  description: "The fastest way to build apps with Next.js and Supabase",
+  title: "HackerFlow",
+  description: "The Ultimate Hackathon Web App",
 };
 
 const geistSans = Geist({
@@ -33,7 +34,10 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <div className="fixed inset-0 z-0 bg-white dark:bg-black">
+            <PlasmaWrapper /> {/* Render Plasma with random color */}
+          </div>
+          <div className="relative z-10">{children}</div>
         </ThemeProvider>
       </body>
     </html>

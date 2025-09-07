@@ -48,42 +48,53 @@ const features = [
 
 export function FeaturesSection() {
   return (
-    <section id="features" className="py-20 bg-gradient-to-b from-purple-50 to-pink-50 dark:from-slate-900 dark:to-gray-900">
-      <div className="container mx-auto px-4">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900 dark:text-white">
-            Why Developers Choose HackerFlow
-          </h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto dark:text-gray-300">
-            From AI-powered team matching to centralized event discovery, we solve every pain point in the hackathon experience.
-          </p>
+    <>
+      {/* Top Gradient */}
+      <div className="absolute bottom-100 left-0 right-0 h-32 bg-gradient-to-b from-cyan-50 to-transparent dark:from-slate-900" />
+
+      <section id="features" className="pt-20  dark:from-black dark:to-black">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900 dark:text-white">
+              Why Developers Choose HackerFlow
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto dark:text-gray-300">
+              From AI-powered team matching to centralized event discovery, we solve every pain point in the hackathon experience.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {features.map((feature, index) => (
+              <Card 
+                key={feature.title} 
+                className={`group hover:shadow-2xl ${feature.shadowColor} transition-all duration-500 border-0 bg-white/80 backdrop-blur-md hover:bg-white/95 hover:scale-105 dark:bg-white/5 dark:hover:bg-white/10 shadow-lg hover:shadow-xl`}
+                style={{ 
+                  animationDelay: `${index * 150}ms`,
+                  animation: 'fadeInUp 0.6s ease-out forwards'
+                }}
+              >
+                <CardContent className="p-8 space-y-6">
+                  <div className={`w-16 h-16 rounded-2xl bg-gradient-to-r ${feature.gradient} flex items-center justify-center group-hover:scale-110 group-hover:rotate-6 transition-all duration-300 shadow-lg`}>
+                    <feature.icon className="w-8 h-8 text-white" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-900 group-hover:text-gray-800 transition-colors dark:text-white dark:group-hover:text-gray-100">
+                    {feature.title}
+                  </h3>
+                  <p className="text-gray-600 leading-relaxed group-hover:text-gray-700 transition-colors dark:text-gray-300 dark:group-hover:text-gray-200">
+                    {feature.description}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {features.map((feature, index) => (
-            <Card 
-              key={feature.title} 
-              className={`group hover:shadow-2xl ${feature.shadowColor} transition-all duration-500 border-0 bg-white/80 backdrop-blur-md hover:bg-white/95 hover:scale-105 dark:bg-white/5 dark:hover:bg-white/10 shadow-lg hover:shadow-xl`}
-              style={{ 
-                animationDelay: `${index * 150}ms`,
-                animation: 'fadeInUp 0.6s ease-out forwards'
-              }}
-            >
-              <CardContent className="p-8 space-y-6">
-                <div className={`w-16 h-16 rounded-2xl bg-gradient-to-r ${feature.gradient} flex items-center justify-center group-hover:scale-110 group-hover:rotate-6 transition-all duration-300 shadow-lg`}>
-                  <feature.icon className="w-8 h-8 text-white" />
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 group-hover:text-gray-800 transition-colors dark:text-white dark:group-hover:text-gray-100">
-                  {feature.title}
-                </h3>
-                <p className="text-gray-600 leading-relaxed group-hover:text-gray-700 transition-colors dark:text-gray-300 dark:group-hover:text-gray-200">
-                  {feature.description}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    </section>
+        {/* Bottom Gradient */}
+        <div className="h-32 bg-gradient-to-t from-cyan-50 to-transparent dark:from-slate-900" />
+      </section>
+
+      
+    </>
+    
   )
 }

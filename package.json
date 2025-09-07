@@ -19,6 +19,7 @@
     "lucide-react": "^0.511.0",
     "next": "latest",
     "next-themes": "^0.4.6",
+    "ogl": "^1.0.11",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.8.2",
