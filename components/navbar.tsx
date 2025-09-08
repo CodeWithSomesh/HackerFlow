@@ -14,7 +14,7 @@ export function Navbar() {
   ]
 
   return (
-    <header className="sticky top-0 z-50 p-4">
+    <header className="sticky top-0 z-50 p-4 mt-3">
       <div className="container mx-auto max-w-6xl">
         <div className="flex h-14 items-center justify-between px-6 bg-background/80 backdrop-blur-xl border border-border rounded-full shadow-lg">
           <Link href="/" className="flex items-center gap-2">
@@ -38,7 +38,7 @@ export function Navbar() {
           </nav>
 
           <div className="hidden md:flex items-center gap-3">
-            <ModeToggle />
+            {/* <ModeToggle /> */}
             <Button
               variant="outline"
               asChild
@@ -50,7 +50,7 @@ export function Navbar() {
               asChild
               className="bg-[#08f8a5] text-white font-bold hover:bg-teal-600 shadow-lg hover:shadow-xl transition-all"
             >
-              <Link href="#join">Join HackerFlow</Link>
+              <Link href="/onboarding/user-type">Join HackerFlow</Link>
             </Button>
           </div>
 
@@ -100,7 +100,7 @@ export function Navbar() {
                     <Link href="#organize">Organize Event</Link>
                   </Button>
                   <Button asChild className="w-full bg-teal-600 text-white hover:bg-teal-700">
-                    <Link href="#join">Join HackerFlow</Link>
+                    <Link href="/onboarding/user-type">Join HackerFlow</Link>
                   </Button>
                 </div>
               </SheetContent>

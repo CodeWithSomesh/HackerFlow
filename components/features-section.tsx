@@ -1,5 +1,6 @@
 import { Brain, Search, Calendar, Users2, Zap, Shield } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
+import { HackersBentoGrid } from "./hackers-features-bento"
 
 const features = [
   {
@@ -88,6 +89,11 @@ export function FeaturesSection() {
             ))}
           </div>
         </div>
+        
+        {/* <div className="mt-4">
+         <HackersBentoGrid />
+        </div> */}
+        
 
         {/* Bottom Gradient */}
         <div className="h-32 bg-gradient-to-t from-cyan-50 to-transparent dark:from-slate-900" />
