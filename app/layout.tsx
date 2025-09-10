@@ -3,8 +3,7 @@ import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
 import PlasmaWrapper from "@/components/plasmawrapper"
-import { Navbar } from "@/components/navbar";
-import { Footer } from "@/components/footer";
+import { NavbarGate, FooterGate } from "@/components/layout-gates";
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -36,13 +35,11 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <div className="fixed inset-0 z-0 bg-white dark:bg-black">
-            <PlasmaWrapper /> {/* Render Plasma with random color */}
-          </div>
+          
           <div className="relative z-10">
-            <Navbar />
+            <NavbarGate />
             {children}
-            <Footer />
+            <FooterGate />
           </div>
         </ThemeProvider>
       </body>

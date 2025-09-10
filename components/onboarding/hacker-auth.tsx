@@ -1,0 +1,360 @@
+"use client"
+
+import type React from "react"
+
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { ProgressIndicator } from "./progress-indicator"
+import { AlertCircle, Github, Home, Mail, Eye, EyeOff, Sparkles } from "lucide-react"
+import { FcGoogle } from "react-icons/fc"
+
+export function HackerAuth() {
+  const router = useRouter()
+  const [authMethod, setAuthMethod] = useState<"github" | "google" | "email" | null>(null)
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    confirmPassword: "",
+  })
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
+
+  const handleHomeClick = () => {
+    router.push("/")
+  }
+
+  const handleSocialAuth = (provider: "github" | "google") => {
+    setIsLoading(true)
+    setError("")
+
+    // Simulate auth process
+    setTimeout(() => {
+      // Store auth method for profile setup
+      localStorage.setItem("authMethod", provider)
+      localStorage.setItem("userType", "hacker")
+      router.push("/onboarding/hacker/profile-setup")
+    }, 1500)
+  }
+
+  const handleEmailSignup = (e: React.FormEvent) => {
+    e.preventDefault()
+    setError("")
+
+    // Basic validation
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match")
+      return
+    }
+
+    if (formData.password.length < 8) {
+      setError("Password must be at least 8 characters long")
+      return
+    }
+
+    setIsLoading(true)
+
+    // Simulate signup process
+    setTimeout(() => {
+      localStorage.setItem("authMethod", "email")
+      localStorage.setItem("userType", "hacker")
+      router.push("/onboarding/hacker/profile-setup")
+    }, 1500)
+  }
+
+  const getPasswordStrength = (password: string) => {
+    if (password.length < 6) return { strength: "weak", color: "bg-red-500" }
+    if (password.length < 10) return { strength: "medium", color: "bg-yellow-500" }
+    return { strength: "strong", color: "bg-green-500" }
+  }
+
+  const passwordStrength = getPasswordStrength(formData.password)
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4 bg-black">
+      {/* Home Button - Floating in top right */}
+      <div className="fixed top-6 right-6 z-50">
+        <Button
+          onClick={handleHomeClick}
+          className="group relative backdrop-blur-xl bg-slate-800/30 border border-white hover:border-slate-500/50 text-white hover:text-white rounded-2xl p-3 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+          size="sm"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-pink-500/10 via-purple-500/10 to-cyan-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <Home className="w-5 h-5 relative z-10 group-hover:rotate-12 transition-transform duration-300" />
+          <span className="s-only">Go to Home</span>
+        </Button>
+      </div>
+
+      {/* Background Effects */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-pink-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-cyan-500/5 to-purple-500/5 rounded-full blur-3xl"></div>
+      </div>
+
+      <div className="relative w-full max-w-3xl mx-auto mt-16">
+        {/* Progress Indicator */}
+        <div className="mb-8">
+          <ProgressIndicator currentStep={2} totalSteps={3} />
+        </div>
+
+        {/* Main Card */}
+        <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-700/50 shadow-2xl">
+          <CardHeader className="text-center space-y-4 pb-8">
+            {/* Icon with glow effect */}
+            <div className="relative mx-auto w-16 h-16 mb-4">
+              <div className="absolute inset-0 bg-gradient-to-r from-pink-500 to-purple-600 rounded-2xl blur-md opacity-75"></div>
+              <div className="relative w-full h-full bg-gradient-to-r from-pink-500 to-purple-600 rounded-2xl flex items-center justify-center">
+                <Sparkles className="w-8 h-8 text-white" />
+              </div>
+            </div>
+            
+            <div>
+              <h1 className="text-3xl font-bold mb-3 bg-gradient-to-r from-pink-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent">
+                Create Your Hacker Account
+              </h1>
+              <p className="text-white text-lg">Join Malaysia's Premier Hackathon Community</p>
+            </div>
+          </CardHeader>
+
+          <CardContent className="space-y-6">
+            {/* Error Alert */}
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/30 text-red-300 px-4 py-3 rounded-xl flex items-center gap-3 backdrop-blur-sm">
+                <AlertCircle className="h-5 w-5 flex-shrink-0" />
+                <span className="text-sm">{error}</span>
+              </div>
+            )}
+
+            {/* GitHub - Recommended */}
+            <Card className="border-2 border-purple-500/30 bg-gradient-to-br from-purple-500/10 via-pink-500/5 to-purple-500/10 backdrop-blur-sm hover:border-purple-400/50 transition-all duration-300 group">
+              <CardHeader className="text-center pb-4">
+                <div className="relative mx-auto mb-3">
+                  <div className="absolute inset-0 w-14 h-14 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl blur-sm opacity-75 group-hover:opacity-100 transition-opacity"></div>
+                  <div className="relative w-14 h-14 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
+                    <Github className="w-7 h-7 text-white" />
+                  </div>
+                </div>
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <Sparkles className="w-4 h-4 text-yellow-400" />
+                  <CardTitle className="text-lg text-purple-400">Recommended</CardTitle>
+                  <Sparkles className="w-4 h-4 text-yellow-400" />
+                </div>
+                <CardDescription className="text-slate-400">
+                  We'll analyze your repos for better team matching
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  onClick={() => handleSocialAuth("github")}
+                  disabled={isLoading}
+                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold py-6 rounded-xl shadow-lg hover:shadow-purple-500/25 transition-all duration-300"
+                  size="lg"
+                >
+                  {isLoading && authMethod === "github" ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                      Connecting to GitHub...
+                    </>
+                  ) : (
+                    <>
+                      <Github className="w-5 h-5 mr-2" />
+                      Sign up with GitHub
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Stylish Divider */}
+            <div className="relative py-4">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
+              </div>
+              <div className="relative flex justify-center">
+                <span className="bg-slate-800 px-6 py-2 text-sm text-slate-400 rounded-full border border-slate-700/50 backdrop-blur-sm">
+                  or choose another option
+                </span>
+              </div>
+            </div>
+
+            {/* Alternative Options */}
+            <div className="space-y-4">
+              {/* Google Auth */}
+              <Button
+                variant="outline"
+                onClick={() => handleSocialAuth("google")}
+                disabled={isLoading}
+                className="w-full border-2 border-slate-600/50 hover:border-blue-500/50 hover:bg-blue-500/10 py-6 rounded-xl backdrop-blur-sm transition-all duration-300 group"
+                size="lg"
+              >
+                {isLoading && authMethod === "google" ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin mr-2"></div>
+                    Connecting to Google...
+                  </>
+                ) : (
+                  <>
+                    <FcGoogle className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
+                    <span className="text-slate-200">Sign up with Google</span>
+                  </>
+                )}
+              </Button>
+
+              {/* Email Toggle/Form */}
+              {authMethod !== "email" ? (
+                <Button
+                  variant="outline"
+                  onClick={() => setAuthMethod("email")}
+                  className="w-full border-2 border-slate-600/50 hover:border-emerald-500/50 hover:bg-emerald-500/10 py-6 rounded-xl backdrop-blur-sm transition-all duration-300 group"
+                  size="lg"
+                >
+                  <Mail className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
+                  <span className="text-slate-200">Sign up with Email</span>
+                </Button>
+              ) : (
+                /* Email Form */
+                <Card className="border border-slate-600/50 bg-slate-800/30 backdrop-blur-sm">
+                  <CardContent className="p-6 space-y-5">
+                    <form onSubmit={handleEmailSignup} className="space-y-5">
+                      {/* Email Field */}
+                      <div className="space-y-2">
+                        <Label htmlFor="email" className="text-slate-300 font-medium">Email Address</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          value={formData.email}
+                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                          placeholder="your.email@example.com"
+                          className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 rounded-xl py-6 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                          required
+                        />
+                      </div>
+
+                      {/* Password Field */}
+                      <div className="space-y-3">
+                        <Label htmlFor="password" className="text-slate-300 font-medium">Password</Label>
+                        <div className="relative">
+                          <Input
+                            id="password"
+                            type={showPassword ? "text" : "password"}
+                            value={formData.password}
+                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                            placeholder="••••••••••••"
+                            className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 rounded-xl py-6 pr-12 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                            required
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-slate-600/50 rounded-lg"
+                            onClick={() => setShowPassword(!showPassword)}
+                          >
+                            {showPassword ? <EyeOff className="h-4 w-4 text-slate-400" /> : <Eye className="h-4 w-4 text-slate-400" />}
+                          </Button>
+                        </div>
+                        
+                        {/* Password Strength Indicator */}
+                        {formData.password && (
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-3">
+                              <div className="flex-1 h-2 bg-slate-700 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full ${passwordStrength.color} transition-all duration-500 rounded-full`}
+                                  style={{
+                                    width:
+                                      formData.password.length < 6
+                                        ? "33%"
+                                        : formData.password.length < 10
+                                          ? "66%"
+                                          : "100%",
+                                  }}
+                                />
+                              </div>
+                              <span className="text-xs text-slate-400 capitalize font-medium min-w-fit">
+                                {passwordStrength.strength}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Confirm Password */}
+                      <div className="space-y-2">
+                        <Label htmlFor="confirmPassword" className="text-slate-300 font-medium">Confirm Password</Label>
+                        <div className="relative">
+                          <Input
+                            id="confirmPassword"
+                            type={showConfirmPassword ? "text" : "password"}
+                            value={formData.confirmPassword}
+                            onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                            placeholder="••••••••••••"
+                            className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 rounded-xl py-6 pr-12 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                            required
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-slate-600/50 rounded-lg"
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          >
+                            {showConfirmPassword ? <EyeOff className="h-4 w-4 text-slate-400" /> : <Eye className="h-4 w-4 text-slate-400" />}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Submit Button */}
+                      <Button
+                        type="submit"
+                        disabled={isLoading}
+                        className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-6 rounded-xl shadow-lg hover:shadow-emerald-500/25 transition-all duration-300"
+                        size="lg"
+                      >
+                        {isLoading ? (
+                          <>
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                            Creating Your Account...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-5 h-5 mr-2" />
+                            Create Account
+                          </>
+                        )}
+                      </Button>
+                    </form>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {/* Footer Links */}
+            <div className="text-center space-y-4 pt-4">
+              <p className="text-slate-400">
+                Already have an account?{" "}
+                <button className="text-purple-400 hover:text-purple-300 font-medium transition-colors">
+                  Sign in
+                </button>
+              </p>
+              <button
+                onClick={() => router.push("/onboarding/user-type")}
+                className="text-sm text-slate-500 hover:text-slate-300 transition-colors"
+              >
+                ← Back to user selection
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}
+
+export default HackerAuth

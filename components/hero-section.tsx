@@ -3,12 +3,15 @@
 import { Button } from "@/components/ui/button"
 import { ArrowRight, Zap, Users, Target, Github, Code, Rocket } from "lucide-react"
 import { redirect } from 'next/navigation'
+import PlasmaWrapper from "./plasmawrapper"
 
 export function HeroSection() {
 
   return (
     <section className="-mt-6 relative min-h-screen flex items-center justify-center overflow-hidden  dark:from-black dark:via-black dark:to-black">
-      
+      <div className="fixed inset-0 z-0 bg-white dark:bg-black">
+        <PlasmaWrapper /> {/* Render Plasma with random color */}
+      </div>
 
       {/* Main Content */}
       <div className="relative z-10 container mx-auto px-4 text-center">
