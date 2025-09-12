@@ -84,7 +84,7 @@ export function OrganizerAuth() {
   const passwordStrength = getPasswordStrength(formData.password)
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-black">
+    <div className="min-h-screen flex items-center justify-center p-4 ">
       {/* Home Button - Floating in top right */}
       <div className="fixed top-6 right-6 z-50">
         <Button
@@ -100,8 +100,8 @@ export function OrganizerAuth() {
 
       {/* Background Effects */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-500 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-teal-500 rounded-full blur-3xl animate-pulse delay-1000"></div>
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-green-500/5 to-emerald-500/5 rounded-full blur-3xl"></div>
       </div>
 
@@ -112,7 +112,7 @@ export function OrganizerAuth() {
         </div>
 
         {/* Main Card */}
-        <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-700/50 shadow-2xl">
+        <Card className="backdrop-blur-xl bg-slate-800/50 border-2 border-slate-400 shadow-2xl">
           <CardHeader className="text-center space-y-4 pb-6">
             {/* Icon with glow effect */}
             <div className="relative mx-auto w-16 h-16 mb-4">

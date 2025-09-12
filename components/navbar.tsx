@@ -8,7 +8,7 @@ import { Menu, Home, Zap, Calendar, Users, Mail } from "lucide-react"
 
 export function Navbar() {
   const links = [
-    { href: "/", label: "Hackathons", icon: Home },
+    { href: "/hackathons", label: "Hackathons", icon: Home },
     { href: "#features", label: "Tools", icon: Zap },
     { href: "#events", label: "Leaderboard", icon: Calendar },
   ]
@@ -30,7 +30,7 @@ export function Navbar() {
               <Link
                 key={l.href}
                 href={l.href}
-                className="text-muted-foreground hover:text-teal-500 transition-colors font-medium"
+                className="text-muted-foreground hover:text-teal-500 transition-colors font-bold"
               >
                 {l.label}
               </Link>
@@ -48,7 +48,7 @@ export function Navbar() {
             </Button>
             <Button
               asChild
-              className="bg-[#08f8a5] text-white font-bold hover:bg-teal-600 shadow-lg hover:shadow-xl transition-all"
+              className="bg-[#08f8a5] text-black font-black hover:text-white hover:bg-teal-600 shadow-lg hover:shadow-xl transition-all"
             >
               <Link href="/onboarding/user-type">Join HackerFlow</Link>
             </Button>

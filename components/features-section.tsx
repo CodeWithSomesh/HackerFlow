@@ -51,15 +51,15 @@ export function FeaturesSection() {
   return (
     <>
       {/* Top Gradient */}
-      <div className="absolute bottom-100 left-0 right-0 h-32 bg-gradient-to-b from-cyan-50 to-transparent dark:from-slate-900" />
+      <div className="absolute bottom-100 left-0 right-0 h-32 bg-gradient-to-b from-cyan-300 to-transparent " />
 
       <section id="features" className="pt-20  dark:from-black dark:to-black">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900 dark:text-white">
+          <div className="text-center my-16">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-white">
               Why Developers Choose HackerFlow
             </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto dark:text-gray-300">
+            <p className="text-lg max-w-2xl mx-auto text-gray-300">
               From AI-powered team matching to centralized event discovery, we solve every pain point in the hackathon experience.
             </p>
           </div>
@@ -96,7 +96,7 @@ export function FeaturesSection() {
         
 
         {/* Bottom Gradient */}
-        <div className="h-32 bg-gradient-to-t from-cyan-50 to-transparent dark:from-slate-900" />
+        <div className="mt-4 h-32 bg-gradient-to-t from-teal-400 to-transparent " />
       </section>
 
       

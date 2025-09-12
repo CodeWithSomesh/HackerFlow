@@ -27,7 +27,7 @@ export function UserTypeSelection() {
   }
 
   return (
-    <div className="min-h-screen overflow-hidden bg-black">
+    <div className="min-h-screen overflow-hidden bg-">
       {/* Home Button - Floating in top right */}
       <div className="fixed top-6 right-6 z-50">
         <Button
@@ -44,14 +44,14 @@ export function UserTypeSelection() {
       {/* Enhanced Background Effects */}
       <div className="absolute inset-0">
         {/* Animated gradient orbs */}
-        <div className="absolute top-20 left-20 w-72 h-72 bg-purple-500/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 right-20 w-96 h-96 bg-pink-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-r from-cyan-500/5 via-purple-500/5 to-pink-500/5 rounded-full blur-3xl"></div>
+        <div className="absolute top-20 left-20 w-72 h-72 bg-purple-500 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-20 right-20 w-96 h-96 bg-pink-500 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-r from-cyan-500/70 via-purple-500/70 to-pink-500/70 rounded-full blur-3xl"></div>
         
         {/* Floating particles */}
-        <div className="absolute top-1/4 left-1/3 w-2 h-2 bg-pink-400 rounded-full animate-bounce opacity-60"></div>
-        <div className="absolute top-3/4 right-1/4 w-1 h-1 bg-purple-400 rounded-full animate-bounce delay-500 opacity-40"></div>
-        <div className="absolute bottom-1/3 left-1/4 w-3 h-3 bg-cyan-400 rounded-full animate-pulse opacity-30"></div>
+        <div className="absolute top-1/4 left-1/3 w-2 h-2 bg-pink-400 rounded-full animate-bounce opacity-"></div>
+        <div className="absolute top-3/4 right-1/4 w-1 h-1 bg-purple-400 rounded-full animate-bounce delay-500 opacity-"></div>
+        <div className="absolute bottom-1/3 left-1/4 w-3 h-3 bg-cyan-400 rounded-full animate-pulse opacity-"></div>
       </div>
 
       <div className="relative flex flex-col items-center justify-center px-4 pt-16">
@@ -68,9 +68,9 @@ export function UserTypeSelection() {
           </div>
 
           {/* Main Selection Container */}
-          <div className="relative max-w-6xl mx-auto mb-16">
+          <div className="relative max-w-6xl mx-auto mb-8">
             {/* Container background with glassmorphism effect */}
-            <div className="relative backdrop-blur-xl bg-slate-800/20 border border-slate-700/50 rounded-3xl p-8 md:p-12 shadow-2xl">
+            <div className="relative backdrop-blur-xl bg-slate-800/20 border-2 border-slate-400 rounded-3xl p-8 md:p-12 shadow-2xl">
               {/* Subtle glow effect */}
               <div className="absolute inset-0 bg-gradient-to-r from-pink-500/5 via-purple-500/5 to-cyan-500/5 rounded-3xl"></div>
               
@@ -238,7 +238,7 @@ export function UserTypeSelection() {
           </div>
 
           {/* Enhanced Features Section */}
-          <div className="max-w-5xl mx-auto">
+          <div className="max-w-5xl mx-auto mb-6">
             <div className="text-center mb-10">
               <h2 className="text-3xl font-bold mb-2 text-white bg-clip-text text-transparent">
                 Why Choose HackerFlow?

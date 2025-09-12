@@ -4,17 +4,17 @@ import { Button } from "@/components/ui/button"
 import { ArrowRight, Zap, Users, Target, Github, Code, Rocket } from "lucide-react"
 import { redirect } from 'next/navigation'
 import PlasmaWrapper from "./plasmawrapper"
+import PlasmaBackground from "@/components/ui/shadcn-io/plasma-background"
+
 
 export function HeroSection() {
 
   return (
     <section className="-mt-6 relative min-h-screen flex items-center justify-center overflow-hidden  dark:from-black dark:via-black dark:to-black">
-      <div className="fixed inset-0 z-0 bg-white dark:bg-black">
-        <PlasmaWrapper /> {/* Render Plasma with random color */}
-      </div>
+
 
       {/* Main Content */}
-      <div className="relative z-10 container mx-auto px-4 text-center">
+      <div className="relative z-10 container mx-auto px-4 text-center mt-5">
         <div className="max-w-6xl mx-auto space-y-8 animate-fadeInUp">
           
           {/* Badge */}
@@ -24,7 +24,7 @@ export function HeroSection() {
           </div>
 
           {/* Main Headline - UNIQUE AND CREATIVE */}
-          <h1 className="text-4xl md:text-[50px] lg:text-6xl xl:text-7xl font-bold leading-tight text-gray-800 dark:text-white">
+          <h1 className="text-4xl md:text-[50px] lg:text-6xl xl:text-7xl font-[1000] leading-tight text-gray-800 dark:text-white">
             <span className="block">One Platform For All </span>
             <span className="my-1 md:my-4 block bg-gradient-to-r from-pink-500 via-pink-500 to-yellow-400 bg-clip-text text-transparent">
               Hack Smarter, Host Better!
@@ -108,7 +108,7 @@ export function HeroSection() {
       </div>
 
       {/* Bottom Gradient */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-cyan-50 to-transparent dark:from-slate-900" />
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-cyan-300 to-transparent " />
     </section>
   )
 }

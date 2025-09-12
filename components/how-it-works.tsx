@@ -33,11 +33,11 @@ export function HowItWorks() {
   return (
     <>
       {/* Top Gradient */}
-      <div className="absolute bottom-100 left-0 right-0 h-32 bg-gradient-to-b from-cyan-50 to-transparent dark:from-slate-900" />
+      <div className="absolute bottom-100 left-0 right-0 h-32 bg-gradient-to-b from-teal-400 to-transparent" />
 
       <section id="how-it-works" className="py-20  ">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
+          <div className="text-center my-16">
             <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900 dark:text-white">
               How HackerFlow Works
             </h2>

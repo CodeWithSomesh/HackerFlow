@@ -4,6 +4,7 @@ import { ThemeProvider } from "next-themes";
 import "./globals.css";
 import PlasmaWrapper from "@/components/plasmawrapper"
 import { NavbarGate, FooterGate } from "@/components/layout-gates";
+import PlasmaBackground from "@/components/ui/shadcn-io/plasma-background";
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`

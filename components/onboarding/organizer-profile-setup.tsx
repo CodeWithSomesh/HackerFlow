@@ -201,7 +201,7 @@ export function OrganizerProfileSetup() {
   }
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen">
       {/* Home Button - Floating in top right */}
       <div className="fixed top-6 right-6 z-50">
         <Button
@@ -217,8 +217,8 @@ export function OrganizerProfileSetup() {
 
       {/* Background Effects */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-500 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-teal-500 rounded-full blur-3xl animate-pulse delay-1000"></div>
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-green-500/5 to-emerald-500/5 rounded-full blur-3xl"></div>
       </div>
 
@@ -240,7 +240,7 @@ export function OrganizerProfileSetup() {
 
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Basic Information */}
-            <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-700/50 shadow-2xl">
+            <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-400 shadow-2xl">
               <CardHeader>
                 <CardTitle className="flex items-center gap-3 text-xl text-white">
                   <div className="w-10 h-10 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center">
@@ -336,7 +336,7 @@ export function OrganizerProfileSetup() {
 
             {/* Organization Details */}
             {formData.organizationType && (
-              <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-700/50 shadow-2xl">
+              <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-400 shadow-2xl">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-3 text-xl text-white">
                     <div className="w-10 h-10 bg-gradient-to-r from-teal-600 to-emerald-600 rounded-xl flex items-center justify-center">
@@ -426,7 +426,7 @@ export function OrganizerProfileSetup() {
             )}
 
             {/* Event Experience */}
-            <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-700/50 shadow-2xl">
+            <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-400 shadow-2xl">
               <CardHeader>
                 <CardTitle className="flex items-center gap-3 text-xl text-white">
                   <div className="w-10 h-10 bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl flex items-center justify-center">
@@ -565,7 +565,7 @@ export function OrganizerProfileSetup() {
             </Card>
 
             {/* Goals & Target Audience */}
-            {/* <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-700/50 shadow-2xl">
+            {/* <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-400 shadow-2xl">
               <CardHeader>
                 <CardTitle className="flex items-center gap-3 text-xl text-white">
                   <div className="w-10 h-10 bg-gradient-to-r from-yellow-500 to-emerald-600 rounded-xl flex items-center justify-center">
@@ -620,7 +620,7 @@ export function OrganizerProfileSetup() {
           </Card> */}
 
 
-          <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-700/50 shadow-2xl">
+          <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-400 shadow-2xl">
             <CardHeader>
               <CardTitle className="flex items-center gap-3 text-xl text-white">
                 <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl flex items-center justify-center">
@@ -706,7 +706,7 @@ export function OrganizerProfileSetup() {
           </Card>
 
           {/* Technical & Marketing Capabilities */}
-          <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-700/50 shadow-2xl">
+          <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-400 shadow-2xl">
             <CardHeader>
               <CardTitle className="flex items-center gap-3 text-xl text-white">
                 <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
@@ -780,7 +780,7 @@ export function OrganizerProfileSetup() {
           </Card>
 
           {/* Social Links */}
-          <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-700/50 shadow-2xl">
+          <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-400 shadow-2xl">
             <CardHeader>
               <CardTitle className="flex items-center gap-3 text-xl text-white">
                 <div className="w-10 h-10 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-xl flex items-center justify-center">
@@ -851,7 +851,7 @@ export function OrganizerProfileSetup() {
           </Card>
 
           {/* Collaboration & Mentorship */}
-          {/* <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-700/50 shadow-2xl">
+          {/* <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-400 shadow-2xl">
             <CardHeader>
               <CardTitle className="flex items-center gap-3 text-xl text-white">
                 <div className="w-10 h-10 bg-gradient-to-r from-amber-500 to-orange-600 rounded-xl flex items-center justify-center">

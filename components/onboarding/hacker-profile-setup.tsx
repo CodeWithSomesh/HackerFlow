@@ -258,12 +258,12 @@ export function HackerProfileSetup() {
   }
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen ">
       {/* Background Effects */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-pink-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-cyan-500/5 to-purple-500/5 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-pink-500 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-cyan-500 to-purple-500 rounded-full blur-3xl"></div>
       </div>
 
       {/* Home Button - Floating in top right */}
@@ -297,7 +297,7 @@ export function HackerProfileSetup() {
 
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Basic Information */}
-            <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-700/50 shadow-2xl">
+            <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-400 shadow-2xl">
               <CardHeader>
                 <CardTitle className="flex items-center gap-3 text-xl text-white">
                   <div className="w-10 h-10 bg-gradient-to-r from-pink-500 to-purple-600 rounded-xl flex items-center justify-center">
@@ -403,7 +403,7 @@ export function HackerProfileSetup() {
 
             {/* Academic/Professional Information */}
             {formData.profileType && (
-              <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-700/50 shadow-2xl">
+              <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-400 shadow-2xl">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-3 text-xl text-white">
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
@@ -640,7 +640,7 @@ export function HackerProfileSetup() {
             )}
 
             {/* Technical Skills */}
-            <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-700/50 shadow-2xl">
+            <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-400 shadow-2xl">
               <CardHeader>
                 <CardTitle className="flex items-center gap-3 text-xl text-white">
                   <div className="w-10 h-10 bg-gradient-to-r from-yellow-500 to-teal-600 rounded-xl flex items-center justify-center">
@@ -717,7 +717,7 @@ export function HackerProfileSetup() {
             </Card>
 
             {/* Social Links */}
-            <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-700/50 shadow-2xl">
+            <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-400 shadow-2xl">
               <CardHeader>
                 <CardTitle className="flex items-center gap-3 text-xl text-white">
                   <div className="w-10 h-10 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-xl flex items-center justify-center">
@@ -815,7 +815,7 @@ export function HackerProfileSetup() {
             </Card>
 
             {/* GitHub Integration */}
-            <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-700/50 shadow-2xl">
+            <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-400 shadow-2xl">
               <CardHeader>
                 <CardTitle className="flex items-center gap-3 text-xl text-white">
                   <div className="w-10 h-10 bg-gradient-to-r from-gray-600 to-gray-800 rounded-xl flex items-center justify-center">
