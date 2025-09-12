@@ -10,11 +10,11 @@ import PlasmaBackground from "@/components/ui/shadcn-io/plasma-background"
 export function HeroSection() {
 
   return (
-    <section className="-mt-6 relative min-h-screen flex items-center justify-center overflow-hidden  dark:from-black dark:via-black dark:to-black">
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden  dark:from-black dark:via-black dark:to-black">
 
 
       {/* Main Content */}
-      <div className="relative z-10 container mx-auto px-4 text-center mt-5">
+      <div className="relative z-10 container mx-auto px-4 text-center">
         <div className="max-w-6xl mx-auto space-y-8 animate-fadeInUp">
           
           {/* Badge */}
