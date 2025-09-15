@@ -12,6 +12,7 @@ import { ProgressIndicator } from "./progress-indicator"
 import { AlertCircle, Github, Home, Mail, Eye, EyeOff, Users } from "lucide-react"
 import { FcGoogle } from "react-icons/fc"
 import { signInWithGoogleOrganizer, signInWithGithubOrganizer } from "@/app/utils/actions"
+import { createClient } from "@/lib/supabase/client"
 
 export function OrganizerAuth() {
   const router = useRouter()
@@ -32,7 +33,7 @@ export function OrganizerAuth() {
   }
 
 
-  const handleEmailSignup = (e: React.FormEvent) => {
+  const handleEmailSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
 
@@ -54,13 +55,24 @@ export function OrganizerAuth() {
 
     setIsLoading(true)
 
-    // Simulate signup process
-    setTimeout(() => {
-      localStorage.setItem("authMethod", "email")
-      localStorage.setItem("userType", "organizer")
-      localStorage.setItem("userFullName", formData.fullName)
-      router.push("/onboarding/organizer/profile-setup")
-    }, 1500)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback?user_type=organizer`,
+          data: { user_type: "organizer", full_name: formData.fullName },
+        },
+      })
+      if (error) throw error
+
+      router.push("/auth/sign-up-success")
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "An error occurred during sign up")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const getPasswordStrength = (password: string) => {

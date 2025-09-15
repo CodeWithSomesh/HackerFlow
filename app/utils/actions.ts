@@ -39,6 +39,7 @@ const signInWith = (provider: Provider, userType: 'hacker' | 'organizer') => asy
 const signOut = async() => {
     const supabase = await createClient()
     await supabase.auth.signOut()
+    redirect("/")
 }
 
 // Hacker authentication actions

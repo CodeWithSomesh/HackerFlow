@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
+import { Black_Ops_One } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
 import PlasmaWrapper from "@/components/plasmawrapper"
@@ -22,6 +23,14 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
+const blackOps = Black_Ops_One({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-blackops",
+  display: "swap",
+});
+
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -29,7 +38,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.className} antialiased`}>
+      <body className={`${geistSans.variable} ${blackOps.variable} antialiased`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"

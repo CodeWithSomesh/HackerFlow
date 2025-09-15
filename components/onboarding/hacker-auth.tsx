@@ -12,6 +12,7 @@ import { ProgressIndicator } from "./progress-indicator"
 import { AlertCircle, Github, Home, Mail, Eye, EyeOff, Sparkles } from "lucide-react"
 import { FcGoogle } from "react-icons/fc"
 import { signInWithGithub, signInWithGoogle } from "@/app/utils/actions"
+import { createClient } from "@/lib/supabase/client"
 
 export function HackerAuth() {
   const router = useRouter()
@@ -31,7 +32,7 @@ export function HackerAuth() {
   }
 
 
-  const handleEmailSignup = (e: React.FormEvent) => {
+  const handleEmailSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
 
@@ -48,12 +49,24 @@ export function HackerAuth() {
 
     setIsLoading(true)
 
-    // Simulate signup process
-    setTimeout(() => {
-      localStorage.setItem("authMethod", "email")
-      localStorage.setItem("userType", "hacker")
-      router.push("/onboarding/hacker/profile-setup")
-    }, 1500)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback?user_type=hacker`,
+          data: { user_type: "hacker" },
+        },
+      })
+      if (error) throw error
+
+      router.push("/auth/sign-up-success")
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "An error occurred during sign up")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const getPasswordStrength = (password: string) => {
