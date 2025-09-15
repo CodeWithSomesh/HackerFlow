@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ProgressIndicator } from "./progress-indicator"
 import { AlertCircle, Github, Home, Mail, Eye, EyeOff, Users } from "lucide-react"
 import { FcGoogle } from "react-icons/fc"
+import { signInWithGoogleOrganizer, signInWithGithubOrganizer } from "@/app/utils/actions"
 
 export function OrganizerAuth() {
   const router = useRouter()
@@ -30,19 +31,6 @@ export function OrganizerAuth() {
     router.push("/")
   }
 
-  const handleSocialAuth = (provider: "github" | "google") => {
-    setIsLoading(true)
-    setError("")
-    setAuthMethod(provider)
-
-    // Simulate auth process
-    setTimeout(() => {
-      // Store auth method for profile setup
-      localStorage.setItem("authMethod", provider)
-      localStorage.setItem("userType", "organizer")
-      router.push("/onboarding/organizer/profile-setup")
-    }, 1500)
-  }
 
   const handleEmailSignup = (e: React.FormEvent) => {
     e.preventDefault()
@@ -278,32 +266,36 @@ export function OrganizerAuth() {
             {/* Social Auth Options */}
             <div className="grid grid-cols-2 gap-4">
               {/* Google Auth */}
-              <Button
-                variant="outline"
-                onClick={() => handleSocialAuth("google")}
-                disabled={isLoading}
-                className="border border-slate-600 hover:border-slate-500 hover:bg-slate-700/50 h-12 rounded-lg backdrop-blur-sm transition-all duration-300 group"
-              >
-                {isLoading && authMethod === "google" ? (
-                  <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                ) : (
-                  <FcGoogle className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                )}
-              </Button>
+              <form action={signInWithGoogleOrganizer}>
+                <Button
+                  type="submit"
+                  variant="outline"
+                  disabled={isLoading}
+                  className="border border-slate-600 hover:border-slate-500 hover:bg-slate-700/50 h-12 rounded-lg backdrop-blur-sm transition-all duration-300 group"
+                >
+                  {isLoading && authMethod === "google" ? (
+                    <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <FcGoogle className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                  )}
+                </Button>
+              </form>
 
               {/* GitHub Auth */}
-              <Button
-                variant="outline"
-                onClick={() => handleSocialAuth("github")}
-                disabled={isLoading}
-                className="border border-slate-600 hover:border-slate-500 hover:bg-slate-700/50 h-12 rounded-lg backdrop-blur-sm transition-all duration-300 group"
-              >
-                {isLoading && authMethod === "github" ? (
-                  <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                ) : (
-                  <Github className="w-5 h-5 text-slate-400 group-hover:scale-110 transition-transform" />
-                )}
-              </Button>
+              <form action={signInWithGithubOrganizer}>
+                <Button
+                  type="submit"
+                  variant="outline"
+                  disabled={isLoading}
+                  className="border border-slate-600 hover:border-slate-500 hover:bg-slate-700/50 h-12 rounded-lg backdrop-blur-sm transition-all duration-300 group"
+                >
+                  {isLoading && authMethod === "github" ? (
+                    <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <Github className="w-5 h-5 text-slate-400 group-hover:scale-110 transition-transform" />
+                  )}
+                </Button>
+              </form>
             </div>
 
             {/* Footer Links */}
