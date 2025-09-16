@@ -5,7 +5,7 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { ModeToggle } from "@/components/ui/mode-toggle"
-import { Menu, Home, Zap, Calendar } from "lucide-react"
+import { Menu, Home, Zap, Calendar, LogOut, Settings, User } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { createClient } from "@/lib/supabase/client"
@@ -24,7 +24,7 @@ import {
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu"
 import BrowseHackathonImage from '@/assets/browseHackathonImage2.png';
-import DashboardImage from '@/assets/dashboardImage.png';
+import DashboardImage from '@/assets/dashboardImage2.png';
 
 // Updated ListItem component with image support
 const ListItem = forwardRef<
@@ -48,7 +48,7 @@ const ListItem = forwardRef<
           {...props}
         >
           {image && (
-            <div className="relative w-full h-40 mb-2 rounded-md overflow-hidden flex items-center justify-center bg-teal-300">
+            <div className="relative w-full h-36 mb-2 rounded-md overflow-hidden flex items-center justify-center bg-teal-300">
               <Image
                 src={image}
                 alt={imageAlt || title}
@@ -101,9 +101,9 @@ export function Navbar() {
   ]
 
   return (
-    <header className="sticky top-0 z-50 p-4 mt-3">
-      <div className="container mx-auto max-w-6xl">
-        <div className="flex h-16 items-center justify-between px-6 bg-background/80 backdrop-blur-xl border border-border rounded-full shadow-lg relative">
+    <header className="sticky top-0 z-50 mt-3 px-4">
+      <div className="mx-auto max-w-7xl w-full">
+        <div className="flex items-center justify-between px-6 py-3 bg-background/80 backdrop-blur-xl border border-border rounded-full shadow-lg">
           <Link href="/" className="flex items-center gap-2">
             <div className="h-9 w-9 rounded-lg bg-[#08f8a5] flex items-center justify-center shadow-lg">
               <Image 
@@ -111,11 +111,11 @@ export function Navbar() {
                 alt="HackerFlow Logo"
                 className="rounded-md"/>
             </div>
-            <span className="font-bol font-blackops text-2xl tracking-tight text-foreground">HackerFlow</span>
+            <span className="font-bol font-blackops text-2xl tracking-tight text-foreground hidden md:flex">HackerFlow</span>
           </Link>
 
           {/* Desktop Nav */}
-          <nav className="hidden items-center gap-8 text-md md:flex">
+          <nav className=" items-center gap-8 text-md md:flex md:-ml-36">
             <NavigationMenu>
               <NavigationMenuList>
                 <NavigationMenuItem>
@@ -203,37 +203,31 @@ export function Navbar() {
             </NavigationMenu>
           </nav>
 
-          <div className="hidden md:flex items-center gap-3">
-            <Button
-              variant="outline"
-              asChild
-              className="border-teal-400 font-bold text-[#08f8a5] hover:bg-teal-50 dark:border-teal-400 dark:text-[#08f8a5] dark:hover:bg-teal-600 dark:hover:text-white bg-transparent"
-            >
-              <Link href="#organize">Organize Event</Link>
-            </Button>
+          <div className="md:flex items-center gap-3">
             {userEmail ? (
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon" className="rounded-full w-9 h-9 p-0">
-                    <Avatar className="w-8 h-8">
-                      <AvatarImage alt="Profile" />
-                      <AvatarFallback>{initials(userEmail)}</AvatarFallback>
-                    </Avatar>
-                  </Button>
+                <DropdownMenuTrigger className="focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-primary rounded-full bg-black border border-gray-400">
+                  <Avatar className="h-10 w-10 bg-teal-400">
+                    <AvatarFallback className="font-bol font-blackops">{initials(userEmail)}</AvatarFallback>
+                  </Avatar>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuLabel className="truncate">{userEmail}</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href="/protected">Dashboard</Link>
+                <DropdownMenuContent className="bg-black">
+                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuSeparator className="bg-white" />
+                  <DropdownMenuItem className="hover:bg-gray-600">
+                    <User className="h-4 w-4" /> Profile
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/settings">Settings</Link>
+                  <DropdownMenuItem className="hover:bg-gray-600">
+                    <User className="h-4 w-4" /> Dashboard
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="hover:bg-gray-600">
+                    <Settings className="h-4 w-4" /> Settings
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="bg-white" />
                   <DropdownMenuItem asChild>
-                    <form action={signOut} className="w-full">
-                      <button type="submit" className="w-full text-left">Sign Out</button>
+                    <form action={signOut} className="w-full hover:bg-gray-700 hover:font-bold">
+                      <LogOut className="h-4 w-4 text-red-500" />
+                      <button type="submit" className="w-full text-left text-red-500">Sign Out</button>
                     </form>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -248,72 +242,7 @@ export function Navbar() {
             )}
           </div>
 
-          {/* Mobile Nav */}
-          <div className="md:hidden flex items-center gap-2">
-            <ModeToggle />
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="outline" size="icon" className="border-border bg-background/80 hover:bg-accent">
-                  <Menu className="h-5 w-5" />
-                  <span className="sr-only">Open menu</span>
-                </Button>
-              </SheetTrigger>
-              <SheetContent
-                side="right"
-                className="border-border p-0 w-64 flex flex-col bg-background/95 backdrop-blur-xl"
-              >
-                <div className="flex items-center gap-2 px-4 py-4 border-b border-border">
-                  <div className="h-8 w-8 rounded-lg bg-teal-600 flex items-center justify-center shadow-lg">
-                    <span className="text-white font-bold text-sm">HF</span>
-                  </div>
-                  <span className="font-bold text-lg tracking-tight text-foreground">HackerFlow</span>
-                </div>
-
-                {/* Nav Links */}
-                <nav className="flex flex-col gap-1 mt-2">
-                  {links.map((l) => (
-                    <Link
-                      key={l.href}
-                      href={l.href}
-                      className="flex items-center gap-3 px-4 py-3 hover:bg-accent hover:text-teal-600 transition-colors"
-                    >
-                      <span className="inline-flex items-center justify-center w-5 h-5 text-muted-foreground">
-                        <l.icon className="h-4 w-4" />
-                      </span>
-                      <span className="text-sm font-medium">{l.label}</span>
-                    </Link>
-                  ))}
-                </nav>
-
-                <div className="mt-auto border-t border-border p-4 space-y-3">
-                  <Button
-                    variant="outline"
-                    asChild
-                    className="w-full border-teal-200 text-teal-600 hover:bg-teal-50 dark:border-teal-800 dark:text-teal-400 dark:hover:bg-teal-950 bg-transparent"
-                  >
-                    <Link href="#organize">Organize Event</Link>
-                  </Button>
-                  {userEmail ? (
-                    <div className="space-y-2">
-                      <Button asChild variant="outline" className="w-full">
-                        <Link href="/protected">Dashboard</Link>
-                      </Button>
-                      <Button asChild variant="outline" className="w-full">
-                        <Link href="/settings">Settings</Link>
-                      </Button>
-                      <form action={signOut}>
-                        <Button type="submit" className="w-full bg-teal-600 text-white hover:bg-teal-700">Sign Out</Button>
-                      </form>
-                    </div>
-                  ) : (
-                    <Button asChild className="w-full bg-teal-600 text-white hover:bg-teal-700">
-                      <Link href="/onboarding/user-type">Join HackerFlow</Link>
-                    </Button>
-                  )}
-                </div>
-              </SheetContent>
-            </Sheet>
-          </div>
+          
         </div>
       </div>
     </header>

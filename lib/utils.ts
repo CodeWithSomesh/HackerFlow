@@ -32,3 +32,9 @@ export function absoluteUrl(path: string) {
     ? `http://localhost:3000${path}`
     : `https://${config.appUrl}${path}`;
 }
+
+// Check if required Supabase environment variables are set
+export const hasEnvVars = !!(
+  process.env.NEXT_PUBLIC_SUPABASE_URL &&
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY
+);
