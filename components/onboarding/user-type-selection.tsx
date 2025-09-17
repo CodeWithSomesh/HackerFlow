@@ -61,7 +61,7 @@ export function UserTypeSelection() {
           <div className="text-center mb-">
             <div className="inline-block relative mb-6">
               <div className="absolute inset-0 bg-gradient-to-r from-pink-500/20 via-purple-500/20 to-cyan-500/20 rounded-3xl blur-2xl"></div>
-              <h1 className="relative text-5xl md:text-7xl font-black bg-gradient-to-r from-pink-400 to-yellow-400 bg-clip-text text-transparent leading-tight">
+              <h1 className="relative text-5xl md:text-7xl font-blackops px-2 font-black bg-gradient-to-r from-pink-400 to-yellow-400 bg-clip-text text-transparent leading-tight">
                 Welcome to HackerFlow!
               </h1>
             </div>
