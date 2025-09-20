@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
-import { Black_Ops_One } from "next/font/google";
+import { Black_Ops_One, Roboto_Mono, Geist, Bebas_Neue, Anton } from "next/font/google";
+import localFont from "next/font/local";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
 import PlasmaWrapper from "@/components/plasmawrapper"
@@ -30,6 +30,23 @@ const blackOps = Black_Ops_One({
   display: "swap",
 });
 
+const robotoMono = Roboto_Mono({
+  variable: "--font-roboto-mono",
+  subsets: ["latin"],
+});
+
+const bebas = Bebas_Neue({
+  subsets: ['latin'],
+  weight: '400',
+  variable: '--font-bebas',
+});
+
+const anton = Anton({
+  weight: '400',
+  subsets: ['latin'],
+  variable: '--font-anton',
+});
+
 
 export default function RootLayout({
   children,
@@ -38,7 +55,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${blackOps.variable} antialiased`}>
+      <body className={`${geistSans.variable} ${blackOps.variable} ${bebas.variable} ${anton.variable} ${robotoMono.variable} antialiased`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
