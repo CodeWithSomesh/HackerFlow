@@ -10,6 +10,13 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        geist: ['var(--font-geist-sans)'],
+        blackops: ['var(--font-blackops)'], // ✅ Add this
+        mono: ['var(--font-roboto-mono)'],
+        anton: ['var(--font-anton)'],
+        bebas: ['var(--font-bebas)'],
+      },
       colors: {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",

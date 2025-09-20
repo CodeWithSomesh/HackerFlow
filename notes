@@ -1,0 +1,17 @@
+1. How to get user session?
+
+Example:
+import {createClient} from '@/lib/supabase/server'
+
+export default async function Home() { //Make sure its async here 
+    const supabase = await createClient() //Make sure its await here
+    const session = await supabase.auth.getUser()
+    console.log(session)// Should be able to view user details here
+}
+
+2. When to use getUser() or getSession()?
+getSession() only to be used in Client Side as its not secure.
+On server should only use getUser()
+
+Source of the both questions above : 
+ https://www.youtube.com/watch?v=XgqCh2FwNVY
