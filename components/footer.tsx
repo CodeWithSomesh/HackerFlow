@@ -3,6 +3,8 @@
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Github, Linkedin, Twitter, Mail, Users, Calendar, ArrowRight } from "lucide-react"
+import Image from "next/image"
+import HackerFlowLogo from '@/assets/hackerflow-logo.png';
 
 
 export function Footer() {
@@ -13,10 +15,15 @@ export function Footer() {
             {/* Brand */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-lg bg-teal-600 flex items-center justify-center shadow-lg">
-                  <span className="text-white font-bold text-sm">HF</span>
-                </div>
-                <span className="text-xl font-bold text-teal-600 dark:text-teal-400">HackerFlow</span>
+                <Link href="/" className="flex items-center gap-2">
+                  <div className="h-9 w-9 rounded-lg bg-[#08f8a5] flex items-center justify-center shadow-lg">
+                    <Image 
+                      src={HackerFlowLogo}
+                      alt="HackerFlow Logo"
+                      className="rounded-md"/>
+                  </div>
+                  <span className="font-bol font-blackops text-2xl tracking-tight text-foreground hidden md:flex">HackerFlow</span>
+                </Link>
               </div>
               <p className="max-w-sm text-sm text-muted-foreground leading-relaxed">
                 Revolutionizing hackathon participation in Malaysia's tech ecosystem with AI-powered team formation and
@@ -32,7 +39,7 @@ export function Footer() {
             {/* Navigation */}
             <div className="grid grid-cols-1 gap-6">
               <div>
-                <h5 className="mb-3 text-sm font-semibold text-foreground">Platform</h5>
+                <h5 className="mb-3 text-sm font-semibold text-foreground underline">Platform</h5>
                 <ul className="space-y-2 text-sm text-muted-foreground">
                   {["Hackathons", "Generate Hackathon Ideas", "AI Team Formation", "Leaderboard",].map((item) => (
                     <li key={item}>
@@ -50,7 +57,7 @@ export function Footer() {
 
             <div className="grid grid-cols-1 gap-6">
               <div>
-                <h5 className="mb-3 text-sm font-semibold text-foreground">Connect</h5>
+                <h5 className="mb-3 text-sm font-semibold text-foreground underline">Connect</h5>
                 <ul className="space-y-2 text-sm text-muted-foreground">
                   <li className="flex items-center gap-2">
                     <Github className="h-4 w-4" />

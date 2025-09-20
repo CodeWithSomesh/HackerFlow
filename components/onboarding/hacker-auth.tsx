@@ -11,6 +11,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ProgressIndicator } from "./progress-indicator"
 import { AlertCircle, Github, Home, Mail, Eye, EyeOff, Sparkles } from "lucide-react"
 import { FcGoogle } from "react-icons/fc"
+import { signInWithGithub, signInWithGoogle } from "@/app/utils/actions"
+import { createClient } from "@/lib/supabase/client"
 
 export function HackerAuth() {
   const router = useRouter()
@@ -29,20 +31,8 @@ export function HackerAuth() {
     router.push("/")
   }
 
-  const handleSocialAuth = (provider: "github" | "google") => {
-    setIsLoading(true)
-    setError("")
 
-    // Simulate auth process
-    setTimeout(() => {
-      // Store auth method for profile setup
-      localStorage.setItem("authMethod", provider)
-      localStorage.setItem("userType", "hacker")
-      router.push("/onboarding/hacker/profile-setup")
-    }, 1500)
-  }
-
-  const handleEmailSignup = (e: React.FormEvent) => {
+  const handleEmailSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
 
@@ -59,12 +49,24 @@ export function HackerAuth() {
 
     setIsLoading(true)
 
-    // Simulate signup process
-    setTimeout(() => {
-      localStorage.setItem("authMethod", "email")
-      localStorage.setItem("userType", "hacker")
-      router.push("/onboarding/hacker/profile-setup")
-    }, 1500)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback?user_type=hacker`,
+          data: { user_type: "hacker" },
+        },
+      })
+      if (error) throw error
+
+      router.push("/auth/sign-up-success")
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "An error occurred during sign up")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const getPasswordStrength = (password: string) => {
@@ -150,24 +152,26 @@ export function HackerAuth() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button
-                  onClick={() => handleSocialAuth("github")}
-                  disabled={isLoading}
-                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold py-6 rounded-xl shadow-lg hover:shadow-purple-500/25 transition-all duration-300"
-                  size="lg"
-                >
-                  {isLoading && authMethod === "github" ? (
-                    <>
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                      Connecting to GitHub...
-                    </>
-                  ) : (
-                    <>
-                      <Github className="w-5 h-5 mr-2" />
-                      Sign up with GitHub
-                    </>
-                  )}
-                </Button>
+                <form action={signInWithGithub}>
+                  <Button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold py-6 rounded-xl shadow-lg hover:shadow-purple-500/25 transition-all duration-300"
+                    size="lg"
+                  >
+                    {isLoading && authMethod === "github" ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                        Connecting to GitHub...
+                      </>
+                    ) : (
+                      <>
+                        <Github className="w-5 h-5 mr-2" />
+                        Sign up with GitHub
+                      </>
+                    )}
+                  </Button>
+                </form>
               </CardContent>
             </Card>
 
@@ -186,25 +190,27 @@ export function HackerAuth() {
             {/* Alternative Options */}
             <div className="space-y-4">
               {/* Google Auth */}
-              <Button
-                variant="outline"
-                onClick={() => handleSocialAuth("google")}
-                disabled={isLoading}
-                className="w-full border-2 border-slate-600/50 hover:border-blue-500/50 hover:bg-blue-500/10 py-6 rounded-xl backdrop-blur-sm transition-all duration-300 group"
-                size="lg"
-              >
-                {isLoading && authMethod === "google" ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin mr-2"></div>
-                    Connecting to Google...
-                  </>
-                ) : (
-                  <>
-                    <FcGoogle className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
-                    <span className="text-slate-200">Sign up with Google</span>
-                  </>
-                )}
-              </Button>
+              <form action={signInWithGoogle}>
+                <Button
+                  type="submit"
+                  variant="outline"
+                  disabled={isLoading}
+                  className="w-full border-2 border-slate-600/50 hover:border-blue-500/50 hover:bg-blue-500/10 py-6 rounded-xl backdrop-blur-sm transition-all duration-300 group"
+                  size="lg"
+                >
+                  {isLoading && authMethod === "google" ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin mr-2"></div>
+                      Connecting to Google...
+                    </>
+                  ) : (
+                    <>
+                      <FcGoogle className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
+                      <span className="text-slate-200">Sign up with Google</span>
+                    </>
+                  )}
+                </Button>
+              </form>
 
               {/* Email Toggle/Form */}
               {authMethod !== "email" ? (

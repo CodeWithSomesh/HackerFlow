@@ -10,6 +10,10 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        geist: ['var(--font-geist-sans)'],
+        blackops: ['var(--font-blackops)'], // ✅ Add this
+      },
       colors: {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
