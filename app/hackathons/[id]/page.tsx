@@ -312,9 +312,9 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
       </div>
 
       <div className="max-w-7xl mx-auto py-4 px-6">
-        <div className="grid lg:grid-cols-4 gap-4">
+        <div className="grid lg:grid-cols-[70%_28.8%] gap-4">
           {/* Main Content */}
-          <div className="lg:col-span-3 space-y-4">
+          <div className=" space-y-4">
             {/* Hero Section - More compact */}
             <div className="relative rounded-md overflow-hidden bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 border border-gray-700">
               {/* <div className="absolute inset-0 opacity-20">
@@ -915,8 +915,8 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
               <div className="absolute inset-0 bg-gradient-to-br from-purple-600/20 via-blue-500/20 to-teal-500/20 animate-pulse"></div>
               
               {/* Main container with gradient border */}
-              <div className="relative bg-gradient-to-r from-purple-500 via-blue-500 to-teal-500 p-[2px] rounded-2xl">
-                <div className="bg-gray-900 rounded-2xl p-6 space-y-5">
+              <div className="relative bg-gradient-to-r from-purple-500 via-blue-500 to-teal-500 p-[2px] rounded-md">
+                <div className="bg-gray-900 rounded-md p-6 space-y-5">
                   
                   {/* Floating decorative elements */}
                   <div className="absolute top-4 right-4 text-purple-400 animate-bounce opacity-30">
