@@ -9,6 +9,7 @@ import hackathonPicture4 from '@/assets/hackathonPic4.webp';
 import hackathonPicture5 from '@/assets/hackathonPic5.webp';
 import hackathonPicture6 from '@/assets/hackathonPic6.webp';
 import Image, { StaticImageData } from "next/image";
+import Link from "next/link";
 
 interface Hackathon {
   id: string;
@@ -386,12 +387,12 @@ const Hackathons = () => {
   };
 
   return (
-    <div className="min-h-screen bg-black" suppressHydrationWarning>
+    <div className="min-h-screen bg-black mt-4" suppressHydrationWarning>
       {/* Header */}
       <div className="bg-gradient-to-r from-teal-400 to-yellow-400 shadow-lg borde border-gray-00">
         <div className="max-w-7xl mx-auto px-6 pt-8 pb-2">
           <div className="mb-4">
-            <h1 className="text-4xl font-bold text-white mb-2">
+            <h1 className="text-4xl font-bold font-blackops text-white -2">
               Discover Hackathons
             </h1>
             <p className="text-xl text-white">
@@ -522,147 +523,147 @@ const Hackathons = () => {
       {/* Cards Grid */}
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {filteredHackathons.map((hackathon) => {
-            const theme = getCardTheme(hackathon.colorTheme);
-            
-            return (
-              <div 
-                key={hackathon.id} 
-                className="bg-gray-900 rounded-xl shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden border border-slate-400 hover:scale-105 h-fit"
-              >
-                {/* Header with gradient background */}
-                <div className={`relative h-56 ${theme.gradient} flex items-center justify-center overflow-hidden`}>
-                  {hackathon.image === "/api/placeholder/400/200" ? <div className="text-6xl opacity-80">🚀</div> 
-                  : 
-                   <Image
-                    src={hackathon.image}
-                    alt="Hackathon banner"
-                    width={600}
-                    height={500}
-                    />
-                  }
-                  
-                  
-                  {/* Status Badge */}
-                  <div className="absolute top-4 right-4">
-                    <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusBadge(hackathon.status)}`}>
-                      {hackathon.status}
-                    </span>
-                  </div>
-                  
-                  {/* Featured Badge */}
-                  {hackathon.featured && (
-                    <div className="absolute top-4 left-4">
-                      <div className="flex items-center gap-1 bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full text-sm font-semibold">
-                        <Star className="h-4 w-4" />
-                        Featured
+            {filteredHackathons.map((hackathon) => {
+              const theme = getCardTheme(hackathon.colorTheme);
+              
+              return (
+                <Link 
+                  key={hackathon.id} href={`/hackathons/${hackathon.id}`}
+                  className="bg-gray-900 rounded-xl shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden border border-slate-400 hover:scale-105 h-fit"
+                >
+                  {/* Header with gradient background */}
+                  <div className={`relative h-56 ${theme.gradient} flex items-center justify-center overflow-hidden`}>
+                    {hackathon.image === "/api/placeholder/400/200" ? <div className="text-6xl opacity-80">🚀</div> 
+                    : 
+                    <Image
+                      src={hackathon.image}
+                      alt="Hackathon banner"
+                      width={600}
+                      height={500}
+                      />
+                    }
+                    
+                    
+                    {/* Status Badge */}
+                    <div className="absolute top-4 right-4">
+                      <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusBadge(hackathon.status)}`}>
+                        {hackathon.status}
+                      </span>
+                    </div>
+                    
+                    {/* Featured Badge */}
+                    {hackathon.featured && (
+                      <div className="absolute top-4 left-4">
+                        <div className="flex items-center gap-1 bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full text-sm font-semibold">
+                          <Star className="h-4 w-4" />
+                          Featured
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Mode Badge */}
+                    <div className="absolute bottom-4 left-4">
+                      <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold ${theme.text} bg-black border border-white`}>
+                        <span>{getModeIcon(hackathon.mode)}</span>
+                        {hackathon.mode}
                       </div>
                     </div>
-                  )}
-                  
-                  {/* Mode Badge */}
-                  <div className="absolute bottom-4 left-4">
-                    <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold ${theme.text} bg-black border border-white`}>
-                      <span>{getModeIcon(hackathon.mode)}</span>
-                      {hackathon.mode}
+                    
+                    {/* Participants Count */}
+                    <div className="absolute bottom-4 right-4">
+                      <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold ${theme.text} bg-black border border-white`}> 
+                        <Users className="h-4 w-4" />
+                        {hackathon.participants}
+                      </div>
                     </div>
                   </div>
                   
-                  {/* Participants Count */}
-                  <div className="absolute bottom-4 right-4">
-                    <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold ${theme.text} bg-black border border-white`}> 
-                      <Users className="h-4 w-4" />
-                      {hackathon.participants}
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Content */}
-                <div className="p-6">
-                  <div className="mb-4">
-                    <h3 className="text-xl font-bold text-white mb-1 line-clamp-2">
-                      {hackathon.title}
-                    </h3>
-                    <p className="text-sm font-medium text-gray-400 mb-3">
-                      by {hackathon.organizer}
-                    </p>
-                    {/* <p className="text-gray-300 text-sm line-clamp-3 leading-relaxed">
-                      {hackathon.description}
-                    </p> */}
-                  </div>
-                  
-                  {/* Details */}
-                  <div className="space-y-3 mb-4">
-                    <div className="flex items-center gap-3 text-sm text-gray-400">
-                      <Calendar className="h-4 w-4 text-blue-400" />
-                      <span>{new Date(hackathon.startDate).toLocaleDateString()} - {new Date(hackathon.endDate).toLocaleDateString()}</span>
+                  {/* Content */}
+                  <div className="p-6">
+                    <div className="mb-4">
+                      <h3 className="text-xl font-bold text-white mb-1 line-clamp-2">
+                        {hackathon.title}
+                      </h3>
+                      <p className="text-sm font-medium text-gray-400 mb-3">
+                        by {hackathon.organizer}
+                      </p>
+                      {/* <p className="text-gray-300 text-sm line-clamp-3 leading-relaxed">
+                        {hackathon.description}
+                      </p> */}
                     </div>
                     
-                    <div className="flex items-center gap-3 text-sm text-gray-400">
-                      <MapPin className="h-4 w-4 text-green-400" />
-                      <span>{hackathon.location}</span>
+                    {/* Details */}
+                    <div className="space-y-3 mb-4">
+                      <div className="flex items-center gap-3 text-sm text-gray-400">
+                        <Calendar className="h-4 w-4 text-blue-400" />
+                        <span>{new Date(hackathon.startDate).toLocaleDateString()} - {new Date(hackathon.endDate).toLocaleDateString()}</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-3 text-sm text-gray-400">
+                        <MapPin className="h-4 w-4 text-green-400" />
+                        <span>{hackathon.location}</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-3 text-sm text-gray-400">
+                        <Clock className="h-4 w-4 text-orange-400" />
+                        <span>{hackathon.timeLeft}</span>
+                      </div>
                     </div>
                     
-                    <div className="flex items-center gap-3 text-sm text-gray-400">
-                      <Clock className="h-4 w-4 text-orange-400" />
-                      <span>{hackathon.timeLeft}</span>
+                    {/* Prize */}
+                    <div className={`flex items-center justify-center gap-3 mb-4 p-3 bg-yellow-400/10 border-2 border-yellow-500 shadow-xl transition-all hover:animate-pulse hover:shadow-yellow-400 rounded-lg`}>
+                      <Trophy className="h-5 w-5 text-yellow-400" />
+                      <span className="font-bold text-lg text-yellow-400">{hackathon.prize}</span>
                     </div>
-                  </div>
-                  
-                  {/* Prize */}
-                  <div className={`flex items-center justify-center gap-3 mb-4 p-3 bg-yellow-400/10 border-2 border-yellow-500 shadow-xl transition-all hover:animate-pulse hover:shadow-yellow-400 rounded-lg`}>
-                    <Trophy className="h-5 w-5 text-yellow-400" />
-                    <span className="font-bold text-lg text-yellow-400">{hackathon.prize}</span>
-                  </div>
-                  
-                  {/* Tags */}
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {hackathon.tags.slice(0, 3).map((tag, index) => (
-                      <span 
-                        key={tag} 
-                        className="px-3 py-1 bg-gray-800 text-gray-300 rounded-full text-xs font-medium border border-gray-700"
+                    
+                    {/* Tags */}
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {hackathon.tags.slice(0, 3).map((tag, index) => (
+                        <span 
+                          key={tag} 
+                          className="px-3 py-1 bg-gray-800 text-gray-300 rounded-full text-xs font-medium border border-gray-700"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                    
+                    {/* Progress Bar */}
+                    <div className="mb-6">
+                      <div className="flex justify-between text-sm text-gray-400 mb-2">
+                        <span>Participants</span>
+                        <span>{hackathon.participants}/{hackathon.maxParticipants}</span>
+                      </div>
+                      <div className="w-full bg-gray-800 rounded-full h-2">
+                        <div 
+                          className={`h-2 rounded-full transition-all duration-300 ${theme.gradient}`}
+                          style={{ width: `${(hackathon.participants / hackathon.maxParticipants) * 100}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                    
+                    {/* Action Buttons */}
+                    <div className="flex gap-3">
+                      <button className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-sm font-medium transition-colors duration-200 border border-gray-700">
+                        <ExternalLink className="h-4 w-4" />
+                        Details
+                      </button>
+                      <button 
+                        disabled={hackathon.status === "Full"}
+                        className={`flex-1 inline-flex items-center font-bold justify-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors duration-200 ${
+                          hackathon.status === "Full" 
+                            ? "bg-gray-700 text-gray-500 cursor-not-allowed border border-gray-600" 
+                            : `${theme.gradient} hover:bg-white hover:text-black text-white hover:italic`
+                        }`}
                       >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                  
-                  {/* Progress Bar */}
-                  <div className="mb-6">
-                    <div className="flex justify-between text-sm text-gray-400 mb-2">
-                      <span>Participants</span>
-                      <span>{hackathon.participants}/{hackathon.maxParticipants}</span>
-                    </div>
-                    <div className="w-full bg-gray-800 rounded-full h-2">
-                      <div 
-                        className={`h-2 rounded-full transition-all duration-300 ${theme.gradient}`}
-                        style={{ width: `${(hackathon.participants / hackathon.maxParticipants) * 100}%` }}
-                      ></div>
+                        {hackathon.status === "Full" ? "Full" : "Join Now"}
+                        {hackathon.status !== "Full" && <ChevronRight className="h-4 w-4" />}
+                      </button>
                     </div>
                   </div>
-                  
-                  {/* Action Buttons */}
-                  <div className="flex gap-3">
-                    <button className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-sm font-medium transition-colors duration-200 border border-gray-700">
-                      <ExternalLink className="h-4 w-4" />
-                      Details
-                    </button>
-                    <button 
-                      disabled={hackathon.status === "Full"}
-                      className={`flex-1 inline-flex items-center font-bold justify-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors duration-200 ${
-                        hackathon.status === "Full" 
-                          ? "bg-gray-700 text-gray-500 cursor-not-allowed border border-gray-600" 
-                          : `${theme.gradient} hover:bg-white hover:text-black text-white hover:italic`
-                      }`}
-                    >
-                      {hackathon.status === "Full" ? "Full" : "Join Now"}
-                      {hackathon.status !== "Full" && <ChevronRight className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+                </Link>
+              );
+            })}
         </div>
         
         {filteredHackathons.length === 0 && (
