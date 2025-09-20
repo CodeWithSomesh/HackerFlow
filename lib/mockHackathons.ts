@@ -17,7 +17,6 @@ export interface Hackathon {
   mode: "Online" | "Hybrid" | "Physical";
   participants: number;
   maxParticipants: number;
-  prize: string;
   tags: string[];
   image: string | StaticImageData;
   status: "Open" | "Closing Soon" | "Full";
@@ -26,7 +25,6 @@ export interface Hackathon {
   colorTheme: string;
   category: string;
   level: "Beginner" | "Intermediate" | "Advanced";
-  prizeValue: number;
   detailedDescription?: string;
   requirements?: string[];
   judgesCriteria?: string[];
@@ -46,10 +44,14 @@ export interface Hackathon {
     isUrgent?: boolean;
   }>;
   prizes?: Array<{
+    category: string;
     position: string;
-    amount: string;
-    benefits?: string[];
+    amount?: string;
+    items: string[];
+    description?: string;
+    type: "cash" | "certificate" | "other";
   }>;
+  totalPrizePool: string
   sponsors?: Array<{
     name: string;
     logo: string;
@@ -80,7 +82,6 @@ export const mockHackathons: Hackathon[] = [
         mode: "Hybrid",
         participants: 1250,
         maxParticipants: 2000,
-        prize: "1,000,000 $TKAI",
         tags: ["Blockchain", "Web3", "DeFi", "Smart Contracts"],
         image: hackathonPicture1,
         status: "Open",
@@ -88,8 +89,8 @@ export const mockHackathons: Hackathon[] = [
         featured: true,
         colorTheme: "purple",
         category: "Blockchain",
+        totalPrizePool: "1,000,000 $TKAI",
         level: "Advanced",
-        prizeValue: 1000000,
         requirements: [
             "Must be 18+ years old",
             "Team of 2-4 members",
@@ -142,26 +143,26 @@ export const mockHackathons: Hackathon[] = [
         importantDates: [
             {
             title: "Registration Deadline",
-            date: "Jan 20, 2025",
+            date: "Sep 20, 2025",
             time: "11:59 PM GMT",
             description: "Last chance to register your team and secure your spot in the hackathon.",
             isUrgent: true,
             },
             {
             title: "Team Formation Deadline",
-            date: "Jan 22, 2025",
+            date: "Sep 21, 2025",
             time: "11:59 PM GMT",
             description: "Final deadline to form teams and submit team member details.",
             },
             {
             title: "Project Submission Opens",
-            date: "Feb 1, 2025",
+            date: "Sep 23, 2025",
             time: "12:00 AM GMT",
             description: "Submission portal opens for final project uploads.",
             },
             {
             title: "Final Submission Deadline",
-            date: "Feb 10, 2025",
+            date: "Nov 10, 2025",
             time: "11:59 PM GMT",
             description: "Hard deadline for all project submissions. No late submissions accepted.",
             isUrgent: true,
@@ -169,21 +170,48 @@ export const mockHackathons: Hackathon[] = [
         ],
         prizes: [
             {
-            position: "1st Place",
-            amount: "500,000 $TKAI",
-            benefits: ["Cursor Pro Plan (1 year)", "Vercel Pro Plan (1 year)", "Direct mentorship"]
+              category: "Overall",
+              position: "Winner",
+              amount: "$50,000",
+              items: ["Cash Prize", "Mentorship Program", "Certificate of Excellence"],
+              type: "cash" as const,
+              description: 'Chance for a coveted internship with the Tata Group, a Grand cash prize of INR 2,50,000, a coveted Tata Crucible Trophy and a luxury holiday experience at the Taj Hotels worth INR 50,000.'
             },
             {
-            position: "2nd Place", 
-            amount: "300,000 $TKAI",
-            benefits: ["Cursor Pro Plan (6 months)", "Vercel Pro Plan (6 months)"]
+              category: "Overall",
+              position: "First Runner Up",
+              amount: "$25,000",
+              items: ["Cash Prize", "Pro Plan Access", "Certificate of Excellence"],
+              type: "cash" as const,
+              description: 'Chance for a coveted internship** with the Tata Group and a Taj voucher worth INR 20,000*',
             },
             {
-            position: "3rd Place",
-            amount: "200,000 $TKAI",
-            benefits: ["Cursor Pro Plan (3 months)", "Vercel Pro Plan (3 months)"]
-            }
-        ],
+              category: "Overall",
+              position: "Second Runner Up",
+              amount: "$15,000",
+              items: ["Cash Prize", "Startup Credits", "Certificate of Excellence"],
+              type: "cash" as const,
+              description: 'Chance for a coveted internship** with the Tata Group and a Taj voucher worth INR 20,000*'
+            },
+            {
+              category: "Best Innovation",
+              position: "Winner",
+              items: ["MacBook Pro M3", "Certificate of Innovation", "1-Year Pro Subscription"],
+              type: "certificate" as const,
+            },
+            {
+              category: "Best Design",
+              position: "Winner",
+              items: ["iPad Pro + Apple Pencil", "Design Tool Licenses", "Certificate of Excellence"],
+              type: "other" as const,
+            },
+            {
+              category: "People's Choice",
+              position: "Winner",
+              items: ["Gaming Setup", "Community Recognition", "Certificate of Appreciation"],
+              type: "other" as const,
+            },
+          ],
         organizers: [
             {
             name: "Alex Chen",
@@ -267,15 +295,14 @@ export const mockHackathons: Hackathon[] = [
         mode: "Physical",
         participants: 484,
         maxParticipants: 500,
-        prize: "250,000 USDT",
         tags: ["Blockchain", "DeFi", "Trading", "Liquidity"],
         image: hackathonPicture2,
         status: "Closing Soon",
         timeLeft: "12 hours left",
         colorTheme: "teal",
         category: "FinTech",
+        totalPrizePool: "250,000 USDT",
         level: "Intermediate",
-        prizeValue: 250000,
         requirements: [
             "Experience with DeFi protocols",
             "Team of 1-5 members",
@@ -314,14 +341,14 @@ export const mockHackathons: Hackathon[] = [
         importantDates: [
             {
             title: "Hackathon Starts",
-            date: "Jan 20, 2025",
+            date: "Sep 20, 2025",
             time: "09:00 AM GMT",
             description: "Opening ceremony and team formation.",
             isUrgent: true
             },
             {
             title: "Submission Deadline",
-            date: "Jan 22, 2025",
+            date: "Sep 22, 2025",
             time: "02:00 PM GMT",
             description: "Final deadline for all project submissions.",
             isUrgent: true
@@ -329,18 +356,35 @@ export const mockHackathons: Hackathon[] = [
         ],
         prizes: [
             {
-            position: "1st Place",
-            amount: "150,000 USDT"
+              category: "Overall",
+              position: "Winner",
+              amount: "$50,000",
+              items: ["Cash Prize", "Mentorship Program", "Certificate of Excellence"],
+              type: "cash" as const,
+              description: 'Chance for a coveted internship with the Tata Group, a Grand cash prize of INR 2,50,000, a coveted Tata Crucible Trophy and a luxury holiday experience at the Taj Hotels worth INR 50,000.'
             },
             {
-            position: "2nd Place",
-            amount: "70,000 USDT"
+              category: "Overall",
+              position: "First Runner Up",
+              amount: "$25,000",
+              items: ["Cash Prize", "Pro Plan Access", "Certificate of Excellence"],
+              type: "cash" as const,
             },
             {
-            position: "3rd Place",
-            amount: "30,000 USDT"
-            }
-        ],
+              category: "Overall",
+              position: "Second Runner Up",
+              amount: "$15,000",
+              items: ["Cash Prize", "Startup Credits", "Certificate of Excellence"],
+              type: "cash" as const,
+              description: 'Chance for a coveted internship with the Tata Group, a Grand cash prize of INR 2,50,000, a coveted Tata Crucible Trophy and a luxury holiday experience at the Taj Hotels worth INR 50,000.'
+            },
+            {
+              category: "Best Innovation",
+              position: "Winner",
+              items: ["MacBook Pro M3", "Certificate of Innovation", "1-Year Pro Subscription"],
+              type: "other" as const,
+            },
+          ],
         sponsors: [
             {
             name: "Hyperliquid Labs",
@@ -375,7 +419,7 @@ export const mockHackathons: Hackathon[] = [
         mode: "Online",
         participants: 314,
         maxParticipants: 1000,
-        prize: "8,000 EUR",
+        totalPrizePool: "RM100,000",
         tags: ["Space Tech", "Agriculture", "Sustainability", "Climate"],
         image: hackathonPicture3,
         status: "Open",
@@ -383,7 +427,6 @@ export const mockHackathons: Hackathon[] = [
         colorTheme: "green",
         category: "Space & Science",
         level: "Beginner",
-        prizeValue: 8000,
         requirements: [
             "Open to all skill levels",
             "Teams of 2-6 members",
@@ -422,14 +465,14 @@ export const mockHackathons: Hackathon[] = [
         importantDates: [
             {
             title: "Kickoff & Challenge Briefing",
-            date: "Feb 1, 2025",
+            date: "Oct 1, 2025",
             time: "10:00 AM GMT",
             description: "Overview of hackathon tracks, goals, and Copernicus data tools.",
             isUrgent: false
             },
             {
             title: "Submission Deadline",
-            date: "Feb 5, 2025",
+            date: "Nov 5, 2025",
             time: "09:00 AM GMT",
             description: "Final submission of projects and documentation.",
             isUrgent: true
@@ -437,19 +480,29 @@ export const mockHackathons: Hackathon[] = [
         ],
         prizes: [
             {
-            position: "1st Place",
-            amount: "4,000 EUR",
-            benefits: ["ESA incubation program invitation"]
+              category: "Overall",
+              position: "Winner",
+              amount: "$50,000",
+              items: ["Cash Prize", "Mentorship Program", "Certificate of Excellence"],
+              type: "cash" as const,
+              description: 'Chance for a coveted internship with the Tata Group, a Grand cash prize of INR 2,50,000, a coveted Tata Crucible Trophy and a luxury holiday experience at the Taj Hotels worth INR 50,000.'
             },
             {
-            position: "2nd Place",
-            amount: "2,500 EUR"
+              category: "Overall",
+              position: "First Runner Up",
+              amount: "$25,000",
+              items: ["Cash Prize", "Pro Plan Access", "Certificate of Excellence"],
+              type: "cash" as const,
+              description: 'Chance for a coveted internship with the Tata Group, a Grand cash prize of INR 2,50,000, a coveted Tata Crucible Trophy and a luxury holiday experience at the Taj Hotels worth INR 50,000.'
             },
             {
-            position: "3rd Place",
-            amount: "1,500 EUR"
-            }
-        ],
+              category: "Overall",
+              position: "Second Runner Up",
+              amount: "$15,000",
+              items: ["Cash Prize", "Startup Credits", "Certificate of Excellence"],
+              type: "certificate" as const,
+            },
+          ],
         sponsors: [
             {
             name: "European Space Agency",

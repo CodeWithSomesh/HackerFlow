@@ -27,14 +27,20 @@ import {
     ExternalLink,
     ClockAlert,
     MessageCircleQuestionIcon,
-    HandCoins
+    HandCoins,
+    DollarSign,
+    Award
 } from "lucide-react";
 import Link from "next/link";
 import Image, { StaticImageData } from "next/image";
 import { mockHackathons, Hackathon } from "@/lib/mockHackathons"; // Adjust path if different
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { IconQuestionMark, IconUserStar } from "@tabler/icons-react";
+import { IconUserStar } from "@tabler/icons-react";
+import TrophyImage from "@/assets/Trophy Prize.png"
+import PrizeImage from "@/assets/Prize Box.png"
+import CertificateImage from "@/assets/Certificate.png"
+import { motion} from "framer-motion"
 
 
 interface HackathonDetailsProps {
@@ -72,6 +78,73 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
       answer: "All registered participants will be provided with accommodation and meals during the hackathon period. Details will be shared after registration."
     }
   ];
+
+  // Enhanced function to determine date status
+  const getDateStatus = (dateStr: string, allDates?: any[]) => {
+    if (!allDates) return { type: 'upcoming', label: 'Upcoming', color: 'blue' };
+  
+    const today = new Date();
+    const dateObj = new Date(dateStr);
+    const diffTime = dateObj.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) {
+      return { type: 'completed', label: 'Completed', color: 'gray' };
+    } else if (diffDays === 0) {
+      return { type: 'ongoing', label: 'Today', color: 'green' };
+    } else if (diffDays <= 3) {
+      // Find the nearest upcoming date
+      const upcomingDates = allDates
+        .filter(d => {
+          const dObj = new Date(d.date);
+          return dObj.getTime() > today.getTime();
+        })
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      
+      const nearestDate = upcomingDates[0];
+      const isNearest = nearestDate && nearestDate.date === dateStr;
+      
+      return isNearest 
+        ? { type: 'urgent', label: 'Urgent', color: 'red' }
+        : { type: 'upcoming', label: 'Upcoming', color: 'blue' };
+    } else {
+      return { type: 'upcoming', label: 'Upcoming', color: 'blue' };
+    }
+  };
+
+  // Enhanced styling function
+  const getDateStyling = (status: any) => {
+    switch (status.color) {
+      case 'red': // Urgent
+        return {
+          border: "border-red-500/50 bg-red-500/5",
+          icon: "bg-red-500/20 text-red-400",
+          badge: "bg-gradient-to-r from-red-500/20 to-red-600/20 text-red-400 border-red-500/50 animate-pulse",
+          glow: "shadow-red-500/20"
+        };
+      case 'green': // Ongoing/Today
+        return {
+          border: "border-green-500/50 bg-green-500/5",
+          icon: "bg-green-500/20 text-green-400",
+          badge: "bg-gradient-to-r from-green-500/20 to-green-600/20 text-green-400 border-green-500/50 animate-pulse",
+          glow: "shadow-green-500/20"
+        };
+      case 'gray': // Completed
+        return {
+          border: "border-gray-600/50 bg-gray-500/5",
+          icon: "bg-gray-500/20 text-gray-400",
+          badge: "bg-gradient-to-r from-gray-500/20 to-gray-600/20 text-gray-400 border-gray-500/50",
+          glow: "shadow-gray-500/10"
+        };
+      default: // Upcoming
+        return {
+          border: "border-blue-500/50 bg-blue-500/5",
+          icon: "bg-blue-500/20 text-blue-400",
+          badge: "bg-gradient-to-r from-blue-500/20 to-blue-600/20 text-blue-400 border-blue-500/50",
+          glow: "shadow-blue-500/20"
+        };
+    }
+  };
 
   useEffect(() => {
     // Simulate API call - replace with actual API call
@@ -183,31 +256,43 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
       </div>
 
       {/* Header Navigation */}
-      <div className="bg-gray-900/80 backdrop-blur-sm border-b border-gray-800 sticky top-0 z-40">
+      <div className="bg-gray-900/95 backdrop-blur-lg border-b-2 border-gray-700 sticky top-0 z-40 shadow-2xl">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
+            {/* Back Button - Enhanced */}
             <Link 
               href="/hackathons"
-              className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+              className="group flex items-center gap-3 bg-gradient-to-r from-blue-500/20 to-purple-500/20 hover:from-blue-500/30 hover:to-purple-500/30 border border-blue-500/40 hover:border-blue-400 text-white hover:text-blue-300 px-5 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-blue-500/20"
             >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Hackathons
+              <ArrowLeft className="w-5 h-5 group-hover:translate-x-[-2px] transition-transform" />
+              <span className="text-lg">Back to Hackathons</span>
             </Link>
-            <div className="flex items-center gap-2">
-              {/* <button 
-                onClick={() => setIsLiked(!isLiked)}
-                className={`p-2 rounded-full transition-all ${isLiked ? 'text-red-500 bg-red-500/10 scale-110' : 'text-gray-400 hover:text-red-500 hover:bg-red-500/10 hover:scale-110'}`}
-              >
-                <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
-              </button> */}
+            
+            {/* Action Buttons - Enhanced */}
+            <div className="flex items-center gap-3">
+              {/* Bookmark Button */}
               <button 
                 onClick={() => setIsBookmarked(!isBookmarked)}
-                className={`p-2 rounded-full transition-all ${isBookmarked ? 'text-blue-500 bg-blue-500/10 scale-110' : 'text-gray-400 hover:text-blue-500 hover:bg-blue-500/10 hover:scale-110'}`}
+                className={`group relative p-3 rounded-xl font-semibold border-2 transition-all duration-300 hover:scale-110 hover:shadow-lg ${
+                  isBookmarked 
+                    ? 'bg-gradient-to-r from-blue-500/30 to-blue-600/30 border-blue-400 text-blue-300 shadow-blue-500/20' 
+                    : 'bg-gray-800/50 hover:bg-gradient-to-r hover:from-blue-500/20 hover:to-blue-600/20 border-gray-600 hover:border-blue-400 text-gray-300 hover:text-blue-300'
+                }`}
               >
-                <Bookmark className={`w-5 h-5 ${isBookmarked ? 'fill-current' : ''}`} />
+                <Bookmark className={`w-6 h-6 transition-all ${isBookmarked ? 'fill-current scale-110' : 'group-hover:scale-110'}`} />
+                {/* Tooltip */}
+                <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-sm px-3 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-gray-700">
+                  {isBookmarked ? 'Remove Bookmark' : 'Add Bookmark'}
+                </div>
               </button>
-              <button className="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-800/50 transition-all hover:scale-110">
-                <Share2 className="w-5 h-5" />
+              
+              {/* Share Button */}
+              <button className="group relative p-3 rounded-xl font-semibold bg-gray-800/50 hover:bg-gradient-to-r hover:from-green-500/20 hover:to-teal-500/20 border-2 border-gray-600 hover:border-green-400 text-gray-300 hover:text-green-300 transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-green-500/20">
+                <Share2 className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                {/* Tooltip */}
+                <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-sm px-3 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-gray-700">
+                  Share Event
+                </div>
               </button>
             </div>
           </div>
@@ -272,17 +357,17 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
                         />
                       </div>
 
-                      <h1 className="text-4xl lg:text-5xl font-black font-blackops text-white leading-tight">{hackathon.title}</h1>
+                      <h1 className="text-4xl lg:text-5xl font-black font-blackops text-white">{hackathon.title}</h1>
                     </div>
                   </div>
                 </div>
 
                 {/* Organizer & Updated Date */}
-                <div className="mb-2 flex flex-col gap-1 w-fit pr-4">
+                <div className="my-4 flex flex-col gap-1 w-fit pr-4 font-mono">
                   <div className="flex gap-1 items-center">
                     <Building className="w-5 h-5" />
                     <p className="text- text-gray-100 font-medium">Organized by {""}
-                      <span className="underline hover:italic">{hackathon.organizer}</span>
+                      <span className="underline hover:italic font-blackops text-lg">{hackathon.organizer}</span>
                     </p>
                   </div>
                   
@@ -301,7 +386,7 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
                   </div>
                   <div className="bg-gray-800 hover:scale-75 backdrop-blur border border-white/10 rounded-2xl p-3 text-center hover:bg-black/60 transition-all">
                     <Trophy className="w-6 h-6 text-yellow-400 mx-auto mb-2" />
-                    <div className="text-2xl font-bold text-white font-mono">{hackathon.prize.split(' ')[0]}</div>
+                    <div className="text-2xl font-bold text-white font-mono">{hackathon.totalPrizePool.split(' ')[0]}</div>
                     <div className="text-sm text-gray-300 font-mono mt-1">Prize Pool</div>
                   </div>
                   <div className="bg-gray-800 hover:scale-75 backdrop-blur border border-white/10 rounded-2xl p-3 text-center hover:bg-black/60 transition-all">
@@ -311,7 +396,7 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
                   </div>
                   <div className="bg-gray-800 hover:scale-75 backdrop-blur border border-white/10 rounded-2xl p-3 text-center hover:bg-black/60 transition-all">
                     <MapPin className="w-6 h-6 text-purple-400 mx-auto mb-2" />
-                    <div className="text-lg font-bold text-white font-mono">{hackathon.mode}</div>
+                    <div className="text-2xl font-bold text-white font-mono">{hackathon.mode}</div>
                     <div className="text-sm text-gray-300 font-mono mt-1">{hackathon.location.split(',')[0]}</div>
                   </div>
                 </div>
@@ -417,7 +502,7 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
 
               <div className="relative">
                 {/* Vertical line */}
-                <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-gray-600"></div>
+                <div className="absolute left-8 top-0 bottom-[21%] w-0.5 bg-gray-600"></div>
 
                 <div className="space-y-8">
                   {hackathon.timeline?.map((stage, index) => (
@@ -478,90 +563,195 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
               </div>
 
               <div className="grid gap-4">
-                {hackathon.importantDates?.map((date, index) => (
-                  <div
-                    key={index}
-                    className={`p-6 bg-gray-800/30 border rounded-xl transition-all hover:bg-gray-700/30 ${
-                      date.isUrgent ? "border-red-500/50 bg-red-500/5" : "border-gray-700/50"
-                    }`}
-                  >
-                    <div className="flex items-start gap-4">
-                      <div
-                        className={`p-3 rounded-lg ${
-                          date.isUrgent ? "bg-red-500/20 text-red-400" : "bg-blue-500/20 text-blue-400"
-                        }`}
-                      >
-                        {date.isUrgent ? <AlertCircle className="w-5 h-5" /> : <Calendar className="w-5 h-5" />}
-                      </div>
-
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-lg font-mono underline font-semibold text-white">{date.title}</h3>
-                          {date.isUrgent && (
-                            <span className="px-2 py-1 bg-red-500/20 text-red-400 text-xs rounded-full border border-red-500/30">
-                              Urgent
-                            </span>
+                {hackathon.importantDates?.map((date, index) => {
+                  const status = getDateStatus(date.date, hackathon.importantDates);
+                  const styling = getDateStyling(status);
+                  
+                  return (
+                    <div
+                      key={index}
+                      className={`p-6 border rounded-xl transition-all hover:bg-gray-700/30 hover:scale-[1.02] ${styling.border} ${styling.glow} shadow-lg`}
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className={`p-3 rounded-lg relative ${styling.icon}`}>
+                          {/* Animated ring for urgent/ongoing items */}
+                          {(status.type === 'urgent' || status.type === 'ongoing') && (
+                            <div className={`absolute inset-0 rounded-lg border-2 ${
+                              status.type === 'urgent' ? 'border-red-400/60' : 'border-green-400/60'
+                            } animate-ping`}></div>
                           )}
+                          
+                          {status.type === 'urgent' && <AlertCircle className="w-5 h-5 relative z-10" />}
+                          {status.type === 'ongoing' && <Clock className="w-5 h-5 relative z-10" />}
+                          {status.type === 'completed' && <CheckCircle className="w-5 h-5 relative z-10" />}
+                          {status.type === 'upcoming' && <Calendar className="w-5 h-5 relative z-10" />}
                         </div>
 
-                        <div className="flex items-center gap-6 text-sm mt-1">
-                          <div className="flex items-center gap-2 font-mono">
-                            <Calendar className="w-4 h-4 text-blue-400" />
-                            <span className="text-white font-medium">{date.date}</span>
-                          </div>
-                          {date.time && (
-                            <div className="flex items-center gap-2 font-mono">
-                              <Clock className="w-4 h-4 text-blue-400" />
-                              <span className="text-white font-medium">{date.time}</span>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-lg font-mono underline font-semibold text-white">{date.title}</h3>
+                            
+                            {/* Enhanced status badge */}
+                            <div className={`px-3 py-1.5 rounded-full border text-xs font-bold tracking-wide ${styling.badge}`}>
+                              <div className="flex items-center gap-1.5">
+                                {status.type === 'urgent' && <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"></div>}
+                                {status.type === 'ongoing' && <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></div>}
+                                {status.type === 'completed' && <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div>}
+                                {status.type === 'upcoming' && <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>}
+                                {status.label}
+                              </div>
                             </div>
-                          )}
-                        </div>
+                          </div>
 
-                        {date.description && <p className="text-gray-300 font-geist text- mt-4">{date.description}</p>}
+                          <div className="flex items-center gap-6 text-sm mt-1">
+                            <div className="flex items-center gap-2 font-mono">
+                              <Calendar className="w-4 h-4 text-blue-400" />
+                              <span className="text-white font-medium">{date.date}</span>
+                            </div>
+                            {date.time && (
+                              <div className="flex items-center gap-2 font-mono">
+                                <Clock className="w-4 h-4 text-blue-400" />
+                                <span className="text-white font-medium">{date.time}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {date.description && <p className="text-gray-300 font-geist text- mt-4">{date.description}</p>}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
             {/* Prizes */}
             {hackathon.prizes && (
-              <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-md border border-gray-700 px-8 py-6">
-                <h2 className="text-3xl font-bold text-white mb-6 flex items-center gap-3">
+              <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-md border border-gray-700 p-8">
+                <div className="flex items-center gap-3 mb-4">
                   <Trophy className="w-8 h-8 text-yellow-400" />
-                  Prize Pool Distribution
-                </h2>
-                <div className="grid md:grid-cols-3 gap-6">
-                  {hackathon.prizes.map((prize, index) => (
-                    <div key={index} className="relative group">
-                      <div className={`absolute inset-0 rounded-2xl opacity-20 group-hover:opacity-30 transition-opacity ${
-                        index === 0 ? 'bg-gradient-to-br from-yellow-400 to-yellow-600' :
-                        index === 1 ? 'bg-gradient-to-br from-gray-400 to-gray-600' :
-                        'bg-gradient-to-br from-orange-400 to-orange-600'
-                      }`}></div>
-                      <div className="relative border border-gray-600 rounded-2xl p-6 bg-gray-800/30 hover:bg-gray-700/30 transition-all">
-                        <div className="text-center mb-4">
-                          <Trophy className={`w-12 h-12 mx-auto mb-2 ${
-                            index === 0 ? 'text-yellow-400' :
-                            index === 1 ? 'text-gray-400' :
-                            'text-orange-400'
-                          }`} />
-                          <div className="font-bold text-white text-lg">{prize.position}</div>
-                        </div>
-                        <div className="text-center mb-4">
-                          <div className="text-3xl font-black text-white">{prize.amount}</div>
-                        </div>
-                        {prize.benefits && (
-                          <div className="space-y-2">
-                            {prize.benefits.map((benefit, idx) => (
-                              <div key={idx} className="flex items-center gap-2 text-sm text-gray-300">
-                                <div className="w-1.5 h-1.5 bg-blue-400 rounded-full flex-shrink-0"></div>
-                                <span>{benefit}</span>
-                              </div>
-                            ))}
+                  <h1 className="text-3xl font-bold text-white font-blackops mt-1">PRIZE POOL DISTRIBUTION</h1>
+                </div>
+
+                <div className="relative mb-8 overflow-hidden">
+                  {/* Background gradient with animation */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-yellow-600/20 via-orange-500/20 to-red-500/20 animate-pulse"></div>
+                  
+                  {/* Animated border */}
+                  <div className="relative bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 p-[2px] rounded-2xl">
+                    <div className="bg-gray-900 rounded-2xl p-8">
+                      {/* Floating icons */}
+                      <div className="absolute top-4 left-4 text-yellow-400 animate-bounce">
+                        <DollarSign className="w-6 h-6 opacity-60" />
+                      </div>
+                      <div className="absolute top-4 right-4 text-orange-400 animate-bounce" style={{animationDelay: '0.5s'}}>
+                        <Award className="w-6 h-6 opacity-60" />
+                      </div>
+                      
+                      {/* Main content */}
+                      <div className="text-center relative">
+                        <div className="mb-4">
+                          <h3 className="text-xl font-semibold font-mono text-gray-300 mb-3 tracking-wide">
+                            🏆 TOTAL PRIZE POOL 🏆
+                          </h3>
+                          
+                          {/* Animated prize amount */}
+                          <div className="relative inline-block">
+                            {/* Glow effect */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 blur-lg opacity-30 animate-pulse"></div>
+                            
+                            {/* Main text */}
+                            <div className="relative text-6xl md:text-7xl font-blackops font-black bg-gradient-to-r from-yellow-300 via-orange-400 to-red-400 bg-clip-text text-transparent animate-gradient-x">
+                              {hackathon.totalPrizePool}
+                            </div>
                           </div>
-                        )}
+                        </div>
+                        
+                        {/* Decorative elements */}
+                        <div className="flex justify-center items-center gap-2 mt-4">
+                          <div className="h-px bg-gradient-to-r from-transparent via-yellow-400 to-transparent flex-1"></div>
+                          <div className="px-4 py-2 bg-gradient-to-r from-yellow-400/10 to-orange-400/10 rounded-full border border-yellow-400/20">
+                            <span className="text-sm font-medium text-yellow-200 tracking-wider">
+                              UP FOR GRABS
+                            </span>
+                          </div>
+                          <div className="h-px bg-gradient-to-r from-transparent via-yellow-400 to-transparent flex-1"></div>
+                        </div>
+                        
+                        {/* Sparkle effects */}
+                        <div className="absolute -top-2 left-1/4 text-yellow-300 animate-ping">
+                          <Sparkles className="w-4 h-4" />
+                        </div>
+                        <div className="absolute -bottom-2 right-1/4 text-orange-300 animate-ping" style={{animationDelay: '1s'}}>
+                          <Sparkles className="w-4 h-4" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+          
+
+                <div className="grid gap-4">
+                  {hackathon.prizes.map((prize, index) => (
+                    <div key={index} className="p-6 bg-gray-800/30 border border-gray-700/50 rounded-xl hover:bg-gray-700/30 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 space-y-">
+                          <div className="space-y-">
+                            <h3 className="font-semibold text-white text-lg font-mono underline">
+                              {prize.category}: {prize.position}
+                            </h3>
+                            {prize.amount && <p className="text-2xl mt-1 font-bold font-mono text-yellow-400">{prize.amount}</p>}
+                            <p className="mt-3 font-geist">{prize?.description}</p>
+                          </div>
+                        </div>
+
+                        <div className="ml-6 flex-shrink-0">
+                          <div>
+                            {prize.type === "cash" ? (
+                              <motion.div
+                                className="w-28 h-28"
+                                drag
+                                initial={{ translateY: 0 }}
+                                dragSnapToOrigin={true}
+                              >
+                                <Image
+                                  src={TrophyImage}
+                                  alt="3D Illustration of Trophy"
+                                  className="rotate-6 hover:rotate-45 transition-all"
+                                  draggable="false"
+                                />
+                              </motion.div>
+                            ) : prize.type === "certificate" ? (
+                              <motion.div
+                                className="w-32 h-32"
+                                drag
+                                initial={{ translateY: 0 }}
+                                dragSnapToOrigin={true}
+                              >
+                                <Image
+                                  src={CertificateImage}
+                                  alt="3D Illustration of Certificate"
+                                  className="ml-2 rotate-6 hover:rotate-45 transition-all"
+                                  draggable="false"
+                                />
+                              </motion.div>
+                            ) : (
+                              <motion.div
+                                className="w-36 h-36"
+                                drag
+                                initial={{ translateY: 0 }}
+                                dragSnapToOrigin={true}
+                              >
+                                <Image
+                                  src={PrizeImage}
+                                  alt="3D Illustration of Prize Box"
+                                  className="ml-4 rotate-6 hover:rotate-45 transition-all"
+                                  draggable="false"
+                                />
+                              </motion.div>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -630,7 +820,7 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
                       </div>  
                     </div>
 
-                    <div className="space-y-2 px-3 mt-3 font-mono">
+                    <div className="space-y-2 px-1 mt-3 font-mono">
                       <div className="flex items-center gap-2 text-sm">
                         <Mail className="w-4 h-4 text-blue-400" />
                         <a
@@ -678,7 +868,7 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
                 {hackathon.sponsors?.map((sponsor, index) => (
                   <div
                     key={index}
-                    className="py-3 bg-gray-800/30 border border-gray-700/50 rounded-xl transition-all hover:bg-gray-700/30 hover:scale-105 group"
+                    className="py-3 px-2 bg-gray-800/30 border border-gray-700/50 rounded-xl transition-all hover:bg-gray-700/30 hover:scale-105 group"
                   >
                     <div className="space-y-">
                       <div className="text-center space-y-">
@@ -720,90 +910,127 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
 
           {/* Sidebar - Streamlined and Sticky */}
           <div className="lg:sticky lg:top-28 lg:self-start">
-            <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-md border border-gray-700 p-6 shadow-2xl">
-              {/* Prize & Status */}
-              <div className="text-center mb-6 pb-6 border-b border-gray-700">
-                <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 mb-2">
-                  {hackathon.prize}
-                </div>
-                <div className="text-sm text-gray-400 font-medium">Total Prize Pool</div>
-                <div className={`inline-flex items-center gap-2 mt-3 px-4 py-2 rounded-full text-sm font-bold ${getStatusBadge(hackathon.status)}`}>
-                  <div className="w-2 h-2 bg-current rounded-full animate-pulse"></div>
-                  {hackathon.status}
-                </div>
-              </div>
+            <div className="relative overflow-hidden">
+              {/* Animated background gradient */}
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-600/20 via-blue-500/20 to-teal-500/20 animate-pulse"></div>
               
-              {/* CTA Button */}
-              <button 
-                disabled={hackathon.status === "Full"}
-                className={`w-full py-4 px-6 rounded-2xl font-bold text-lg mb-6 transition-all duration-300 ${
-                  hackathon.status === "Full" 
-                    ? "bg-gray-700 text-gray-400 cursor-not-allowed" 
-                    : `${theme.gradient} text-white hover:scale-105 hover:shadow-2xl shadow-lg`
-                }`}
-              >
-                {hackathon.status === "Full" ? "Registration Closed" : "Register Now"}
-              </button>
-              
-              {/* Quick Stats */}
-              <div className="space-y-4 mb-6 pb-6 border-b border-gray-700">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-400 font-medium">Participants</span>
-                  <span className="text-white font-bold">{hackathon.participants}/{hackathon.maxParticipants}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-400 font-medium">Time Left</span>
-                  <span className="text-white font-bold">{hackathon.timeLeft}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-400 font-medium">Mode</span>
-                  <span className="text-white font-bold">{hackathon.mode}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-400 font-medium">Level</span>
-                  <span className={`px-2 py-1 rounded-lg text-xs font-bold ${getLevelColor(hackathon.level)}`}>
-                    {hackathon.level}
-                  </span>
-                </div>
-              </div>
-
-              {/* Progress Bar */}
-              <div className="mb-6">
-                <div className="flex justify-between text-sm text-gray-400 mb-3 font-medium">
-                  <span>Registration Progress</span>
-                  <span>{Math.round((hackathon.participants / hackathon.maxParticipants) * 100)}%</span>
-                </div>
-                <div className="w-full bg-gray-800 rounded-full h-3 overflow-hidden">
-                  <div 
-                    className={`h-full transition-all duration-700 ${theme.gradient} relative`}
-                    style={{ width: `${(hackathon.participants / hackathon.maxParticipants) * 100}%` }}
-                  >
-                    <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+              {/* Main container with gradient border */}
+              <div className="relative bg-gradient-to-r from-purple-500 via-blue-500 to-teal-500 p-[2px] rounded-2xl">
+                <div className="bg-gray-900 rounded-2xl p-6 space-y-5">
+                  
+                  {/* Floating decorative elements */}
+                  <div className="absolute top-4 right-4 text-purple-400 animate-bounce opacity-30">
+                    <Trophy className="w-5 h-5" />
                   </div>
-                </div>
-              </div>
+                  <div className="absolute bottom-4 left-4 text-blue-400 animate-bounce opacity-30" style={{animationDelay: '1s'}}>
+                    <Users className="w-5 h-5" />
+                  </div>
 
-              {/* Important Dates */}
-              <div className="space-y-3">
-                <h3 className="text-white font-bold text-lg mb-4 flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-blue-400" />
-                  Key Dates
-                </h3>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3 p-3 bg-blue-500/10 rounded-xl border border-blue-500/20">
-                    <div className="w-3 h-3 bg-blue-400 rounded-full flex-shrink-0"></div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold text-blue-400">Registration Starts</div>
-                      <div className="text-sm text-white truncate">{new Date(hackathon.startDate).toLocaleDateString()}</div>
+                  {/* Prize Pool Section */}
+                  <div className="text-center relative">
+                    {/* Glow effect */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 blur-xl opacity-20 animate-pulse"></div>
+                    
+                    <div className="relative">
+                      <div className="text-4xl font-black font-blackops text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-orange-400 to-red-400 animate-gradient-x mb-1">
+                        {hackathon.totalPrizePool}
+                      </div>
+                      <div className="text-md text-gray-300 font-mono font-medium tracking-wide">🏆TOTAL PRIZE POOL🏆</div>
+                      
+                      {/* Status badge with enhanced styling */}
+                      <div className={`inline-flex items-center gap-2 mt-4 px-4 py-2.5 rounded-lg text-sm font-bold border-2 ${getStatusBadge(hackathon.status)} relative`}>
+                        {/* Animated ring for active status */}
+                        {hackathon.status !== "Full" && (
+                          <div className="absolute inset-0 rounded-lg border-2 border-current opacity-50 animate-ping"></div>
+                        )}
+                        <div className="w-2.5 h-2.5 bg-current rounded-lg animate-pulse relative z-10"></div>
+                        <span className="relative font-mono z-10">{hackathon.status}</span>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 p-3 bg-red-500/10 rounded-xl border border-red-500/20">
-                    <div className="w-3 h-3 bg-red-400 rounded-full flex-shrink-0"></div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold text-red-400">Deadline</div>
-                      <div className="text-sm text-white truncate">{new Date(hackathon.endDate).toLocaleDateString()}</div>
+
+                  {/* Divider */}
+                  <div className="flex items-center gap-3">
+                    <div className="h-px bg-gradient-to-r from-transparent via-purple-400 to-transparent flex-1"></div>
+                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
+                    <div className="h-px bg-gradient-to-r from-transparent via-purple-400 to-transparent flex-1"></div>
+                  </div>
+
+                  {/* CTA Button */}
+                  <div className="relative">
+                    {hackathon.status !== "Full" && (
+                      <div className="absolute inset-0 bg-gradient-to-r from-purple-500 via-blue-500 to-teal-500 blur-md opacity-30 animate-pulse"></div>
+                    )}
+                    <button 
+                      disabled={hackathon.status === "Full"}
+                      className={`w-full py-4 px-6 rounded-xl font-bold text-lg transition-all duration-300 relative ${
+                        hackathon.status === "Full" 
+                          ? "bg-gray-700 text-gray-400 cursor-not-allowed border border-gray-600" 
+                          : "bg-gradient-to-r from-purple-500 via-blue-500 to-teal-500 text-white hover:scale-105 hover:shadow-2xl shadow-lg border-0"
+                      }`}
+                    >
+                      <span className="relative z-10 font-geist">
+                        {hackathon.status === "Full" ? "Registration Closed" : "Register Now"}
+                      </span>
+                    </button>
+                  </div>
+
+                  {/* Stats Grid - Non-repetitive data */}
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Teams Registered */}
+                    <div className="bg-gradient-to-br from-blue-500/10 to-purple-500/10 border border-blue-500/30 rounded-xl p-4 text-center hover:scale-105 transition-all">
+                      <Users className="w-6 h-6 text-blue-400 mx-auto mb-2" />
+                      <div className="text-xl font-bold text-white font-mono">{Math.ceil(hackathon.participants / 4)}</div>
+                      <div className="text-xs text-gray-300 font-medium">TEAMS</div>
+                    </div>
+
+                    {/* Team Size */}
+                    <div className="bg-gradient-to-br from-green-500/10 to-teal-500/10 border border-green-500/30 rounded-xl p-4 text-center hover:scale-105 transition-all">
+                      <Users className="w-6 h-6 text-green-400 mx-auto mb-2" />
+                      <div className="text-xl font-bold text-white font-mono">2-4</div>
+                      <div className="text-xs text-gray-300 font-medium">TEAM SIZE</div>
+                    </div>
+
+                    {/* Registration Fee */}
+                    <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-xl p-4 text-center hover:scale-105 transition-all">
+                      <DollarSign className="w-6 h-6 text-purple-400 mx-auto mb-2" />
+                      <div className="text-lg font-bold text-white font-mono">Free</div>
+                      <div className="text-xs text-gray-300 font-medium">ENTRY FEE</div>
+                    </div>
+
+                    {/* Duration */}
+                    <div className="bg-gradient-to-br from-orange-500/10 to-red-500/10 border border-orange-500/30 rounded-xl p-4 text-center hover:scale-105 transition-all">
+                      <Clock className="w-6 h-6 text-orange-400 mx-auto mb-2" />
+                      <div className="text-lg font-bold text-white font-mono">48H</div>
+                      <div className="text-xs text-gray-300 font-medium">DURATION</div>
                     </div>
                   </div>
+
+                  {/* Participants Progress */}
+                  <div className="space-y-3">
+                    <div className="flex justify-between text-sm font-medium">
+                      <span className="text-gray-300 font-mono">Participants</span>
+                      <span className="text-white font-bold font-mono">{hackathon.participants}/{hackathon.maxParticipants}</span>
+                    </div>
+                    
+                    {/* Enhanced progress bar */}
+                    <div className="relative">
+                      <div className="w-full bg-gray-800 rounded-full h-3 overflow-hidden border border-gray-700">
+                        <div 
+                          className="h-full bg-gradient-to-r from-blue-400 via-purple-500 to-teal-500 transition-all duration-700 relative"
+                          style={{ width: `${(hackathon.participants / hackathon.maxParticipants) * 100}%` }}
+                        >
+                          <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+                          {/* Animated shine effect */}
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
+                        </div>
+                      </div>
+                      <div className="text-center text-sm text-gray-400 font-mono mt-2 font-medium">
+                        {Math.round((hackathon.participants / hackathon.maxParticipants) * 100)}% Full
+                      </div>
+                    </div>
+                  </div>
+
                 </div>
               </div>
             </div>
