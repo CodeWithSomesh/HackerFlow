@@ -4,6 +4,7 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { saveOrganizerProfile } from "@/lib/actions/profile-actions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -30,12 +31,14 @@ import {
   UserCheck,
   Sparkles,
   Trophy,
-  Home
+  Home,
+  AlertCircle
 } from "lucide-react"
 
 export function OrganizerProfileSetup() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   
   const [formData, setFormData] = useState({
     fullName: "",
@@ -180,16 +183,27 @@ export function OrganizerProfileSetup() {
     }))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError(null)
 
-    // Save profile data
-    localStorage.setItem("organizerProfile", JSON.stringify(formData))
+    try {
+      // Save profile data to database
+      const result = await saveOrganizerProfile(formData)
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to save profile')
+      }
 
-    setTimeout(() => {
+      // Redirect to completion page
       router.push("/onboarding/complete")
-    }, 1500)
+    } catch (err) {
+      console.error('Error saving profile:', err)
+      setError(err instanceof Error ? err.message : 'Failed to save profile')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleSkip = () => {
@@ -239,6 +253,14 @@ export function OrganizerProfileSetup() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-8">
+            {/* Error Display */}
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/30 text-red-300 px-4 py-3 rounded-xl flex items-center gap-3 backdrop-blur-sm">
+                <AlertCircle className="h-5 w-5 flex-shrink-0" />
+                <span className="text-sm">{error}</span>
+              </div>
+            )}
+
             {/* Basic Information */}
             <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-400 shadow-2xl">
               <CardHeader>

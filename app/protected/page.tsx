@@ -12,6 +12,17 @@ export default async function ProtectedPage() {
     redirect("/auth/login");
   }
 
+  // Check if user has completed profile setup
+  const userType = data.claims.user_metadata?.user_type || 'hacker';
+  
+  // Redirect to appropriate profile setup if not completed
+  // This is a fallback in case users somehow reach this page
+  if (userType === 'organizer') {
+    redirect("/onboarding/organizer/profile-setup");
+  } else {
+    redirect("/onboarding/hacker/profile-setup");
+  }
+
   return (
     <div className="flex-1 w-full flex flex-col gap-12">
       <div className="w-full">

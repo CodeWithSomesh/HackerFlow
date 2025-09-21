@@ -16,7 +16,7 @@ import { createClient } from "@/lib/supabase/client"
 
 export function HackerAuth() {
   const router = useRouter()
-  const [authMethod, setAuthMethod] = useState<"github" | "google" | "email" | null>(null)
+  const [authMethod, setAuthMethod] = useState<"github" | "google" | "email" | "signin" | null>(null)
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -29,6 +29,36 @@ export function HackerAuth() {
 
   const handleHomeClick = () => {
     router.push("/")
+  }
+
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError("")
+    setIsLoading(true)
+
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      })
+      if (error) throw error
+
+      // Get user data to determine user type
+      const { data: { user } } = await supabase.auth.getUser()
+      const userType = user?.user_metadata?.user_type || 'hacker'
+      
+      // Redirect based on user type
+      if (userType === 'organizer') {
+        router.push("/onboarding/organizer/profile-setup")
+      } else {
+        router.push("/onboarding/hacker/profile-setup")
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "An error occurred during sign in")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
 
@@ -213,7 +243,7 @@ export function HackerAuth() {
               </form>
 
               {/* Email Toggle/Form */}
-              {authMethod !== "email" ? (
+              {authMethod !== "email" && authMethod !== "signin" ? (
                 <Button
                   variant="outline"
                   onClick={() => setAuthMethod("email")}
@@ -223,8 +253,84 @@ export function HackerAuth() {
                   <Mail className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
                   <span className="text-slate-200">Sign up with Email</span>
                 </Button>
+              ) : authMethod === "signin" ? (
+                /* Sign In Form */
+                <Card className="border border-slate-600/50 bg-slate-800/30 backdrop-blur-sm">
+                  <CardContent className="p-6 space-y-5">
+                    <form onSubmit={handleSignIn} className="space-y-5">
+                      {/* Email Field */}
+                      <div className="space-y-2">
+                        <Label htmlFor="signin-email" className="text-slate-300 font-medium">Email Address</Label>
+                        <Input
+                          id="signin-email"
+                          type="email"
+                          value={formData.email}
+                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                          placeholder="your.email@example.com"
+                          className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 rounded-xl py-6 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                          required
+                        />
+                      </div>
+
+                      {/* Password Field */}
+                      <div className="space-y-2">
+                        <Label htmlFor="signin-password" className="text-slate-300 font-medium">Password</Label>
+                        <div className="relative">
+                          <Input
+                            id="signin-password"
+                            type={showPassword ? "text" : "password"}
+                            value={formData.password}
+                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                            placeholder="••••••••••••"
+                            className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 rounded-xl py-6 pr-12 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                            required
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-slate-600/50 rounded-lg"
+                            onClick={() => setShowPassword(!showPassword)}
+                          >
+                            {showPassword ? <EyeOff className="h-4 w-4 text-slate-400" /> : <Eye className="h-4 w-4 text-slate-400" />}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Submit Button */}
+                      <Button
+                        type="submit"
+                        disabled={isLoading}
+                        className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold py-6 rounded-xl shadow-lg hover:shadow-purple-500/25 transition-all duration-300"
+                        size="lg"
+                      >
+                        {isLoading ? (
+                          <>
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                            Signing In...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-5 h-5 mr-2" />
+                            Sign In
+                          </>
+                        )}
+                      </Button>
+                      
+                      {/* Back to sign up */}
+                      <div className="text-center pt-2">
+                        <button
+                          onClick={() => setAuthMethod("email")}
+                          className="text-sm text-slate-400 hover:text-slate-300 transition-colors"
+                        >
+                          ← Back to sign up
+                        </button>
+                      </div>
+                    </form>
+                  </CardContent>
+                </Card>
               ) : (
-                /* Email Form */
+                /* Email Signup Form */
                 <Card className="border border-slate-600/50 bg-slate-800/30 backdrop-blur-sm">
                   <CardContent className="p-6 space-y-5">
                     <form onSubmit={handleEmailSignup} className="space-y-5">
@@ -345,7 +451,10 @@ export function HackerAuth() {
             <div className="text-center space-y-4 pt-4">
               <p className="text-slate-400">
                 Already have an account?{" "}
-                <button className="text-purple-400 hover:text-purple-300 font-medium transition-colors">
+                <button 
+                  onClick={() => setAuthMethod("signin")}
+                  className="text-purple-400 hover:text-purple-300 font-medium transition-colors"
+                >
                   Sign in
                 </button>
               </p>

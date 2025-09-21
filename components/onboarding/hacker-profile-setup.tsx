@@ -4,6 +4,9 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { saveHackerProfile, saveGitHubProjects, updateSelectedGitHubProjects } from "@/lib/actions/profile-actions"
+import { getMockGitHubRepositories, analyzeGitHubRepositories } from "@/lib/utils/github-utils"
+import { GitHubProject } from "@/lib/actions/profile-actions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -29,7 +32,8 @@ import {
   Eye,
   Calendar,
   Sparkles,
-  Home
+  Home,
+  AlertCircle
 } from "lucide-react"
 
 export function HackerProfileSetup() {
@@ -38,7 +42,9 @@ export function HackerProfileSetup() {
   const [githubConnected, setGithubConnected] = useState(false)
   const [githubAnalyzing, setGithubAnalyzing] = useState(false)
   const [showGithubProjects, setShowGithubProjects] = useState(false)
-  const [selectedProjects, setSelectedProjects] = useState<string[]>([])
+  const [selectedProjects, setSelectedProjects] = useState<number[]>([])
+  const [githubRepositories, setGithubRepositories] = useState<GitHubProject[]>([])
+  const [error, setError] = useState<string | null>(null)
   
   const [formData, setFormData] = useState({
     fullName: "",
@@ -80,69 +86,13 @@ export function HackerProfileSetup() {
     openToRecruitment: false,
   })
 
-  // Mock GitHub projects data
-  const mockGithubProjects = [
-    {
-      id: "1",
-      name: "e-commerce-app",
-      description: "Full-stack e-commerce application built with React and Node.js",
-      language: "JavaScript",
-      stars: 24,
-      forks: 8,
-      updated: "2 days ago",
-      topics: ["react", "nodejs", "mongodb"]
-    },
-    {
-      id: "2", 
-      name: "ml-price-predictor",
-      description: "Machine learning model to predict house prices using Python",
-      language: "Python",
-      stars: 15,
-      forks: 3,
-      updated: "1 week ago",
-      topics: ["python", "machine-learning", "sklearn"]
-    },
-    {
-      id: "3",
-      name: "mobile-weather-app",
-      description: "React Native weather app with location-based forecasts",
-      language: "TypeScript",
-      stars: 8,
-      forks: 2,
-      updated: "3 days ago",
-      topics: ["react-native", "typescript", "weather-api"]
-    },
-    {
-      id: "4",
-      name: "blockchain-voting",
-      description: "Decentralized voting system built on Ethereum",
-      language: "Solidity",
-      stars: 32,
-      forks: 12,
-      updated: "5 days ago",
-      topics: ["blockchain", "ethereum", "solidity"]
-    }
-  ]
+  // Remove mock data - we'll use real GitHub data
 
   useEffect(() => {
     // Check if user signed up with GitHub
     const authMethod = localStorage.getItem("authMethod")
     if (authMethod === "github") {
-      setGithubConnected(true)
-      setGithubAnalyzing(true)
-
-      // Simulate GitHub analysis
-      setTimeout(() => {
-        setGithubAnalyzing(false)
-        setShowGithubProjects(true)
-        // Auto-populate some skills based on "analysis"
-        setFormData((prev) => ({
-          ...prev,
-          programmingLanguages: ["JavaScript", "Python", "TypeScript"],
-          frameworks: ["React", "Node.js", "Express"],
-          githubUsername: "johndoe"
-        }))
-      }, 3000)
+      handleConnectGitHub()
     }
   }, [])
 
@@ -212,7 +162,7 @@ export function HackerProfileSetup() {
     }))
   }
 
-  const handleProjectToggle = (projectId: string) => {
+  const handleProjectToggle = (projectId: number) => {
     setSelectedProjects(prev => 
       prev.includes(projectId) 
         ? prev.filter(id => id !== projectId)
@@ -220,41 +170,72 @@ export function HackerProfileSetup() {
     )
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError(null)
 
-    // Save profile data
-    const profileData = {
-      ...formData,
-      selectedGithubProjects: selectedProjects
-    }
-    localStorage.setItem("hackerProfile", JSON.stringify(profileData))
+    try {
+      // Save profile data to database
+      const result = await saveHackerProfile(formData)
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to save profile')
+      }
 
-    setTimeout(() => {
+      // Save GitHub projects if connected
+      if (githubConnected && githubRepositories.length > 0) {
+        const githubResult = await saveGitHubProjects(githubRepositories, selectedProjects)
+        
+        if (!githubResult.success) {
+          console.error('Failed to save GitHub projects:', githubResult.error)
+          // Don't throw error here, profile is already saved
+        }
+      }
+
+      // Redirect to completion page
       router.push("/onboarding/complete")
-    }, 1500)
+    } catch (err) {
+      console.error('Error saving profile:', err)
+      setError(err instanceof Error ? err.message : 'Failed to save profile')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleSkip = () => {
     router.push("/onboarding/complete")
   }
 
-  const connectGitHub = () => {
+  const handleConnectGitHub = async () => {
     setGithubAnalyzing(true)
     setGithubConnected(true)
+    setError(null)
 
-    // Simulate GitHub connection and analysis
-    setTimeout(() => {
-      setGithubAnalyzing(false)
-      setShowGithubProjects(true)
+    try {
+      // For now, use mock data. In production, you'd implement real GitHub OAuth
+      const repositories = getMockGitHubRepositories()
+      setGithubRepositories(repositories)
+      
+      // Analyze repositories to extract skills
+      const skills = analyzeGitHubRepositories(repositories)
+      
+      // Auto-populate skills based on analysis
       setFormData((prev) => ({
         ...prev,
-        programmingLanguages: ["JavaScript", "Python", "TypeScript"],
-        frameworks: ["React", "Node.js", "Express"],
-        githubUsername: "johndoe"
+        programmingLanguages: skills.programmingLanguages,
+        frameworks: skills.frameworks,
+        githubUsername: "johndoe" // In production, get from GitHub API
       }))
-    }, 2000)
+
+      setGithubAnalyzing(false)
+      setShowGithubProjects(true)
+    } catch (err) {
+      console.error('Error connecting to GitHub:', err)
+      setError('Failed to connect to GitHub')
+      setGithubConnected(false)
+      setGithubAnalyzing(false)
+    }
   }
 
   return (
@@ -296,6 +277,14 @@ export function HackerProfileSetup() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-8">
+            {/* Error Display */}
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/30 text-red-300 px-4 py-3 rounded-xl flex items-center gap-3 backdrop-blur-sm">
+                <AlertCircle className="h-5 w-5 flex-shrink-0" />
+                <span className="text-sm">{error}</span>
+              </div>
+            )}
+
             {/* Basic Information */}
             <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-400 shadow-2xl">
               <CardHeader>
@@ -859,7 +848,7 @@ export function HackerProfileSetup() {
                             </p>
                             
                             <div className="grid gap-4 max-h-96 overflow-y-auto">
-                              {mockGithubProjects.map((project) => (
+                              {githubRepositories.map((project) => (
                                 <div
                                   key={project.id}
                                   className={`group cursor-pointer p-4 rounded-xl border-2 transition-all duration-200 ${
@@ -900,15 +889,15 @@ export function HackerProfileSetup() {
                                     <div className="flex items-center gap-4 text-xs text-slate-400">
                                       <div className="flex items-center gap-1">
                                         <Star className="w-3 h-3" />
-                                        {project.stars}
+                                        {project.stars_count}
                                       </div>
                                       <div className="flex items-center gap-1">
                                         <GitFork className="w-3 h-3" />
-                                        {project.forks}
+                                        {project.forks_count}
                                       </div>
                                       <div className="flex items-center gap-1">
                                         <Calendar className="w-3 h-3" />
-                                        {project.updated}
+                                        {new Date(project.updated_at).toLocaleDateString()}
                                       </div>
                                     </div>
                                   </div>
@@ -952,7 +941,7 @@ export function HackerProfileSetup() {
                       </div>
                       <Button
                         type="button"
-                        onClick={connectGitHub}
+                        onClick={handleConnectGitHub}
                         className="bg-gradient-to-r from-gray-700 to-gray-900 hover:from-gray-600 hover:to-gray-800 text-white py-3 px-6 rounded-xl"
                       >
                         <Github className="w-5 h-5 mr-2" />

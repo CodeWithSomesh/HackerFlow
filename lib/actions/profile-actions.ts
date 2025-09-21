@@ -1,0 +1,443 @@
+'use server'
+
+import { createClient } from '@/lib/supabase/server'
+import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
+
+// Types
+export interface HackerProfileData {
+  fullName: string
+  bio?: string
+  profileType: 'student' | 'working'
+  city: string
+  state: string
+  country: string
+  
+  // Student fields
+  university?: string
+  course?: string
+  yearOfStudy?: string
+  graduationYear?: number
+  
+  // Working professional fields
+  company?: string
+  position?: string
+  workExperience?: string
+  
+  // Technical skills
+  programmingLanguages: string[]
+  frameworks: string[]
+  otherSkills: string[]
+  experienceLevel?: string
+  
+  // Work experience
+  hasWorkExperience: boolean
+  workExperiences: Array<{
+    id: string
+    company: string
+    position: string
+    duration: string
+    description: string
+    isInternship: boolean
+  }>
+  
+  // Social links
+  githubUsername?: string
+  linkedinUrl?: string
+  twitterUsername?: string
+  portfolioUrl?: string
+  instagramUsername?: string
+  
+  // Other
+  openToRecruitment: boolean
+}
+
+export interface OrganizerProfileData {
+  fullName: string
+  bio?: string
+  organizationType: 'individual' | 'company' | 'university' | 'non-profit'
+  
+  // Organization details
+  organizationName: string
+  position: string
+  organizationSize?: string
+  organizationWebsite?: string
+  organizationDescription?: string
+  
+  // Experience
+  eventOrganizingExperience: string
+  previousEvents: Array<{
+    id: string
+    eventName: string
+    eventType: string
+    participantCount: string
+    date: string
+    description: string
+    role: string
+  }>
+  
+  // Location & Preferences
+  city: string
+  state: string
+  country: string
+  willingToTravelFor: boolean
+  preferredEventTypes: string[]
+  
+  // Budget & Resources
+  typicalBudgetRange?: string
+  hasVenue: boolean
+  venueDetails?: string
+  hasSponsorConnections: boolean
+  sponsorDetails?: string
+  
+  // Technical capabilities
+  techSetupCapability?: string
+  livestreamCapability: boolean
+  photographyCapability: boolean
+  marketingCapability: boolean
+  
+  // Goals & Focus
+  primaryGoals: string[]
+  targetAudience: string[]
+  
+  // Social links
+  linkedinUrl?: string
+  twitterUsername?: string
+  websiteUrl?: string
+  instagramUsername?: string
+  
+  // Other
+  lookingForCoOrganizers: boolean
+  willingToMentor: boolean
+  availableForConsulting: boolean
+}
+
+export interface GitHubProject {
+  id: number
+  name: string
+  full_name: string
+  description?: string
+  language?: string
+  stars_count: number
+  forks_count: number
+  watchers_count: number
+  open_issues_count: number
+  size: number
+  default_branch: string
+  topics: string[]
+  homepage?: string
+  html_url: string
+  clone_url: string
+  ssh_url: string
+  created_at: string
+  updated_at: string
+  pushed_at?: string
+  is_private: boolean
+  is_fork: boolean
+  is_archived: boolean
+  is_disabled: boolean
+}
+
+// Save Hacker Profile
+export async function saveHackerProfile(profileData: HackerProfileData) {
+  try {
+    const supabase = await createClient()
+    
+    // Get current user
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
+      throw new Error('User not authenticated')
+    }
+
+    // Prepare data for database
+    const dbData = {
+      user_id: user.id,
+      user_type: 'hacker',
+      full_name: profileData.fullName,
+      bio: profileData.bio,
+      city: profileData.city,
+      state: profileData.state,
+      country: profileData.country,
+      profile_type: profileData.profileType,
+      university: profileData.university,
+      course: profileData.course,
+      year_of_study: profileData.yearOfStudy,
+      graduation_year: profileData.graduationYear,
+      company: profileData.company,
+      position: profileData.position,
+      work_experience: profileData.workExperience,
+      programming_languages: profileData.programmingLanguages,
+      frameworks: profileData.frameworks,
+      other_skills: profileData.otherSkills,
+      experience_level: profileData.experienceLevel,
+      has_work_experience: profileData.hasWorkExperience,
+      work_experiences: profileData.workExperiences,
+      github_username: profileData.githubUsername,
+      linkedin_url: profileData.linkedinUrl,
+      twitter_username: profileData.twitterUsername,
+      portfolio_url: profileData.portfolioUrl,
+      instagram_username: profileData.instagramUsername,
+      open_to_recruitment: profileData.openToRecruitment,
+    }
+
+    // Insert or update profile
+    const { error } = await supabase
+      .from('user_profiles')
+      .upsert(dbData, { 
+        onConflict: 'user_id',
+        ignoreDuplicates: false 
+      })
+
+    if (error) {
+      console.error('Error saving hacker profile:', error)
+      throw new Error('Failed to save profile')
+    }
+
+    revalidatePath('/onboarding/hacker/profile-setup')
+    return { success: true }
+  } catch (error) {
+    console.error('Error in saveHackerProfile:', error)
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    }
+  }
+}
+
+// Save Organizer Profile
+export async function saveOrganizerProfile(profileData: OrganizerProfileData) {
+  try {
+    const supabase = await createClient()
+    
+    // Get current user
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
+      throw new Error('User not authenticated')
+    }
+
+    // Prepare data for database
+    const dbData = {
+      user_id: user.id,
+      user_type: 'organizer',
+      full_name: profileData.fullName,
+      bio: profileData.bio,
+      city: profileData.city,
+      state: profileData.state,
+      country: profileData.country,
+      organization_type: profileData.organizationType,
+      organization_name: profileData.organizationName,
+      position: profileData.position,
+      organization_size: profileData.organizationSize,
+      organization_website: profileData.organizationWebsite,
+      organization_description: profileData.organizationDescription,
+      event_organizing_experience: profileData.eventOrganizingExperience,
+      previous_events: profileData.previousEvents,
+      preferred_event_types: profileData.preferredEventTypes,
+      typical_budget_range: profileData.typicalBudgetRange,
+      has_venue: profileData.hasVenue,
+      venue_details: profileData.venueDetails,
+      has_sponsor_connections: profileData.hasSponsorConnections,
+      sponsor_details: profileData.sponsorDetails,
+      tech_setup_capability: profileData.techSetupCapability,
+      livestream_capability: profileData.livestreamCapability,
+      photography_capability: profileData.photographyCapability,
+      marketing_capability: profileData.marketingCapability,
+      primary_goals: profileData.primaryGoals,
+      target_audience: profileData.targetAudience,
+      linkedin_url: profileData.linkedinUrl,
+      twitter_username: profileData.twitterUsername,
+      website_url: profileData.websiteUrl,
+      instagram_username: profileData.instagramUsername,
+      looking_for_co_organizers: profileData.lookingForCoOrganizers,
+      willing_to_mentor: profileData.willingToMentor,
+      available_for_consulting: profileData.availableForConsulting,
+      willing_to_travel_for: profileData.willingToTravelFor,
+    }
+
+    // Insert or update profile
+    const { error } = await supabase
+      .from('user_profiles')
+      .upsert(dbData, { 
+        onConflict: 'user_id',
+        ignoreDuplicates: false 
+      })
+
+    if (error) {
+      console.error('Error saving organizer profile:', error)
+      throw new Error('Failed to save profile')
+    }
+
+    revalidatePath('/onboarding/organizer/profile-setup')
+    return { success: true }
+  } catch (error) {
+    console.error('Error in saveOrganizerProfile:', error)
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    }
+  }
+}
+
+// Get User Profile
+export async function getUserProfile(userType: 'hacker' | 'organizer') {
+  try {
+    const supabase = await createClient()
+    
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
+      throw new Error('User not authenticated')
+    }
+
+    const { data: profile, error } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('user_type', userType)
+      .single()
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+      throw new Error('Failed to fetch profile')
+    }
+
+    return { success: true, profile }
+  } catch (error) {
+    console.error('Error in getUserProfile:', error)
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    }
+  }
+}
+
+// Save GitHub Projects
+export async function saveGitHubProjects(projects: GitHubProject[], selectedProjectIds: number[]) {
+  try {
+    const supabase = await createClient()
+    
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
+      throw new Error('User not authenticated')
+    }
+
+    // Prepare projects data
+    const projectsData = projects.map(project => ({
+      user_id: user.id,
+      github_repo_id: project.id,
+      name: project.name,
+      full_name: project.full_name,
+      description: project.description,
+      language: project.language,
+      stars_count: project.stars_count,
+      forks_count: project.forks_count,
+      watchers_count: project.watchers_count,
+      open_issues_count: project.open_issues_count,
+      size: project.size,
+      default_branch: project.default_branch,
+      topics: project.topics,
+      homepage: project.homepage,
+      html_url: project.html_url,
+      clone_url: project.clone_url,
+      ssh_url: project.ssh_url,
+      created_at: project.created_at,
+      updated_at: project.updated_at,
+      pushed_at: project.pushed_at,
+      is_private: project.is_private,
+      is_fork: project.is_fork,
+      is_archived: project.is_archived,
+      is_disabled: project.is_disabled,
+      is_selected: selectedProjectIds.includes(project.id),
+    }))
+
+    // Upsert projects
+    const { error } = await supabase
+      .from('github_projects')
+      .upsert(projectsData, { 
+        onConflict: 'user_id,github_repo_id',
+        ignoreDuplicates: false 
+      })
+
+    if (error) {
+      console.error('Error saving GitHub projects:', error)
+      throw new Error('Failed to save GitHub projects')
+    }
+
+    revalidatePath('/onboarding/hacker/profile-setup')
+    return { success: true }
+  } catch (error) {
+    console.error('Error in saveGitHubProjects:', error)
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    }
+  }
+}
+
+// Get User's GitHub Projects
+export async function getUserGitHubProjects() {
+  try {
+    const supabase = await createClient()
+    
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
+      throw new Error('User not authenticated')
+    }
+
+    const { data: projects, error } = await supabase
+      .from('github_projects')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('updated_at', { ascending: false })
+
+    if (error) {
+      throw new Error('Failed to fetch GitHub projects')
+    }
+
+    return { success: true, projects }
+  } catch (error) {
+    console.error('Error in getUserGitHubProjects:', error)
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    }
+  }
+}
+
+// Update Selected GitHub Projects
+export async function updateSelectedGitHubProjects(selectedProjectIds: number[]) {
+  try {
+    const supabase = await createClient()
+    
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
+      throw new Error('User not authenticated')
+    }
+
+    // First, unselect all projects
+    await supabase
+      .from('github_projects')
+      .update({ is_selected: false })
+      .eq('user_id', user.id)
+
+    // Then, select the specified projects
+    if (selectedProjectIds.length > 0) {
+      const { error } = await supabase
+        .from('github_projects')
+        .update({ is_selected: true })
+        .in('github_repo_id', selectedProjectIds)
+        .eq('user_id', user.id)
+
+      if (error) {
+        throw new Error('Failed to update selected projects')
+      }
+    }
+
+    revalidatePath('/onboarding/hacker/profile-setup')
+    return { success: true }
+  } catch (error) {
+    console.error('Error in updateSelectedGitHubProjects:', error)
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    }
+  }
+}

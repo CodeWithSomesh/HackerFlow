@@ -21,11 +21,15 @@ export async function GET(request: Request) {
 
   if (code) {
     const supabase = await createClient()
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+    
+    console.log('Exchange code result:', { data, error })
+    
     if (!error) {
       // Get user info
       const { data: { user } } = await supabase.auth.getUser()
       
+      console.log('User after exchange:', user)
       console.log('User metadata before update:', user?.user_metadata)
       
       // Update user metadata with user type if not already set
@@ -48,13 +52,22 @@ export async function GET(request: Request) {
       
       const forwardedHost = request.headers.get('x-forwarded-host') // original origin before load balancer
       const isLocalEnv = process.env.NODE_ENV === 'development'
+      
+      console.log('Redirect details:', { origin, forwardedHost, isLocalEnv, redirectPath })
+      
       if (isLocalEnv) {
         // we can be sure that there is no load balancer in between, so no need to watch for X-Forwarded-Host
-        return NextResponse.redirect(`${origin}${redirectPath}`)
+        const redirectUrl = `${origin}${redirectPath}`
+        console.log('Redirecting to (local):', redirectUrl)
+        return NextResponse.redirect(redirectUrl)
       } else if (forwardedHost) {
-        return NextResponse.redirect(`https://${forwardedHost}${redirectPath}`)
+        const redirectUrl = `https://${forwardedHost}${redirectPath}`
+        console.log('Redirecting to (forwarded):', redirectUrl)
+        return NextResponse.redirect(redirectUrl)
       } else {
-        return NextResponse.redirect(`${origin}${redirectPath}`)
+        const redirectUrl = `${origin}${redirectPath}`
+        console.log('Redirecting to (fallback):', redirectUrl)
+        return NextResponse.redirect(redirectUrl)
       }
     } else {
       console.error('Auth callback error:', error)
