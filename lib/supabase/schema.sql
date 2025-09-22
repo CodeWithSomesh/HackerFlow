@@ -77,6 +77,11 @@ CREATE TABLE IF NOT EXISTS user_profiles (
   available_for_consulting BOOLEAN DEFAULT FALSE, -- For organizers
   willing_to_travel_for BOOLEAN DEFAULT FALSE, -- For organizers
   
+  -- NEW: GitHub integration tracking fields
+  github_skills_analyzed_at TIMESTAMP WITH TIME ZONE, -- When we last analyzed their GitHub for skills
+  github_repos_count INTEGER DEFAULT 0, -- Number of repos they have
+  github_integration_id UUID, -- Reference to their GitHub integration record
+  
   -- Metadata
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -136,21 +141,39 @@ CREATE TABLE IF NOT EXISTS github_integrations (
   is_active BOOLEAN DEFAULT TRUE,
   last_sync_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   
+  -- NEW: OAuth integration fields
+  auth_method VARCHAR(20) DEFAULT 'oauth', -- 'oauth' for our GitHub integration, 'github_signup' if they signed up with GitHub
+  integration_status VARCHAR(20) DEFAULT 'connected', -- 'connected', 'disconnected', 'expired', 'error'
+  oauth_state VARCHAR(50), -- For CSRF protection during OAuth flow
+  token_expires_at TIMESTAMP WITH TIME ZONE, -- For future token refresh capability
+  last_error TEXT, -- Store any integration errors for debugging
+  refresh_token_encrypted TEXT, -- For future token refresh (GitHub doesn't provide this yet)
+  
   -- Metadata
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   
   -- Constraints
-  CONSTRAINT unique_user_github_integration UNIQUE(user_id)
+  CONSTRAINT unique_user_github_integration UNIQUE(user_id),
+  CONSTRAINT check_auth_method CHECK (auth_method IN ('oauth', 'github_signup', 'manual')),
+  CONSTRAINT check_integration_status CHECK (integration_status IN ('connected', 'disconnected', 'expired', 'error'))
 );
+
+-- Add foreign key constraint from user_profiles to github_integrations
+ALTER TABLE user_profiles ADD CONSTRAINT fk_github_integration 
+  FOREIGN KEY (github_integration_id) REFERENCES github_integrations(id) ON DELETE SET NULL;
 
 -- Indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_user_profiles_user_id ON user_profiles(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_profiles_user_type ON user_profiles(user_type);
+CREATE INDEX IF NOT EXISTS idx_user_profiles_github_integration ON user_profiles(github_integration_id) WHERE github_integration_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_github_projects_user_id ON github_projects(user_id);
 CREATE INDEX IF NOT EXISTS idx_github_projects_selected ON github_projects(user_id, is_selected);
 CREATE INDEX IF NOT EXISTS idx_github_integrations_user_id ON github_integrations(user_id);
 CREATE INDEX IF NOT EXISTS idx_github_integrations_github_user_id ON github_integrations(github_user_id);
+CREATE INDEX IF NOT EXISTS idx_github_integrations_auth_method ON github_integrations(auth_method);
+CREATE INDEX IF NOT EXISTS idx_github_integrations_status ON github_integrations(integration_status);
+CREATE INDEX IF NOT EXISTS idx_github_integrations_oauth_state ON github_integrations(oauth_state) WHERE oauth_state IS NOT NULL;
 
 -- RLS (Row Level Security) Policies
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
@@ -202,6 +225,32 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+-- Function to sync GitHub profile data
+CREATE OR REPLACE FUNCTION sync_github_profile_data(
+  p_user_id UUID,
+  p_github_data JSONB
+) RETURNS BOOLEAN AS $$
+BEGIN
+  -- Update user profile with GitHub analysis results
+  UPDATE user_profiles 
+  SET 
+    programming_languages = COALESCE(
+      programming_languages, 
+      ARRAY(SELECT jsonb_array_elements_text(p_github_data->'skills'->'programmingLanguages'))
+    ),
+    frameworks = COALESCE(
+      frameworks,
+      ARRAY(SELECT jsonb_array_elements_text(p_github_data->'skills'->'frameworks'))
+    ),
+    github_skills_analyzed_at = NOW(),
+    github_repos_count = (p_github_data->>'repoCount')::INTEGER,
+    updated_at = NOW()
+  WHERE user_id = p_user_id;
+  
+  RETURN FOUND;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Triggers for updating timestamps
 CREATE TRIGGER update_user_profiles_updated_at BEFORE UPDATE ON user_profiles
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -211,3 +260,29 @@ CREATE TRIGGER update_github_projects_updated_at_db BEFORE UPDATE ON github_proj
 
 CREATE TRIGGER update_github_integrations_updated_at BEFORE UPDATE ON github_integrations
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- View for user dashboard (helpful for displaying user info with GitHub status)
+CREATE OR REPLACE VIEW user_dashboard AS
+SELECT 
+  up.user_id,
+  up.full_name,
+  up.user_type,
+  up.programming_languages,
+  up.frameworks,
+  up.github_username,
+  gi.github_username as github_integrated_username,
+  gi.is_active as github_connected,
+  gi.integration_status,
+  gi.last_sync_at as github_last_sync,
+  gi.auth_method as github_auth_method,
+  COUNT(gp.id) as github_repos_selected
+FROM user_profiles up
+LEFT JOIN github_integrations gi ON up.user_id = gi.user_id
+LEFT JOIN github_projects gp ON up.user_id = gp.user_id AND gp.is_selected = true
+GROUP BY 
+  up.user_id, up.full_name, up.user_type, up.programming_languages, 
+  up.frameworks, up.github_username, gi.github_username, gi.is_active, 
+  gi.integration_status, gi.last_sync_at, gi.auth_method;
+
+-- Grant access to the view
+GRANT SELECT ON user_dashboard TO authenticated;

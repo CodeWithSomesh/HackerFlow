@@ -139,68 +139,69 @@ export interface GitHubProject {
 }
 
 // Save Hacker Profile
-export async function saveHackerProfile(profileData: HackerProfileData) {
+export async function saveHackerProfile(formData: any) {
   try {
-    const supabase = await createClient()
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
     
-    // Get current user
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    if (userError || !user) {
-      throw new Error('User not authenticated')
+    if (!user) {
+      return { success: false, error: 'User not authenticated' };
     }
 
-    // Prepare data for database
-    const dbData = {
+    const profileData = {
       user_id: user.id,
       user_type: 'hacker',
-      full_name: profileData.fullName,
-      bio: profileData.bio,
-      city: profileData.city,
-      state: profileData.state,
-      country: profileData.country,
-      profile_type: profileData.profileType,
-      university: profileData.university,
-      course: profileData.course,
-      year_of_study: profileData.yearOfStudy,
-      graduation_year: profileData.graduationYear,
-      company: profileData.company,
-      position: profileData.position,
-      work_experience: profileData.workExperience,
-      programming_languages: profileData.programmingLanguages,
-      frameworks: profileData.frameworks,
-      other_skills: profileData.otherSkills,
-      experience_level: profileData.experienceLevel,
-      has_work_experience: profileData.hasWorkExperience,
-      work_experiences: profileData.workExperiences,
-      github_username: profileData.githubUsername,
-      linkedin_url: profileData.linkedinUrl,
-      twitter_username: profileData.twitterUsername,
-      portfolio_url: profileData.portfolioUrl,
-      instagram_username: profileData.instagramUsername,
-      open_to_recruitment: profileData.openToRecruitment,
-    }
+      full_name: formData.fullName,
+      bio: formData.bio,
+      city: formData.city,
+      state: formData.state,
+      country: formData.country,
+      profile_type: formData.profileType,
+      
+      // Student fields
+      university: formData.university,
+      course: formData.course,
+      year_of_study: formData.yearOfStudy,
+      graduation_year: formData.graduationYear ? parseInt(formData.graduationYear) : null,
+      
+      // Working fields
+      company: formData.company,
+      position: formData.position,
+      work_experience: formData.workExperience,
+      
+      // Skills - note the column names
+      programming_languages: formData.programmingLanguages || [],
+      frameworks: formData.frameworks || [],
+      other_skills: formData.otherSkills || [],
+      
+      // Work experience
+      has_work_experience: formData.hasWorkExperience,
+      work_experiences: formData.workExperiences || [],
+      
+      // Social links
+      github_username: formData.githubUsername,
+      linkedin_url: formData.linkedinUrl,
+      twitter_username: formData.twitterUsername,
+      portfolio_url: formData.portfolioUrl,
+      instagram_username: formData.instagramUsername,
+      
+      // Preferences
+      open_to_recruitment: formData.openToRecruitment,
+    };
 
-    // Insert or update profile
     const { error } = await supabase
       .from('user_profiles')
-      .upsert(dbData, { 
-        onConflict: 'user_id',
-        ignoreDuplicates: false 
-      })
+      .upsert(profileData);
 
     if (error) {
-      console.error('Error saving hacker profile:', error)
-      throw new Error('Failed to save profile')
+      console.error('Error saving hacker profile:', error);
+      return { success: false, error: error.message };
     }
 
-    revalidatePath('/onboarding/hacker/profile-setup')
-    return { success: true }
+    return { success: true };
   } catch (error) {
-    console.error('Error in saveHackerProfile:', error)
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
-    }
+    console.error('Error in saveHackerProfile:', error);
+    return { success: false, error: 'Failed to save profile' };
   }
 }
 
@@ -440,4 +441,27 @@ export async function updateSelectedGitHubProjects(selectedProjectIds: number[])
       error: error instanceof Error ? error.message : 'Unknown error' 
     }
   }
+}
+
+export async function saveGitHubIntegrationData(
+  userId: string,
+  githubData: any,
+  accessToken: string
+) {
+  const supabase = await createClient();
+  
+  const { error } = await supabase
+    .from('hacker_profiles')
+    .update({
+      github_integration_data: githubData,
+      github_access_token: accessToken, // Encrypt in production
+      github_connected_at: new Date().toISOString(),
+    })
+    .eq('user_id', userId);
+  
+  if (error) {
+    throw new Error(`Failed to save GitHub integration: ${error.message}`);
+  }
+  
+  return { success: true };
 }

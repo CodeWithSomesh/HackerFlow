@@ -35,6 +35,8 @@ import {
   Home,
   AlertCircle
 } from "lucide-react"
+import { useGitHubIntegration } from "@/hooks/useGitHubIntegration"
+import { createClient } from '@/lib/supabase/client';
 
 export function HackerProfileSetup() {
   const router = useRouter()
@@ -67,7 +69,14 @@ export function HackerProfileSetup() {
     
     // Work experience for both - CHANGED TO ARRAY
     hasWorkExperience: false,
-    workExperiences: [], // Array of work experience objects
+    workExperiences: [] as Array<{
+      id: string;
+      company: string;
+      position: string;
+      duration: string;
+      description: string;
+      isInternship: boolean;
+    }>, // Array of work experience objects
     
     // Technical skills - ADDED otherSkills
     programmingLanguages: [] as string[],
@@ -86,15 +95,124 @@ export function HackerProfileSetup() {
     openToRecruitment: false,
   })
 
+  const [userAuthMethod, setUserAuthMethod] = useState<string | null>(null);
+  useEffect(() => {
+    // Check how the user signed up
+    const checkUserAuthMethod = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        // Check the auth provider used for signup
+        const authProvider = user.app_metadata?.provider || 'email';
+        setUserAuthMethod(authProvider);
+        
+        // If user signed up with GitHub, auto-populate GitHub username
+        if (authProvider === 'github') {
+          const githubUsername = user.user_metadata?.user_name || user.user_metadata?.preferred_username;
+          if (githubUsername) {
+            setFormData(prev => ({
+              ...prev,
+              githubUsername: githubUsername
+            }));
+          }
+        }
+      }
+    };
+    
+    checkUserAuthMethod();
+  }, []);
+
   // Remove mock data - we'll use real GitHub data
 
+  // useEffect(() => {
+  //   // Check if user signed up with GitHub
+  //   const authMethod = localStorage.getItem("authMethod")
+  //   if (authMethod === "github") {
+  //     handleConnectGitHub()
+  //   }
+  // }, [])
+
+  const { isConnecting, isAnalyzing, error: githubError, data: githubData, connectGitHub, handleOAuthCallback } = useGitHubIntegration();
+
+  // Add this useEffect to handle OAuth callback
   useEffect(() => {
-    // Check if user signed up with GitHub
-    const authMethod = localStorage.getItem("authMethod")
-    if (authMethod === "github") {
-      handleConnectGitHub()
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('github_code');
+    const error = urlParams.get('github_error');
+    
+    console.log('OAuth callback detected:', { code, error });
+    
+    if (error) {
+      setError(`GitHub connection failed: ${error}`);
+      return;
     }
-  }, [])
+    
+    if (code) {
+      console.log('Processing GitHub OAuth code:', code);
+      handleOAuthCallback(code).then((data) => {
+        console.log('GitHub integration successful:', data);
+        
+        // Update form with GitHub data
+        setFormData(prev => ({
+          ...prev,
+          githubUsername: data.user.login,
+          fullName: prev.fullName || data.user.name || '',
+          bio: prev.bio || data.user.bio || '',
+          programmingLanguages: data.skills.programmingLanguages,
+          frameworks: data.skills.frameworks,
+        }));
+        
+        // Convert GitHub repos to your format
+        const convertedRepos = data.repositories.map(repo => ({
+          id: repo.id,
+          name: repo.name,
+          full_name: repo.full_name,
+          description: repo.description || '',
+          language: repo.language || 'Unknown',
+          stars_count: repo.stargazers_count,
+          forks_count: repo.forks_count,
+          watchers_count: repo.watchers_count,
+          open_issues_count: repo.open_issues_count,
+          size: repo.size,
+          default_branch: repo.default_branch,
+          topics: repo.topics || [],
+          homepage: repo.homepage,
+          html_url: repo.html_url,
+          clone_url: repo.clone_url,
+          ssh_url: repo.ssh_url,
+          created_at: repo.created_at,
+          updated_at: repo.updated_at,
+          pushed_at: repo.pushed_at,
+          is_private: repo.private,
+          is_fork: repo.fork,
+          is_archived: repo.archived,
+          is_disabled: repo.disabled,
+        }));
+        
+        setGithubRepositories(convertedRepos);
+        setGithubConnected(true);
+        setShowGithubProjects(true);
+        
+        console.log('GitHub data processed:', { 
+          repositories: convertedRepos.length, 
+          skills: data.skills,
+          connected: true 
+        });
+        
+        // Clean up URL
+        window.history.replaceState({}, '', window.location.pathname);
+      }).catch((err) => {
+        console.error('GitHub integration failed:', err);
+        setError(`GitHub integration failed: ${err.message}`);
+      });
+    }
+  }, [handleOAuthCallback]);
+
+  // Replace your handleConnectGitHub function with:
+  const handleConnectGitHub = () => {
+    connectGitHub();
+  };
 
   const programmingLanguages = [
     "JavaScript", "Python", "Java", "C++", "C#", "Go", "Rust", "TypeScript", 
@@ -207,36 +325,36 @@ export function HackerProfileSetup() {
     router.push("/onboarding/complete")
   }
 
-  const handleConnectGitHub = async () => {
-    setGithubAnalyzing(true)
-    setGithubConnected(true)
-    setError(null)
+  // const handleConnectGitHub = async () => {
+  //   setGithubAnalyzing(true)
+  //   setGithubConnected(true)
+  //   setError(null)
 
-    try {
-      // For now, use mock data. In production, you'd implement real GitHub OAuth
-      const repositories = getMockGitHubRepositories()
-      setGithubRepositories(repositories)
+  //   try {
+  //     // For now, use mock data. In production, you'd implement real GitHub OAuth
+  //     const repositories = getMockGitHubRepositories()
+  //     setGithubRepositories(repositories)
       
-      // Analyze repositories to extract skills
-      const skills = analyzeGitHubRepositories(repositories)
+  //     // Analyze repositories to extract skills
+  //     const skills = analyzeGitHubRepositories(repositories)
       
-      // Auto-populate skills based on analysis
-      setFormData((prev) => ({
-        ...prev,
-        programmingLanguages: skills.programmingLanguages,
-        frameworks: skills.frameworks,
-        githubUsername: "johndoe" // In production, get from GitHub API
-      }))
+  //     // Auto-populate skills based on analysis
+  //     setFormData((prev) => ({
+  //       ...prev,
+  //       programmingLanguages: skills.programmingLanguages,
+  //       frameworks: skills.frameworks,
+  //       githubUsername: "johndoe" // In production, get from GitHub API
+  //     }))
 
-      setGithubAnalyzing(false)
-      setShowGithubProjects(true)
-    } catch (err) {
-      console.error('Error connecting to GitHub:', err)
-      setError('Failed to connect to GitHub')
-      setGithubConnected(false)
-      setGithubAnalyzing(false)
-    }
-  }
+  //     setGithubAnalyzing(false)
+  //     setShowGithubProjects(true)
+  //   } catch (err) {
+  //     console.error('Error connecting to GitHub:', err)
+  //     setError('Failed to connect to GitHub')
+  //     setGithubConnected(false)
+  //     setGithubAnalyzing(false)
+  //   }
+  // }
 
   return (
     <div className="min-h-screen ">
@@ -813,7 +931,7 @@ export function HackerProfileSetup() {
                   GitHub Integration
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6">
+              {/* <CardContent className="space-y-6">
                 {githubConnected ? (
                   <div className="space-y-6">
                     {githubAnalyzing ? (
@@ -834,7 +952,6 @@ export function HackerProfileSetup() {
                           </div>
                         </div>
 
-                        {/* GitHub Projects Selection */}
                         {showGithubProjects && (
                           <div className="space-y-4">
                             <div className="flex items-center justify-between">
@@ -946,6 +1063,117 @@ export function HackerProfileSetup() {
                       >
                         <Github className="w-5 h-5 mr-2" />
                         Connect GitHub
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent> */}
+              <CardContent>
+                {githubConnected ? (
+                  // GitHub is connected - show success state
+                  <div className="space-y-4">
+                    <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
+                      <div className="flex items-center gap-3">
+                        <CheckCircle className="w-5 h-5 text-green-400" />
+                        <div>
+                          <h4 className="font-semibold text-green-300">GitHub Connected Successfully!</h4>
+                          <p className="text-sm text-green-200">
+                            {formData.githubUsername ? `Connected as @${formData.githubUsername}` : 'GitHub account connected'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {githubRepositories.length > 0 && (
+                      <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
+                        <h4 className="font-semibold text-blue-300 mb-2">Repository Analysis Complete</h4>
+                        <p className="text-sm text-blue-200 mb-3">
+                          Found {githubRepositories.length} repositories and detected your skills automatically.
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {formData.programmingLanguages.slice(0, 5).map((lang) => (
+                            <Badge key={lang} variant="outline" className="bg-blue-500/20 border-blue-400/50 text-blue-200">
+                              {lang}
+                            </Badge>
+                          ))}
+                          {formData.programmingLanguages.length > 5 && (
+                            <Badge variant="outline" className="bg-blue-500/20 border-blue-400/50 text-blue-200">
+                              +{formData.programmingLanguages.length - 5} more
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : isConnecting || isAnalyzing ? (
+                  // Loading state
+                  <div className="space-y-4">
+                    <div className="p-6 bg-blue-500/10 border border-blue-500/30 rounded-xl">
+                      <div className="flex items-center gap-3">
+                        <Loader2 className="w-6 h-6 text-blue-400 animate-spin" />
+                        <div>
+                          <h4 className="font-semibold text-blue-300 text-lg">
+                            {isConnecting ? 'Connecting to GitHub...' : 'Analyzing your repositories...'}
+                          </h4>
+                          <p className="text-sm text-blue-200">
+                            {isConnecting ? 'Redirecting to GitHub for authorization' : 'Extracting your skills and projects'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : userAuthMethod === 'github' ? (
+                  // User signed up with GitHub - show enhanced integration
+                  <div className="space-y-4">
+                    <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
+                      <div className="flex items-center gap-3">
+                        <CheckCircle className="w-5 h-5 text-green-400" />
+                        <div>
+                          <h4 className="font-semibold text-green-300">GitHub Account Connected</h4>
+                          <p className="text-sm text-green-200">You signed up with GitHub ({formData.githubUsername})</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
+                      <h4 className="font-semibold text-blue-300 mb-2">Import Your GitHub Data</h4>
+                      <p className="text-sm text-blue-200 mb-4">
+                        Connect your GitHub account to import your repositories and automatically detect your skills.
+                      </p>
+                      <Button
+                        onClick={handleConnectGitHub}
+                        className="w-full bg-gradient-to-r from-gray-700 to-gray-900 hover:from-gray-600 hover:to-gray-800 text-white"
+                      >
+                        <Github className="w-5 h-5 mr-2" />
+                        Import GitHub Data
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  // User signed up with email/Google - show regular integration
+                  <div className="space-y-4">
+                    <div className="p-6 bg-slate-700/30 rounded-xl border border-slate-600/50">
+                      <h4 className="font-semibold mb-3 text-white text-lg">Connect GitHub for Enhanced Profile</h4>
+                      <div className="space-y-3 mb-4">
+                        <div className="flex items-center gap-3 text-sm text-slate-300">
+                          <div className="w-2 h-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"></div>
+                          <span>Showcase your best repositories</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-sm text-slate-300">
+                          <div className="w-2 h-2 bg-gradient-to-r from-pink-500 to-red-500 rounded-full"></div>
+                          <span>Auto-detect your technical skills</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-sm text-slate-300">
+                          <div className="w-2 h-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full"></div>
+                          <span>Get matched with compatible teammates</span>
+                        </div>
+                      </div>
+                      <Button
+                        onClick={handleConnectGitHub}
+                        className="w-full bg-gradient-to-r from-gray-700 to-gray-900 hover:from-gray-600 hover:to-gray-800 text-white"
+                      >
+                        <Github className="w-5 h-5 mr-2" />
+                        Connect GitHub Account
                       </Button>
                     </div>
                   </div>
