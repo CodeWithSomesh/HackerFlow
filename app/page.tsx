@@ -14,6 +14,7 @@ import { FeaturesSection } from "@/components/features-section";
 import { HowItWorks } from "@/components/how-it-works";
 import PlasmaBackground from "@/components/ui/shadcn-io/plasma-background";
 import { useEffect, useState } from "react";
+import { showCustomToast } from "@/components/toast-notification";
 
 
 export default function Home() {

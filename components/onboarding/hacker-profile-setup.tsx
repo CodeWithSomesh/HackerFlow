@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { saveHackerProfile, saveGitHubProjects, updateSelectedGitHubProjects } from "@/lib/actions/profile-actions"
+import { saveHackerProfile, saveGitHubProjects, updateSelectedGitHubProjects, testDatabaseConnection } from "@/lib/actions/profile-actions"
 import { getMockGitHubRepositories, analyzeGitHubRepositories } from "@/lib/utils/github-utils"
 import { GitHubProject } from "@/lib/actions/profile-actions"
 import { Button } from "@/components/ui/button"
@@ -37,9 +37,16 @@ import {
 } from "lucide-react"
 import { useGitHubIntegration } from "@/hooks/useGitHubIntegration"
 import { createClient } from '@/lib/supabase/client';
+import toast from "react-hot-toast"
+import { showCustomToast } from "@/components/toast-notification"
+import { triggerSideCannons, triggerFireworks, triggerCustomShapes, triggerEmoji, triggerStars } from "@/lib/confetti"
+
 
 export function HackerProfileSetup() {
   const router = useRouter()
+
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
+  const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(false)
   const [githubConnected, setGithubConnected] = useState(false)
   const [githubAnalyzing, setGithubAnalyzing] = useState(false)
@@ -47,7 +54,7 @@ export function HackerProfileSetup() {
   const [selectedProjects, setSelectedProjects] = useState<number[]>([])
   const [githubRepositories, setGithubRepositories] = useState<GitHubProject[]>([])
   const [error, setError] = useState<string | null>(null)
-  
+  const [userAuthMethod, setUserAuthMethod] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     fullName: "",
     bio: "",
@@ -94,8 +101,51 @@ export function HackerProfileSetup() {
     // Other
     openToRecruitment: false,
   })
+  
+  // Add this authentication check at the top of your component
+  useEffect(() => {
+    const checkAndSetupAuth = async () => {
+      const supabase = createClient();
+      
+      try {
+        // First check if we have a session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('Session error:', sessionError);
+          router.push('/auth/signin');
+          return;
+        }
 
-  const [userAuthMethod, setUserAuthMethod] = useState<string | null>(null);
+        if (!session) {
+          console.log('No session found, redirecting to signin');
+          router.push('/auth/signin');
+          return;
+        }
+
+        // If we have a session, get the user
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        if (userError || !user) {
+          console.error('User error:', userError);
+          router.push('/auth/signin');
+          return;
+        }
+
+        console.log('User authenticated successfully:', user.id);
+        setUser(user);
+        
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        router.push('/auth/signin');
+      } finally {
+        setIsAuthChecking(false);
+      }
+    };
+
+    checkAndSetupAuth();
+  }, [router]);
+
   useEffect(() => {
     // Check how the user signed up
     const checkUserAuthMethod = async () => {
@@ -123,20 +173,10 @@ export function HackerProfileSetup() {
     checkUserAuthMethod();
   }, []);
 
-  // Remove mock data - we'll use real GitHub data
-
-  // useEffect(() => {
-  //   // Check if user signed up with GitHub
-  //   const authMethod = localStorage.getItem("authMethod")
-  //   if (authMethod === "github") {
-  //     handleConnectGitHub()
-  //   }
-  // }, [])
-
-  const { isConnecting, isAnalyzing, error: githubError, data: githubData, connectGitHub, handleOAuthCallback } = useGitHubIntegration();
-
   // Add this useEffect to handle OAuth callback
   useEffect(() => {
+    if (!user) return;
+    
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get('github_code');
     const error = urlParams.get('github_error');
@@ -207,7 +247,62 @@ export function HackerProfileSetup() {
         setError(`GitHub integration failed: ${err.message}`);
       });
     }
-  }, [handleOAuthCallback]);
+  }, [user]);
+
+  useEffect(() => {
+    testDatabaseConnection();
+  }, []); 
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const supabase = createClient();
+      const { data: { user }, error } = await supabase.auth.getUser();
+      
+      if (error || !user) {
+        console.log('No authenticated user, redirecting to sign in');
+        router.push('/auth/signin');
+        return;
+      }
+      
+      console.log('User authenticated:', user.id);
+    };
+    
+    checkAuth();
+  }, [router]);
+
+  // GitHub integration hook
+  const { isConnecting, isAnalyzing, error: githubError, data: githubData, connectGitHub, handleOAuthCallback } = useGitHubIntegration();
+
+  // Show loading while checking auth
+  if (isAuthChecking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-white">Checking authentication...</div>
+      </div>
+    );
+  }
+
+  // Don't render the form if no user
+  if (!user) {
+    return null;
+  }
+  
+  
+  
+
+  // Remove mock data - we'll use real GitHub data
+
+  // useEffect(() => {
+  //   // Check if user signed up with GitHub
+  //   const authMethod = localStorage.getItem("authMethod")
+  //   if (authMethod === "github") {
+  //     handleConnectGitHub()
+  //   }
+  // }, [])
+
+  
+
+  
 
   // Replace your handleConnectGitHub function with:
   const handleConnectGitHub = () => {
@@ -293,14 +388,51 @@ export function HackerProfileSetup() {
     setIsLoading(true)
     setError(null)
 
+    // // Check authentication first
+    // const supabase = createClient();
+    // const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    // if (authError || !user) {
+    //   setError('You must be logged in to create a profile. Please sign in again.');
+    //   setIsLoading(false);
+    //   router.push('/auth/signin'); // Redirect to sign in
+    //   return;
+    // }
+  
+    // Basic validation
+    if (!formData.fullName || !formData.profileType || !formData.city || !formData.state) {
+      setError('Please fill in all required fields (Name, Profile Type, City, State)')
+      setIsLoading(false)
+      return
+    }
+  
+    // Profile type specific validation
+    if (formData.profileType === 'student') {
+      if (!formData.university || !formData.course || !formData.yearOfStudy || !formData.graduationYear) {
+        setError('Please fill in all required academic information')
+        setIsLoading(false)
+        return
+      }
+    } else if (formData.profileType === 'working') {
+      if (!formData.company || !formData.position || !formData.workExperience) {
+        setError('Please fill in all required professional information')
+        setIsLoading(false)
+        return
+      }
+    }
+  
+    console.log('Submitting form data:', formData); // Debug log
+  
     try {
       // Save profile data to database
       const result = await saveHackerProfile(formData)
       
+      console.log('Profile save result:', result); // Debug log
+      
       if (!result.success) {
         throw new Error(result.error || 'Failed to save profile')
       }
-
+  
       // Save GitHub projects if connected
       if (githubConnected && githubRepositories.length > 0) {
         const githubResult = await saveGitHubProjects(githubRepositories, selectedProjects)
@@ -310,9 +442,10 @@ export function HackerProfileSetup() {
           // Don't throw error here, profile is already saved
         }
       }
-
-      // Redirect to completion page
-      router.push("/onboarding/complete")
+      
+      showCustomToast('success', "Successfully Created Hacker Profile") //Show Success Toast
+      triggerSideCannons(); //Trigger Confetti
+      router.push("/hackathons") //Redirect to Hackathon Page
     } catch (err) {
       console.error('Error saving profile:', err)
       setError(err instanceof Error ? err.message : 'Failed to save profile')
@@ -366,7 +499,7 @@ export function HackerProfileSetup() {
       </div>
 
       {/* Home Button - Floating in top right */}
-      <div className="fixed top-6 right-6 z-50">
+      {/* <div className="fixed top-6 right-6 z-50">
         <Button
           onClick={handleHomeClick}
           className="group relative backdrop-blur-xl bg-slate-800/30 border border-white hover:border-slate-500/50 text-white hover:text-white rounded-2xl p-3 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
@@ -376,11 +509,11 @@ export function HackerProfileSetup() {
           <Home className="w-5 h-5 relative z-10 group-hover:rotate-12 transition-transform duration-300" />
           <span className="s-only">Go to Home</span>
         </Button>
-      </div>
+      </div> */}
 
       <div className="relative flex flex-col items-center justify-center px-4 py-8">
         <div className="w-full max-w-4xl mx-auto">
-          <div className="text-center mb-8 mt-12">
+          <div className="text-center mb-8">
             <ProgressIndicator currentStep={3} totalSteps={3} />
           </div>
 

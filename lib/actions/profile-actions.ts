@@ -138,77 +138,119 @@ export interface GitHubProject {
   is_disabled: boolean
 }
 
+// Add this function to your profile-actions.ts file
+export async function testDatabaseConnection() {
+  try {
+    const supabase = createClient();
+    
+    // Test auth
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    console.log('Auth test:', { user: user?.id, error: authError });
+    
+    // Test database read
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('count(*)')
+      .single();
+      
+    console.log('Database test:', { data, error });
+    
+    return { success: !error, user, data, error };
+  } catch (error) {
+    console.error('Database connection test failed:', error);
+    return { success: false, error };
+  }
+}
+
 // Save Hacker Profile
 export async function saveHackerProfile(formData: any) {
   try {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const supabase = await createClient();
+    // Add this debug line to check if supabase is properly created
+    console.log('Supabase client created:', !!supabase, !!supabase.auth);
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError) {
+      console.error('Auth error:', authError);
+      return { success: false, error: `Authentication error: ${authError.message}` };
+    }
     
     if (!user) {
       return { success: false, error: 'User not authenticated' };
     }
 
+    console.log('User authenticated:', user.id);
+
     const profileData = {
       user_id: user.id,
       user_type: 'hacker',
       full_name: formData.fullName,
-      bio: formData.bio,
+      bio: formData.bio || null,
       city: formData.city,
       state: formData.state,
-      country: formData.country,
+      country: formData.country || 'Malaysia',
       profile_type: formData.profileType,
       
       // Student fields
-      university: formData.university,
-      course: formData.course,
-      year_of_study: formData.yearOfStudy,
+      university: formData.university || null,
+      course: formData.course || null,
+      year_of_study: formData.yearOfStudy || null,
       graduation_year: formData.graduationYear ? parseInt(formData.graduationYear) : null,
       
       // Working fields
-      company: formData.company,
-      position: formData.position,
-      work_experience: formData.workExperience,
+      company: formData.company || null,
+      position: formData.position || null,
+      work_experience: formData.workExperience || null,
       
-      // Skills - note the column names
+      // Skills
       programming_languages: formData.programmingLanguages || [],
       frameworks: formData.frameworks || [],
       other_skills: formData.otherSkills || [],
       
       // Work experience
-      has_work_experience: formData.hasWorkExperience,
+      has_work_experience: formData.hasWorkExperience || false,
       work_experiences: formData.workExperiences || [],
       
       // Social links
-      github_username: formData.githubUsername,
-      linkedin_url: formData.linkedinUrl,
-      twitter_username: formData.twitterUsername,
-      portfolio_url: formData.portfolioUrl,
-      instagram_username: formData.instagramUsername,
+      github_username: formData.githubUsername || null,
+      linkedin_url: formData.linkedinUrl || null,
+      twitter_username: formData.twitterUsername || null,
+      portfolio_url: formData.portfolioUrl || null,
+      instagram_username: formData.instagramUsername || null,
       
       // Preferences
-      open_to_recruitment: formData.openToRecruitment,
+      open_to_recruitment: formData.openToRecruitment || false,
     };
 
-    const { error } = await supabase
+    console.log('Profile data to save:', JSON.stringify(profileData, null, 2));
+
+    const { data, error } = await supabase
       .from('user_profiles')
-      .upsert(profileData);
+      .upsert(profileData)
+      .select();
 
     if (error) {
-      console.error('Error saving hacker profile:', error);
-      return { success: false, error: error.message };
+      console.error('Database error details:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
+      return { success: false, error: `Database error: ${error.message}` };
     }
 
-    return { success: true };
+    console.log('Profile saved successfully:', data);
+    return { success: true, data };
   } catch (error) {
-    console.error('Error in saveHackerProfile:', error);
-    return { success: false, error: 'Failed to save profile' };
+    console.error('Caught error in saveHackerProfile:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error occurred' };
   }
 }
 
 // Save Organizer Profile
 export async function saveOrganizerProfile(profileData: OrganizerProfileData) {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
     
     // Get current user
     const { data: { user }, error: userError } = await supabase.auth.getUser()
@@ -282,7 +324,7 @@ export async function saveOrganizerProfile(profileData: OrganizerProfileData) {
 // Get User Profile
 export async function getUserProfile(userType: 'hacker' | 'organizer') {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
     
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     if (userError || !user) {
