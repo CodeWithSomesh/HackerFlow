@@ -152,7 +152,7 @@ interface GitHubIntegrationData {
 // Add this function to your profile-actions.ts file
 export async function testDatabaseConnection() {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     
     // Test auth
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -261,7 +261,7 @@ export async function saveHackerProfile(formData: HackerProfileData) {
 // Save Organizer Profile
 export async function saveOrganizerProfile(profileData: OrganizerProfileData) {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     
     // Get current user
     const { data: { user }, error: userError } = await supabase.auth.getUser()
@@ -335,7 +335,7 @@ export async function saveOrganizerProfile(profileData: OrganizerProfileData) {
 // Get User Profile
 export async function getUserProfile(userType: 'hacker' | 'organizer') {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     if (userError || !user) {
@@ -502,7 +502,7 @@ export async function saveGitHubIntegrationData(
   githubData: GitHubIntegrationData,
   accessToken: string
 ) {
-  const supabase = createClient();
+  const supabase = await createClient();
   
   const { error } = await supabase
     .from('user_profiles')
