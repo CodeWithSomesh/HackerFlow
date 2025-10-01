@@ -351,8 +351,10 @@ const Hackathons = () => {
         border: "border-cyan-400",
         text: "text-cyan-400"
       }
-    };
-    return themes[theme] || themes.purple;
+    }as const;
+    type ThemeKey = keyof typeof themes;
+
+    return themes[(theme as ThemeKey)] || themes.purple;
   };
 
   const getStatusBadge = (status: string) => {
