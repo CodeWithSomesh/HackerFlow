@@ -364,7 +364,8 @@ export async function getUserProfile(userType: 'hacker' | 'organizer') {
 }
 
 // Save GitHub Projects
-export async function saveGitHubProjects(projects: GitHubProject[], selectedProjectIds: number[]) {
+// export async function saveGitHubProjects(projects: GitHubProject[], selectedProjectIds: number[]) {
+export async function saveGitHubProjects(projects: GitHubProject[], selectedProjectIds: number) {
   try {
     const supabase = await createClient()
     

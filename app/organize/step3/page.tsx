@@ -149,7 +149,9 @@ export default function OrganizeStep3Page() {
                 </h2>
               </div>
               <nav className="space-y-2">
-                {navigationSections.map(({ key, label, icon: Icon, color }) => (
+                {navigationSections.map(({ key, label, 
+                // icon: Icon, 
+                color }) => (
                   <button
                     key={key}
                     onClick={() => openEditor(key as SectionKey)}

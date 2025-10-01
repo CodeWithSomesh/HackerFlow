@@ -5,7 +5,12 @@ import React, { useEffect, useRef, forwardRef } from "react";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 import * as OGL from "ogl";
 
-const { Renderer, Program, Mesh, Triangle } = OGL as any;
+const { Renderer, Program, Mesh, Triangle } = OGL as unknown as {
+  Renderer: typeof import("ogl").Renderer;
+  Program: typeof import("ogl").Program;
+  Mesh: typeof import("ogl").Mesh;
+  Triangle: typeof import("ogl").Triangle;
+};
 import { cn } from '@/lib/utils';
 
 export interface PlasmaBackgroundProps extends React.HTMLAttributes<HTMLDivElement> {
