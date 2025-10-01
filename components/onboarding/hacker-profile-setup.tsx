@@ -48,7 +48,7 @@ export function HackerProfileSetup() {
   const [githubConnected, setGithubConnected] = useState(false)
   // const [githubAnalyzing, setGithubAnalyzing] = useState(false)
   // const [showGithubProjects, setShowGithubProjects] = useState(false)
-  const [selectedProjects, _setSelectedProjects] = useState<number[]>([])
+  // const [selectedProjects, _setSelectedProjects] = useState<number[]>([])
   const [githubRepositories, setGithubRepositories] = useState<GitHubProject[]>([])
   const [error, setError] = useState<string | null>(null)
   const [userAuthMethod, setUserAuthMethod] = useState<string | null>(null);
