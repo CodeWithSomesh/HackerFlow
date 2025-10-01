@@ -55,7 +55,7 @@ export interface HackerProfileData {
 export interface OrganizerProfileData {
   fullName: string
   bio?: string
-  organizationType: 'individual' | 'company' | 'university' | 'non-profit'
+  organizationType: string
   
   // Organization details
   organizationName: string
