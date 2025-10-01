@@ -434,7 +434,7 @@ export function HackerProfileSetup() {
   
       // Save GitHub projects if connected
       if (githubConnected && githubRepositories.length > 0) {
-        const githubResult = await saveGitHubProjects(githubRepositories, selectedProjects)
+        const githubResult = await saveGitHubProjects(githubRepositories, [])
         
         if (!githubResult.success) {
           console.error('Failed to save GitHub projects:', githubResult.error)
