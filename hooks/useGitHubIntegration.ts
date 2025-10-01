@@ -42,7 +42,9 @@ export function useGitHubIntegration() {
       const user = await GitHubOAuthService.getUserProfile(accessToken);
       
       // Get user repositories
-      const repositories = await GitHubOAuthService.getUserRepositories(accessToken, user.login);
+      const repositories = await GitHubOAuthService.getUserRepositories(accessToken, 
+        //user.login
+      );
       
       // Analyze repositories for skills
       const skills = await analyzeRepositoriesForSkills(accessToken, repositories);
