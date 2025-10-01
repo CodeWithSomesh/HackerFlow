@@ -618,7 +618,7 @@ const Hackathons = () => {
                     
                     {/* Tags */}
                     <div className="flex flex-wrap gap-2 mb-4">
-                      {hackathon.tags.slice(0, 3).map((tag, index) => (
+                      {hackathon.tags.slice(0, 3).map((tag) => (
                         <span 
                           key={tag} 
                           className="px-3 py-1 bg-gray-800 text-gray-300 rounded-full text-xs font-medium border border-gray-700"

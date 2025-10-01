@@ -150,7 +150,7 @@ export function HackerAuth() {
               <h1 className="text-3xl font-bold mb-3 bg-gradient-to-r from-pink-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent">
                 Create Your Hacker Account
               </h1>
-              <p className="text-white text-lg">Join Malaysia's Premier Hackathon Community</p>
+              <p className="text-white text-lg">Join Malaysia&lsquo;s Premier Hackathon Community</p>
             </div>
           </CardHeader>
 
@@ -178,7 +178,7 @@ export function HackerAuth() {
                   <Sparkles className="w-4 h-4 text-yellow-400" />
                 </div>
                 <CardDescription className="text-slate-400">
-                  We'll analyze your repos for better team matching
+                  We&lsquo;ll analyze your repos for better team matching
                 </CardDescription>
               </CardHeader>
               <CardContent>

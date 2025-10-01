@@ -85,7 +85,7 @@ export function UserTypeSelection() {
                 <div className="text-center mb-10">
                   <p className="text-2xl font-semibold text-white mb-2">What best describes you?</p>
                   <p className="text-lg text-slate-300 max-w-3xl mx-auto">
-                    Join Malaysia's most innovative hackathon platform and connect with fellow creators
+                    Join Malaysia&lsquo;s most innovative hackathon platform and connect with fellow creators
                   </p>
                 </div>
 
@@ -113,7 +113,7 @@ export function UserTypeSelection() {
                       </div>
                       
                       <CardTitle className="text-3xl font-bold mb-3 text-white group-hover:text-pink-300 transition-colors">
-                        I'm a Hacker/Participant
+                        I&lsquo;m a Hacker/Participant
                       </CardTitle>
                       <CardDescription className="text-lg text-slate-300 leading-relaxed">
                         Join hackathons, form teams, and build amazing projects that change the world
@@ -184,7 +184,7 @@ export function UserTypeSelection() {
                       </div>
                       
                       <CardTitle className="text-3xl font-bold mb-3 text-white group-hover:text-emerald-300 transition-colors">
-                        I'm an Organizer
+                        I&lsquo;m an Organizer
                       </CardTitle>
                       <CardDescription className="text-lg text-slate-300 leading-relaxed">
                         Host events, manage participants, and track success with powerful tools

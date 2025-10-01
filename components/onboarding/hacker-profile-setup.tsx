@@ -29,7 +29,6 @@ import {
   Instagram,
   Star,
   GitFork,
-  Eye,
   Calendar,
   Sparkles,
   Home,

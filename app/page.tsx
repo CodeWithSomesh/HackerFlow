@@ -1,14 +1,5 @@
 "use client"
 
-import { DeployButton } from "@/components/deploy-button";
-import { EnvVarWarning } from "@/components/env-var-warning";
-import { AuthButton } from "@/components/auth-button";
-import { Hero } from "@/components/hero";
-import { ThemeSwitcher } from "@/components/theme-switcher";
-import { ConnectSupabaseSteps } from "@/components/tutorial/connect-supabase-steps";
-import { SignUpUserSteps } from "@/components/tutorial/sign-up-user-steps";
-import { hasEnvVars } from "@/lib/utils";
-import Link from "next/link";
 import { HeroSection } from "@/components/hero-section";
 import { FeaturesSection } from "@/components/features-section";
 import { HowItWorks } from "@/components/how-it-works";
@@ -24,7 +15,7 @@ export default function Home() {
   useEffect(() => {
     const randomColor = colors[Math.floor(Math.random() * colors.length)];
     setColor(randomColor);
-  }, []);
+  }, [colors]);
 
   return (
     <div className="min-h-screen bg-background relative">

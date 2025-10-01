@@ -9,26 +9,20 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { ProgressIndicator } from "./progress-indicator"
 import { 
   Users, 
   Loader2, 
   Building, 
-  Briefcase,
   Calendar,
-  MapPin,
   Award,
-  Target,
   Link,
   Twitter,
   Linkedin,
   Globe,
   Instagram,
   DollarSign,
-  Clock,
-  UserCheck,
   Sparkles,
   Trophy,
   Home,
@@ -122,35 +116,35 @@ export function OrganizerProfileSetup() {
     "Cybersecurity", "Data Science", "IoT Events", "Student Competitions"
   ]
 
-  const primaryGoals = [
-    "Foster Innovation", "Build Community", "Education & Learning", "Networking",
-    "Talent Discovery", "Product Development", "Social Impact", "Brand Awareness",
-    "Market Research", "Partnership Building", "Skill Development", "Career Growth"
-  ]
+  // const primaryGoals = [
+  //   "Foster Innovation", "Build Community", "Education & Learning", "Networking",
+  //   "Talent Discovery", "Product Development", "Social Impact", "Brand Awareness",
+  //   "Market Research", "Partnership Building", "Skill Development", "Career Growth"
+  // ]
 
-  const targetAudience = [
-    "Students", "Fresh Graduates", "Working Professionals", "Startups", 
-    "Experienced Developers", "Designers", "Product Managers", "Data Scientists",
-    "AI/ML Engineers", "Mobile Developers", "Web Developers", "DevOps Engineers",
-    "Entrepreneurs", "Researchers"
-  ]
+  // const targetAudience = [
+  //   "Students", "Fresh Graduates", "Working Professionals", "Startups", 
+  //   "Experienced Developers", "Designers", "Product Managers", "Data Scientists",
+  //   "AI/ML Engineers", "Mobile Developers", "Web Developers", "DevOps Engineers",
+  //   "Entrepreneurs", "Researchers"
+  // ]
 
   const budgetRanges = [
     "< RM 5,000", "RM 5,000 - RM 15,000", "RM 15,000 - RM 50,000", 
     "RM 50,000 - RM 100,000", "RM 100,000 - RM 300,000", "> RM 300,000"
   ]
 
-  const handleSkillToggle = (
-    skill: string,
-    category: "preferredEventTypes" | "primaryGoals" | "targetAudience"
-  ) => {
-    setFormData((prev) => ({
-      ...prev,
-      [category]: prev[category].includes(skill)
-        ? prev[category].filter((s) => s !== skill)
-        : [...prev[category], skill],
-    }))
-  }
+  // const handleSkillToggle = (
+  //   skill: string,
+  //   category: "preferredEventTypes" | "primaryGoals" | "targetAudience"
+  // ) => {
+  //   setFormData((prev) => ({
+  //     ...prev,
+  //     [category]: prev[category].includes(skill)
+  //       ? prev[category].filter((s) => s !== skill)
+  //       : [...prev[category], skill],
+  //   }))
+  // }
 
   const addPreviousEvent = () => {
     setFormData(prev => ({
@@ -579,7 +573,7 @@ export function OrganizerProfileSetup() {
                   
                   {formData.previousEvents.length === 0 && (
                     <p className="text-slate-400 text-sm italic text-center py-4">
-                      Click "Add Event" to showcase your event organizing experience
+                      Click &lsquo;Add Event&lsquo; to showcase your event organizing experience
                     </p>
                   )}
                 </div>
