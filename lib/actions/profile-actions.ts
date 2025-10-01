@@ -8,7 +8,7 @@ import { revalidatePath } from 'next/cache'
 export interface HackerProfileData {
   fullName: string
   bio?: string
-  profileType: 'student' | 'working'
+  profileType: string
   city: string
   state: string
   country: string
@@ -17,7 +17,7 @@ export interface HackerProfileData {
   university?: string
   course?: string
   yearOfStudy?: string
-  graduationYear?: number
+  graduationYear?: string
   
   // Working professional fields
   company?: string
@@ -365,7 +365,7 @@ export async function getUserProfile(userType: 'hacker' | 'organizer') {
 
 // Save GitHub Projects
 // export async function saveGitHubProjects(projects: GitHubProject[], selectedProjectIds: number[]) {
-export async function saveGitHubProjects(projects: GitHubProject[], selectedProjectIds: number) {
+export async function saveGitHubProjects(projects: GitHubProject[], selectedProjectIds: number[]) {
   try {
     const supabase = await createClient()
     

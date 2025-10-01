@@ -37,13 +37,14 @@ import { showCustomToast } from "@/components/toast-notification"
 import { triggerSideCannons, 
   // triggerFireworks, triggerCustomShapes, triggerEmoji, triggerStars 
 } from "@/lib/confetti"
+import type { User } from "@supabase/supabase-js";
 
 
 export function HackerProfileSetup() {
   const router = useRouter()
 
   const [isAuthChecking, setIsAuthChecking] = useState(true);
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false)
   const [githubConnected, setGithubConnected] = useState(false)
   // const [githubAnalyzing, setGithubAnalyzing] = useState(false)
@@ -55,7 +56,7 @@ export function HackerProfileSetup() {
   const [formData, setFormData] = useState({
     fullName: "",
     bio: "",
-    profileType: "", // "student" or "working"
+    profileType: "student", // "student" or "working"
     city: "",
     state: "",
     country: "Malaysia",
