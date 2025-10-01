@@ -12,7 +12,7 @@ import {
   Globe, 
   MapPin, 
   Settings, 
-  Image, 
+  Image as ImageIcon, 
   ChevronRight, 
   Sparkles,
   Users,
@@ -22,14 +22,15 @@ import {
   Plus,
   X,
   Building,
-  Mail,
-  Phone,
-  DollarSign,
-  Award,
+//   Mail,
+//   Phone,
+//   DollarSign,
+//   Award,
   AlertCircle,
   MessageCircle,
   Heart
 } from 'lucide-react'
+import Image from "next/image";
 
 type SectionKey = 'banner' | 'basic' | 'timeline' | 'about' | 'prizes' | 'dates' | 'faq' | 'organizers' | 'sponsors' | 'requirements' | 'eligibility'
 
@@ -159,7 +160,7 @@ export default function OrganizeStep3Page() {
                     }`}
                   >
                     <span className="flex items-center gap-3">
-                      <Icon className={`w-5 h-5 ${activeSection === key ? '' : 'text-gray-400 group-hover:text-gray-300'}`} />
+                      <ImageIcon className={`w-5 h-5 ${activeSection === key ? '' : 'text-gray-400 group-hover:text-gray-300'}`} />
                       <span className={`font-mono text-sm font-medium ${activeSection === key ? '' : 'text-gray-300 group-hover:text-white'}`}>
                         {label}
                       </span>
@@ -177,7 +178,7 @@ export default function OrganizeStep3Page() {
               {/* Banner */}
               {formData.banner && (
                 <div className="relative h-[280px] border-b-2 border-gray-700 overflow-hidden group">
-                  <img 
+                  <Image 
                     src={formData.banner} 
                     alt="Banner" 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
@@ -199,7 +200,7 @@ export default function OrganizeStep3Page() {
                     onClick={() => openEditor('banner')}
                     className="rounded-xl overflow-hidden h-[100px] w-[100px] bg-gray-800 border-2 border-gray-700 flex items-center justify-center cursor-pointer hover:border-teal-400 transition-all group"
                   >
-                    <Image className="w-8 h-8 text-gray-500 group-hover:text-teal-400 transition-colors" />
+                    <ImageIcon className="w-8 h-8 text-gray-500 group-hover:text-teal-400 transition-colors" />
                   </div>
                   <div className="space-y-3">
                     <h2 className="text-5xl font-black font-blackops text-white leading-tight">{formData.title}</h2>
@@ -325,7 +326,7 @@ export default function OrganizeStep3Page() {
                   <div className={`p-2 rounded-lg ${getColorClasses(navigationSections.find(s => s.key === activeSection)?.color || 'blue')}`}>
                     {(() => {
                       const Icon = navigationSections.find(s => s.key === activeSection)?.icon
-                      return Icon ? <Icon className="w-5 h-5" /> : null
+                      return Icon ? <ImageIcon className="w-5 h-5" /> : null
                     })()}
                   </div>
                 )}

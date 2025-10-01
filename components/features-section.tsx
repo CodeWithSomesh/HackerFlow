@@ -1,6 +1,6 @@
 import { Brain, Search, Calendar, Users2, Zap, Shield } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
-import { HackersBentoGrid } from "./hackers-features-bento"
+// import { HackersBentoGrid } from "./hackers-features-bento"
 
 const features = [
   {

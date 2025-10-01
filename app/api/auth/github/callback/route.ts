@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GitHubOAuthService } from '@/lib/services/github-oauth';
+// import { GitHubOAuthService } from '@/lib/services/github-oauth';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);

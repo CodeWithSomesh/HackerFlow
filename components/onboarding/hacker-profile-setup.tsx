@@ -4,8 +4,8 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { saveHackerProfile, saveGitHubProjects, updateSelectedGitHubProjects, testDatabaseConnection } from "@/lib/actions/profile-actions"
-import { getMockGitHubRepositories, analyzeGitHubRepositories } from "@/lib/utils/github-utils"
+import { saveHackerProfile, saveGitHubProjects, testDatabaseConnection } from "@/lib/actions/profile-actions"
+// import { getMockGitHubRepositories, analyzeGitHubRepositories } from "@/lib/utils/github-utils"
 import { GitHubProject } from "@/lib/actions/profile-actions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -27,18 +27,16 @@ import {
   Linkedin,
   Globe,
   Instagram,
-  Star,
-  GitFork,
-  Calendar,
   Sparkles,
-  Home,
   AlertCircle
 } from "lucide-react"
 import { useGitHubIntegration } from "@/hooks/useGitHubIntegration"
 import { createClient } from '@/lib/supabase/client';
-import toast from "react-hot-toast"
+// import toast from "react-hot-toast"
 import { showCustomToast } from "@/components/toast-notification"
-import { triggerSideCannons, triggerFireworks, triggerCustomShapes, triggerEmoji, triggerStars } from "@/lib/confetti"
+import { triggerSideCannons, 
+  // triggerFireworks, triggerCustomShapes, triggerEmoji, triggerStars 
+} from "@/lib/confetti"
 
 
 export function HackerProfileSetup() {
@@ -48,8 +46,8 @@ export function HackerProfileSetup() {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(false)
   const [githubConnected, setGithubConnected] = useState(false)
-  const [githubAnalyzing, setGithubAnalyzing] = useState(false)
-  const [showGithubProjects, setShowGithubProjects] = useState(false)
+  // const [githubAnalyzing, setGithubAnalyzing] = useState(false)
+  // const [showGithubProjects, setShowGithubProjects] = useState(false)
   const [selectedProjects, setSelectedProjects] = useState<number[]>([])
   const [githubRepositories, setGithubRepositories] = useState<GitHubProject[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -231,7 +229,7 @@ export function HackerProfileSetup() {
         
         setGithubRepositories(convertedRepos);
         setGithubConnected(true);
-        setShowGithubProjects(true);
+        // setShowGithubProjects(true);
         
         console.log('GitHub data processed:', { 
           repositories: convertedRepos.length, 
@@ -270,7 +268,9 @@ export function HackerProfileSetup() {
   }, [router]);
 
   // GitHub integration hook
-  const { isConnecting, isAnalyzing, error: githubError, data: githubData, connectGitHub, handleOAuthCallback } = useGitHubIntegration();
+  const { isConnecting, isAnalyzing, 
+    // error: githubError, data: githubData, 
+    connectGitHub, handleOAuthCallback } = useGitHubIntegration();
 
   // Show loading while checking auth
   if (isAuthChecking) {
@@ -358,9 +358,9 @@ export function HackerProfileSetup() {
     }))
   }
 
-  const handleHomeClick = () => {
-    router.push("/")
-  }
+  // const handleHomeClick = () => {
+  //   router.push("/")
+  // }
 
   const handleSkillToggle = (
     skill: string,
@@ -374,13 +374,13 @@ export function HackerProfileSetup() {
     }))
   }
 
-  const handleProjectToggle = (projectId: number) => {
-    setSelectedProjects(prev => 
-      prev.includes(projectId) 
-        ? prev.filter(id => id !== projectId)
-        : [...prev, projectId]
-    )
-  }
+  // const handleProjectToggle = (projectId: number) => {
+  //   setSelectedProjects(prev => 
+  //     prev.includes(projectId) 
+  //       ? prev.filter(id => id !== projectId)
+  //       : [...prev, projectId]
+  //   )
+  // }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -868,7 +868,7 @@ export function HackerProfileSetup() {
                         
                         {formData.workExperiences.length === 0 && (
                           <p className="text-slate-400 text-sm italic text-center py-4">
-                            Click "Add Experience" to add your work or internship experience
+                            Click &lsquo;Add Experience&lsquo; to add your work or internship experience
                           </p>
                         )}
                       </div>
@@ -1047,7 +1047,7 @@ export function HackerProfileSetup() {
                     className="w-4 h-4 text-purple-600 bg-slate-700 border-slate-600 rounded focus:ring-purple-500"
                   />
                   <Label htmlFor="openToRecruitment" className="text-slate-300">
-                    I'm open to recruitment opportunities
+                    I&lsquo;m open to recruitment opportunities
                   </Label>
                 </div>
               </CardContent>

@@ -191,9 +191,9 @@ export const Plasma: React.FC<PlasmaProps> = ({
         const timeValue = (t - t0) * 0.001
         if (direction === "pingpong") {
           const cycle = Math.sin(timeValue * 0.5) * directionMultiplier
-          ;(program.uniforms.uDirection as any).value = cycle
+          ;(program.uniforms.uDirection as { value: number }).value = cycle
         }
-        ;(program.uniforms.iTime as any).value = timeValue
+        ;(program.uniforms.iTime as { value: number }).value = timeValue
         renderer.render({ scene: mesh })
         lastTime = t
       }

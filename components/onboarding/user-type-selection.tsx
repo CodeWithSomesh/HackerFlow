@@ -5,7 +5,7 @@ import { redirect, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ProgressIndicator } from "./progress-indicator"
-import { Code2, Target, Users, Home, Lightbulb, Trophy, BarChart3, Sparkles, Zap, ArrowRight } from "lucide-react"
+import { Code2, Target, Users, Home, BarChart3, Sparkles, Zap, ArrowRight } from "lucide-react"
 
 export function UserTypeSelection() {
   const router = useRouter()

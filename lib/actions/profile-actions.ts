@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
+// import { redirect } from 'next/navigation'
 
 // Types
 export interface HackerProfileData {
@@ -116,7 +116,7 @@ export interface GitHubProject {
   id: number
   name: string
   full_name: string
-  description?: string
+  description?: string | null
   language?: string
   stars_count: number
   forks_count: number
@@ -136,6 +136,17 @@ export interface GitHubProject {
   is_fork: boolean
   is_archived: boolean
   is_disabled: boolean
+}
+
+interface GitHubIntegrationData {
+  login: string
+  id: number
+  avatar_url: string
+  html_url: string
+  name?: string
+  email?: string
+  repos_url: string
+  [key: string]: unknown
 }
 
 // Add this function to your profile-actions.ts file
@@ -163,7 +174,7 @@ export async function testDatabaseConnection() {
 }
 
 // Save Hacker Profile
-export async function saveHackerProfile(formData: any) {
+export async function saveHackerProfile(formData: HackerProfileData) {
   try {
     const supabase = await createClient();
     // Add this debug line to check if supabase is properly created
@@ -226,7 +237,7 @@ export async function saveHackerProfile(formData: any) {
 
     const { data, error } = await supabase
       .from('user_profiles')
-      .upsert(profileData)
+      .upsert(profileData, { onConflict: 'user_id' })
       .select();
 
     if (error) {
@@ -487,13 +498,13 @@ export async function updateSelectedGitHubProjects(selectedProjectIds: number[])
 
 export async function saveGitHubIntegrationData(
   userId: string,
-  githubData: any,
+  githubData: GitHubIntegrationData,
   accessToken: string
 ) {
-  const supabase = await createClient();
+  const supabase = createClient();
   
   const { error } = await supabase
-    .from('hacker_profiles')
+    .from('user_profiles')
     .update({
       github_integration_data: githubData,
       github_access_token: accessToken, // Encrypt in production

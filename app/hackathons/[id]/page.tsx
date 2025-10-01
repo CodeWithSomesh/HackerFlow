@@ -74,7 +74,12 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
   ];
 
   // Enhanced function to determine date status
-  const getDateStatus = (dateStr: string, allDates?: any[]) => {
+  type DateStatus = {
+    type: string;
+    label: string;
+    color: "blue" | "green" | "red" | "gray";
+  };
+  const getDateStatus = (dateStr: string, allDates?: { date: string }[]): DateStatus => {
     if (!allDates) return { type: 'upcoming', label: 'Upcoming', color: 'blue' };
   
     const today = new Date();
@@ -107,7 +112,7 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
   };
 
   // Enhanced styling function
-  const getDateStyling = (status: any) => {
+  const getDateStyling = (status: DateStatus) => {
     switch (status.color) {
       case 'red': // Urgent
         return {
@@ -177,6 +182,7 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
     );
   }
 
+  
   const getCardTheme = (theme: string) => {
     const themes = {
       purple: {
@@ -197,8 +203,10 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
         text: "text-green-400",
         bg: "bg-green-500/10"
       }
-    };
-    return themes[theme] || themes.purple;
+    } as const;
+    type ThemeKey = keyof typeof themes;
+
+    return themes[(theme as ThemeKey)] || themes.purple;
   };
 
   const theme = getCardTheme(hackathon.colorTheme);
