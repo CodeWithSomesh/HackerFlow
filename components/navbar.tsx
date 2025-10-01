@@ -171,7 +171,7 @@ export function Navbar() {
                       </ListItem>
                       <ListItem
                         title="Organize Hackathons"
-                        href="/organize"
+                        href="/organize/step1"
                         className="hover:bg-gray-600"
                         image={DashboardImage} 
                         imageAlt="Organize Hackathons"
@@ -199,7 +199,7 @@ export function Navbar() {
                       </ListItem>
                       <ListItem
                         title="AI Team Matchmaking"
-                        href="/organize"
+                        href="/organize/step1"
                         className="hover:bg-gray-600"
                         image={BrowseHackathonImage} 
                         imageAlt="Team Matchmaking"
@@ -304,7 +304,7 @@ export function Navbar() {
                         </MobileListItem>
                         <MobileListItem
                           title="Organize Hackathons"
-                          href="/organize"
+                          href="/organize/step1"
                           onClose={closeMobileMenu}
                           className="hover:bg-gray-700"
                         >
@@ -330,7 +330,7 @@ export function Navbar() {
                         </MobileListItem>
                         <MobileListItem
                           title="AI Team Matchmaking"
-                          href="/organize"
+                          href="/organize/step1"
                           onClose={closeMobileMenu}
                           className="hover:bg-gray-700"
                         >
