@@ -190,7 +190,7 @@ export default function OrganizeStep3Page() {
                     onClick={() => openEditor('banner')}
                     className="absolute top-4 right-4 bg-gray-900/80 hover:bg-gray-800 border border-gray-600 text-white px-4 py-2 rounded-lg text-sm font-mono transition-all hover:scale-105 opacity-0 group-hover:opacity-100"
                   >
-                    Edit Banner
+                    Edit Banner 
                   </button>
                 </div>
               )}
