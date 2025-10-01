@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
-import { Github, Linkedin, Twitter, Mail, Users, Calendar, ArrowRight } from "lucide-react"
+import { Github, Linkedin, Twitter, Mail } from "lucide-react"
 import Image from "next/image"
 import HackerFlowLogo from '@/assets/hackerflow-logo.png';
 
@@ -26,7 +26,7 @@ export function Footer() {
                 </Link>
               </div>
               <p className="max-w-sm text-sm text-muted-foreground leading-relaxed">
-                Revolutionizing hackathon participation in Malaysia's tech ecosystem with AI-powered team formation and
+                Revolutionizing hackathon participation in Malaysia&lsquo;s tech ecosystem with AI-powered team formation and
                 centralized event discovery.
               </p>
               <div className="flex items-center gap-2">
@@ -112,7 +112,7 @@ export function Footer() {
 
           {/* Bottom bar */}
           <div className="mt-8 flex flex-col items-center justify-between gap-4 border-t border-border pt-6 text-xs text-muted-foreground sm:flex-row">
-            <p>© 2025 HackerFlow. Empowering Malaysia's tech ecosystem.</p>
+            <p>© 2025 HackerFlow. Empowering Malaysia&lsquo;s tech ecosystem.</p>
             <div className="flex items-center gap-6">
               <Link href="/privacy" className="hover:text-teal-500 transition-colors">
                 Privacy Policy

@@ -6,7 +6,21 @@ import { redirect } from "next/navigation"
 
 const signInWith = (provider: Provider, userType: 'hacker' | 'organizer') => async () => {
     const supabase = await createClient()
-    const auth_callback_url = `${process.env.SITE_URL}/auth/callback?user_type=${userType}`
+    
+    // Determine the site URL based on environment
+    let siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL
+    
+    if (!siteUrl) {
+        // Fallback for development
+        if (process.env.NODE_ENV === 'development') {
+            siteUrl = 'http://localhost:3000'
+        } else {
+            // For production, try to construct from Vercel environment variables
+            siteUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'
+        }
+    }
+    
+    const auth_callback_url = `${siteUrl}/auth/callback?user_type=${userType}`
     
     console.log(`Initiating ${provider} OAuth for ${userType}`)
     console.log('Callback URL:', auth_callback_url)
@@ -23,6 +37,9 @@ const signInWith = (provider: Provider, userType: 'hacker' | 'organizer') => asy
             console.error('OAuth error:', error)
             throw new Error(`Failed to initiate ${provider} authentication: ${error.message}`)
         }
+
+        console.log(`This is data: ${data}`)
+        console.log(`This is data.url: ${data.url}`)
 
         //Used optional chaining (data?.url) to safely check if the URL exists before redirecting
         if(data?.url) {

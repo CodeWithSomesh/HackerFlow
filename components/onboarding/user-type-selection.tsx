@@ -5,7 +5,7 @@ import { redirect, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ProgressIndicator } from "./progress-indicator"
-import { Code2, Target, Users, Home, Lightbulb, Trophy, BarChart3, Sparkles, Zap, ArrowRight } from "lucide-react"
+import { Code2, Target, Users, Home, BarChart3, Sparkles, Zap, ArrowRight } from "lucide-react"
 
 export function UserTypeSelection() {
   const router = useRouter()
@@ -46,7 +46,7 @@ export function UserTypeSelection() {
         {/* Animated gradient orbs */}
         <div className="absolute top-20 left-20 w-72 h-72 bg-purple-500 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute bottom-20 right-20 w-96 h-96 bg-pink-500 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-r from-cyan-500/70 via-purple-500/70 to-pink-500/70 rounded-full blur-3xl"></div>
+        {/* <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-r from-cyan-500/70 via-purple-500/70 to-pink-500/70 rounded-full blur-3xl"></div> */}
         
         {/* Floating particles */}
         <div className="absolute top-1/4 left-1/3 w-2 h-2 bg-pink-400 rounded-full animate-bounce opacity-"></div>
@@ -70,9 +70,9 @@ export function UserTypeSelection() {
           {/* Main Selection Container */}
           <div className="relative max-w-6xl mx-auto mb-8">
             {/* Container background with glassmorphism effect */}
-            <div className="relative backdrop-blur-xl bg-slate-800/20 border-2 border-slate-400 rounded-3xl p-8 md:p-12 shadow-2xl">
+            <div className="relative backdrop-blur-xl bg-slate-800/20 border-2 border-slate-400 rounded-md p-8 md:p-12 shadow-2xl">
               {/* Subtle glow effect */}
-              <div className="absolute inset-0 bg-gradient-to-r from-pink-500/5 via-purple-500/5 to-cyan-500/5 rounded-3xl"></div>
+              {/* <div className="absolute inset-0 bg-gradient-to-r from-pink-500/5 via-purple-500/5 to-cyan-500/5 rounded-3xl"></div> */}
               
               {/* Content */}
               <div className="relative">
@@ -85,7 +85,7 @@ export function UserTypeSelection() {
                 <div className="text-center mb-10">
                   <p className="text-2xl font-semibold text-white mb-2">What best describes you?</p>
                   <p className="text-lg text-slate-300 max-w-3xl mx-auto">
-                    Join Malaysia's most innovative hackathon platform and connect with fellow creators
+                    Join Malaysia&lsquo;s most innovative hackathon platform and connect with fellow creators
                   </p>
                 </div>
 
@@ -113,7 +113,7 @@ export function UserTypeSelection() {
                       </div>
                       
                       <CardTitle className="text-3xl font-bold mb-3 text-white group-hover:text-pink-300 transition-colors">
-                        I'm a Hacker/Participant
+                        I&lsquo;m a Hacker/Participant
                       </CardTitle>
                       <CardDescription className="text-lg text-slate-300 leading-relaxed">
                         Join hackathons, form teams, and build amazing projects that change the world
@@ -130,7 +130,7 @@ export function UserTypeSelection() {
                           <span className="text-slate-200 group-hover/item:text-white transition-colors">
                             Discover hackathons across Malaysia
                           </span>
-                          <Zap className="w-4 h-4 text-pink-400 opacity-0 group-hover/item:opacity-100 transition-opacity" />
+                          <Zap className="w-4 h-4 text-pink-400 opacity-100 group-hover/item:opacity-100 transition-opacity" />
                         </div>
                         <div className="flex items-center space-x-4 group/item">
                           <div className="flex-shrink-0">
@@ -139,7 +139,7 @@ export function UserTypeSelection() {
                           <span className="text-slate-200 group-hover/item:text-white transition-colors">
                             AI-powered team matching
                           </span>
-                          <Sparkles className="w-4 h-4 text-purple-400 opacity-0 group-hover/item:opacity-100 transition-opacity" />
+                          <Sparkles className="w-4 h-4 text-purple-400 opacity-100 group-hover/item:opacity-100 transition-opacity" />
                         </div>
                         <div className="flex items-center space-x-4 group/item">
                           <div className="flex-shrink-0">
@@ -148,7 +148,7 @@ export function UserTypeSelection() {
                           <span className="text-slate-200 group-hover/item:text-white transition-colors">
                             Showcase your GitHub projects
                           </span>
-                          <Code2 className="w-4 h-4 text-cyan-400 opacity-0 group-hover/item:opacity-100 transition-opacity" />
+                          <Code2 className="w-4 h-4 text-cyan-400 opacity-100 group-hover/item:opacity-100 transition-opacity" />
                         </div>
                       </div>
                       
@@ -184,7 +184,7 @@ export function UserTypeSelection() {
                       </div>
                       
                       <CardTitle className="text-3xl font-bold mb-3 text-white group-hover:text-emerald-300 transition-colors">
-                        I'm an Organizer
+                        I&lsquo;m an Organizer
                       </CardTitle>
                       <CardDescription className="text-lg text-slate-300 leading-relaxed">
                         Host events, manage participants, and track success with powerful tools
@@ -201,7 +201,7 @@ export function UserTypeSelection() {
                           <span className="text-slate-200 group-hover/item:text-white transition-colors">
                             Create and manage hackathon events
                           </span>
-                          <Target className="w-4 h-4 text-emerald-400 opacity-0 group-hover/item:opacity-100 transition-opacity" />
+                          <Target className="w-4 h-4 text-emerald-400 opacity-100 group-hover/item:opacity-100 transition-opacity" />
                         </div>
                         <div className="flex items-center space-x-4 group/item">
                           <div className="flex-shrink-0">
@@ -210,7 +210,7 @@ export function UserTypeSelection() {
                           <span className="text-slate-200 group-hover/item:text-white transition-colors">
                             Streamlined registration system
                           </span>
-                          <Users className="w-4 h-4 text-teal-400 opacity-0 group-hover/item:opacity-100 transition-opacity" />
+                          <Users className="w-4 h-4 text-teal-400 opacity-100 group-hover/item:opacity-100 transition-opacity" />
                         </div>
                         <div className="flex items-center space-x-4 group/item">
                           <div className="flex-shrink-0">
@@ -219,7 +219,7 @@ export function UserTypeSelection() {
                           <span className="text-slate-200 group-hover/item:text-white transition-colors">
                             Real-time participant tracking
                           </span>
-                          <BarChart3 className="w-4 h-4 text-blue-400 opacity-0 group-hover/item:opacity-100 transition-opacity" />
+                          <BarChart3 className="w-4 h-4 text-blue-400 opacity-100 group-hover/item:opacity-100 transition-opacity" />
                         </div>
                       </div>
                       
@@ -238,7 +238,7 @@ export function UserTypeSelection() {
           </div>
 
           {/* Enhanced Features Section */}
-          <div className="max-w-5xl mx-auto mb-6">
+          {/* <div className="max-w-5xl mx-auto mb-6">
             <div className="text-center mb-10">
               <h2 className="text-3xl font-bold mb-2 text-white bg-clip-text text-transparent">
                 Why Choose HackerFlow?
@@ -301,7 +301,7 @@ export function UserTypeSelection() {
                 </p>
               </div>
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>

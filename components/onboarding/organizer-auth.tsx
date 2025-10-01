@@ -7,9 +7,9 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { ProgressIndicator } from "./progress-indicator"
-import { AlertCircle, Github, Home, Mail, Eye, EyeOff, Users } from "lucide-react"
+import { AlertCircle, Github, Home, Eye, EyeOff, Users } from "lucide-react"
 import { FcGoogle } from "react-icons/fc"
 import { signInWithGoogleOrganizer, signInWithGithubOrganizer } from "@/app/utils/actions"
 import { createClient } from "@/lib/supabase/client"
@@ -25,11 +25,41 @@ export function OrganizerAuth() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [authMethod, setAuthMethod] = useState<"google" | "github" | null>(null)
+  const [authMethod, setAuthMethod] = useState<"google" | "github" | "signin" | null>(null)
   const [error, setError] = useState("")
 
   const handleHomeClick = () => {
     router.push("/")
+  }
+
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError("")
+    setIsLoading(true)
+
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      })
+      if (error) throw error
+
+      // Get user data to determine user type
+      const { data: { user } } = await supabase.auth.getUser()
+      const userType = user?.user_metadata?.user_type || 'organizer'
+      
+      // Redirect based on user type
+      if (userType === 'organizer') {
+        router.push("/onboarding/organizer/profile-setup")
+      } else {
+        router.push("/onboarding/hacker/profile-setup")
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "An error occurred during sign in")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
 
@@ -140,7 +170,80 @@ export function OrganizerAuth() {
             )}
 
             {/* Email Form - Primary */}
-            <form onSubmit={handleEmailSignup} className="space-y-4">
+            {authMethod === "signin" ? (
+              /* Sign In Form */
+              <form onSubmit={handleSignIn} className="space-y-4">
+                {/* Email Field */}
+                <div className="space-y-2">
+                  <Label htmlFor="signin-email" className="text-slate-300 font-medium text-sm">Email</Label>
+                  <Input
+                    id="signin-email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    placeholder="john@company.com"
+                    className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 rounded-lg h-12 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                    required
+                  />
+                </div>
+
+                {/* Password Field */}
+                <div className="space-y-2">
+                  <Label htmlFor="signin-password" className="text-slate-300 font-medium text-sm">Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="signin-password"
+                      type={showPassword ? "text" : "password"}
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      placeholder="••••••••"
+                      className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 rounded-lg h-12 pr-12 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                      required
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-slate-600/50 rounded-lg"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4 text-slate-400" /> : <Eye className="h-4 w-4 text-slate-400" />}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Submit Button */}
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold h-12 rounded-lg shadow-lg hover:shadow-emerald-500/25 transition-all duration-300 mt-6"
+                >
+                  {isLoading ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                      Signing In...
+                    </>
+                  ) : (
+                    <>
+                      <Users className="w-5 h-5 mr-2" />
+                      Sign In
+                    </>
+                  )}
+                </Button>
+                
+                {/* Back to sign up */}
+                <div className="text-center pt-2">
+                  <button
+                    onClick={() => setAuthMethod(null)}
+                    className="text-sm text-slate-400 hover:text-slate-300 transition-colors"
+                  >
+                    ← Back to sign up
+                  </button>
+                </div>
+              </form>
+            ) : (
+              /* Sign Up Form */
+              <form onSubmit={handleEmailSignup} className="space-y-4">
               {/* Full Name Field */}
               <div className="space-y-2">
                 <Label htmlFor="fullName" className="text-slate-300 font-medium text-sm">Full Name</Label>
@@ -262,6 +365,7 @@ export function OrganizerAuth() {
                 )}
               </Button>
             </form>
+            )}
 
             {/* Divider */}
             <div className="relative py-4">
@@ -276,19 +380,22 @@ export function OrganizerAuth() {
             </div>
 
             {/* Social Auth Options */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-4 w-full">
               {/* Google Auth */}
               <form action={signInWithGoogleOrganizer}>
                 <Button
                   type="submit"
                   variant="outline"
                   disabled={isLoading}
-                  className="border border-slate-600 hover:border-slate-500 hover:bg-slate-700/50 h-12 rounded-lg backdrop-blur-sm transition-all duration-300 group"
+                  className="border w-full border-slate-600 hover:border-slate-500 hover:bg-slate-700/50 h-12 rounded-lg backdrop-blur-sm transition-all duration-300 group"
                 >
                   {isLoading && authMethod === "google" ? (
                     <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
                   ) : (
-                    <FcGoogle className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                    <>
+                      <FcGoogle className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
+                      <span className="text-slate-200">Sign up with Google</span>
+                    </>
                   )}
                 </Button>
               </form>
@@ -299,12 +406,15 @@ export function OrganizerAuth() {
                   type="submit"
                   variant="outline"
                   disabled={isLoading}
-                  className="border border-slate-600 hover:border-slate-500 hover:bg-slate-700/50 h-12 rounded-lg backdrop-blur-sm transition-all duration-300 group"
+                  className="border w-full border-slate-600 hover:border-slate-500 hover:bg-slate-700/50 h-12 rounded-lg backdrop-blur-sm transition-all duration-300 group"
                 >
                   {isLoading && authMethod === "github" ? (
                     <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
                   ) : (
-                    <Github className="w-5 h-5 text-slate-400 group-hover:scale-110 transition-transform" />
+                    <>
+                      <Github className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
+                      <span className="text-slate-200">Sign up with Github</span>
+                    </>
                   )}
                 </Button>
               </form>
@@ -314,7 +424,10 @@ export function OrganizerAuth() {
             <div className="text-center space-y-3 pt-4">
               <p className="text-slate-400 text-sm">
                 Already have an account?{" "}
-                <button className="text-emerald-400 hover:text-emerald-300 font-medium transition-colors">
+                <button 
+                  onClick={() => setAuthMethod("signin")}
+                  className="text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
+                >
                   Sign in
                 </button>
               </p>

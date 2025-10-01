@@ -38,8 +38,17 @@ export function LoginForm({
         password,
       });
       if (error) throw error;
-      // Update this route to redirect to an authenticated route. The user already has an active session.
-      router.push("/protected");
+      
+      // Get user data to determine user type
+      const { data: { user } } = await supabase.auth.getUser();
+      const userType = user?.user_metadata?.user_type || 'hacker';
+      
+      // Redirect based on user type
+      if (userType === 'organizer') {
+        router.push("/onboarding/organizer/profile-setup");
+      } else {
+        router.push("/onboarding/hacker/profile-setup");
+      }
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred");
     } finally {

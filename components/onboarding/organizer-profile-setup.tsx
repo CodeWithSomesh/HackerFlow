@@ -4,38 +4,35 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { saveOrganizerProfile } from "@/lib/actions/profile-actions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { ProgressIndicator } from "./progress-indicator"
 import { 
   Users, 
   Loader2, 
   Building, 
-  Briefcase,
   Calendar,
-  MapPin,
   Award,
-  Target,
   Link,
   Twitter,
   Linkedin,
   Globe,
   Instagram,
   DollarSign,
-  Clock,
-  UserCheck,
   Sparkles,
   Trophy,
-  Home
+  Home,
+  AlertCircle
 } from "lucide-react"
 
 export function OrganizerProfileSetup() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   
   const [formData, setFormData] = useState({
     fullName: "",
@@ -119,35 +116,35 @@ export function OrganizerProfileSetup() {
     "Cybersecurity", "Data Science", "IoT Events", "Student Competitions"
   ]
 
-  const primaryGoals = [
-    "Foster Innovation", "Build Community", "Education & Learning", "Networking",
-    "Talent Discovery", "Product Development", "Social Impact", "Brand Awareness",
-    "Market Research", "Partnership Building", "Skill Development", "Career Growth"
-  ]
+  // const primaryGoals = [
+  //   "Foster Innovation", "Build Community", "Education & Learning", "Networking",
+  //   "Talent Discovery", "Product Development", "Social Impact", "Brand Awareness",
+  //   "Market Research", "Partnership Building", "Skill Development", "Career Growth"
+  // ]
 
-  const targetAudience = [
-    "Students", "Fresh Graduates", "Working Professionals", "Startups", 
-    "Experienced Developers", "Designers", "Product Managers", "Data Scientists",
-    "AI/ML Engineers", "Mobile Developers", "Web Developers", "DevOps Engineers",
-    "Entrepreneurs", "Researchers"
-  ]
+  // const targetAudience = [
+  //   "Students", "Fresh Graduates", "Working Professionals", "Startups", 
+  //   "Experienced Developers", "Designers", "Product Managers", "Data Scientists",
+  //   "AI/ML Engineers", "Mobile Developers", "Web Developers", "DevOps Engineers",
+  //   "Entrepreneurs", "Researchers"
+  // ]
 
   const budgetRanges = [
     "< RM 5,000", "RM 5,000 - RM 15,000", "RM 15,000 - RM 50,000", 
     "RM 50,000 - RM 100,000", "RM 100,000 - RM 300,000", "> RM 300,000"
   ]
 
-  const handleSkillToggle = (
-    skill: string,
-    category: "preferredEventTypes" | "primaryGoals" | "targetAudience"
-  ) => {
-    setFormData((prev) => ({
-      ...prev,
-      [category]: prev[category].includes(skill)
-        ? prev[category].filter((s) => s !== skill)
-        : [...prev[category], skill],
-    }))
-  }
+  // const handleSkillToggle = (
+  //   skill: string,
+  //   category: "preferredEventTypes" | "primaryGoals" | "targetAudience"
+  // ) => {
+  //   setFormData((prev) => ({
+  //     ...prev,
+  //     [category]: prev[category].includes(skill)
+  //       ? prev[category].filter((s) => s !== skill)
+  //       : [...prev[category], skill],
+  //   }))
+  // }
 
   const addPreviousEvent = () => {
     setFormData(prev => ({
@@ -180,16 +177,27 @@ export function OrganizerProfileSetup() {
     }))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError(null)
 
-    // Save profile data
-    localStorage.setItem("organizerProfile", JSON.stringify(formData))
+    try {
+      // Save profile data to database
+      const result = await saveOrganizerProfile(formData)
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to save profile')
+      }
 
-    setTimeout(() => {
+      // Redirect to completion page
       router.push("/onboarding/complete")
-    }, 1500)
+    } catch (err) {
+      console.error('Error saving profile:', err)
+      setError(err instanceof Error ? err.message : 'Failed to save profile')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleSkip = () => {
@@ -239,6 +247,14 @@ export function OrganizerProfileSetup() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-8">
+            {/* Error Display */}
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/30 text-red-300 px-4 py-3 rounded-xl flex items-center gap-3 backdrop-blur-sm">
+                <AlertCircle className="h-5 w-5 flex-shrink-0" />
+                <span className="text-sm">{error}</span>
+              </div>
+            )}
+
             {/* Basic Information */}
             <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-400 shadow-2xl">
               <CardHeader>
@@ -557,7 +573,7 @@ export function OrganizerProfileSetup() {
                   
                   {formData.previousEvents.length === 0 && (
                     <p className="text-slate-400 text-sm italic text-center py-4">
-                      Click "Add Event" to showcase your event organizing experience
+                      Click &lsquo;Add Event&lsquo; to showcase your event organizing experience
                     </p>
                   )}
                 </div>

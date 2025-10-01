@@ -50,10 +50,10 @@ export async function updateSession(request: NextRequest) {
   if (
     request.nextUrl.pathname !== "/" &&
     !user &&
-    // !request.nextUrl.pathname.startsWith("/login") &&
-    // !request.nextUrl.pathname.startsWith("/auth") &&
+    !request.nextUrl.pathname.startsWith("/auth") &&
     !request.nextUrl.pathname.startsWith("/onboarding/user-type") &&
-    !request.nextUrl.pathname.startsWith("/onboarding/hacker/") &&
+    !request.nextUrl.pathname.startsWith("/onboarding/hacker") &&
+    !request.nextUrl.pathname.startsWith("/onboarding/organizer") &&
     !request.nextUrl.pathname.startsWith("/_next") &&
     request.nextUrl.pathname !== "/favicon.ico"
   ) {

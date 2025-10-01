@@ -4,10 +4,10 @@ import Link from "next/link"
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { ModeToggle } from "@/components/ui/mode-toggle"
-import { Menu, Home, Zap, Calendar, LogOut, Settings, User, ChevronDown, X } from "lucide-react"
+// import { ModeToggle } from "@/components/ui/mode-toggle"
+import { Menu, LogOut, Settings, User, ChevronDown} from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { createClient } from "@/lib/supabase/client"
 import { signOut } from "@/app/utils/actions"
 import HackerFlowLogo from '@/assets/hackerflow-logo.png';
@@ -171,7 +171,7 @@ export function Navbar() {
                       </ListItem>
                       <ListItem
                         title="Organize Hackathons"
-                        href="/organize"
+                        href="/organize/step1"
                         className="hover:bg-gray-600"
                         image={DashboardImage} 
                         imageAlt="Organize Hackathons"
@@ -199,7 +199,7 @@ export function Navbar() {
                       </ListItem>
                       <ListItem
                         title="AI Team Matchmaking"
-                        href="/organize"
+                        href="/organize/step1"
                         className="hover:bg-gray-600"
                         image={BrowseHackathonImage} 
                         imageAlt="Team Matchmaking"
@@ -304,7 +304,7 @@ export function Navbar() {
                         </MobileListItem>
                         <MobileListItem
                           title="Organize Hackathons"
-                          href="/organize"
+                          href="/organize/step1"
                           onClose={closeMobileMenu}
                           className="hover:bg-gray-700"
                         >
@@ -330,7 +330,7 @@ export function Navbar() {
                         </MobileListItem>
                         <MobileListItem
                           title="AI Team Matchmaking"
-                          href="/organize"
+                          href="/organize/step1"
                           onClose={closeMobileMenu}
                           className="hover:bg-gray-700"
                         >

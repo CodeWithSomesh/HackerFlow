@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
 import { Black_Ops_One, Roboto_Mono, Geist, Bebas_Neue, Anton } from "next/font/google";
-import localFont from "next/font/local";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
-import PlasmaWrapper from "@/components/plasmawrapper"
 import { NavbarGate, FooterGate } from "@/components/layout-gates";
-import PlasmaBackground from "@/components/ui/shadcn-io/plasma-background";
+import { Toaster } from 'react-hot-toast';
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -67,6 +65,7 @@ export default function RootLayout({
             <NavbarGate />
             {children}
             <FooterGate />
+            <Toaster position="top-right" reverseOrder={false} />
           </div>
         </ThemeProvider>
       </body>
