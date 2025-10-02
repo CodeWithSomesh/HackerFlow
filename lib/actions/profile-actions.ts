@@ -174,6 +174,17 @@ export async function testDatabaseConnection() {
 }
 
 // Save Hacker Profile
+// User fills form → saveHackerProfile() receives data
+//                           ↓
+//               Transform camelCase to snake_case
+//                           ↓
+//               Add user_id from authenticated session
+//                           ↓
+//               UPSERT to user_profiles table
+//                           ↓
+//               Database checks UNIQUE constraint
+//                           ↓
+//          INSERT (new user) or UPDATE (existing user)
 export async function saveHackerProfile(formData: HackerProfileData) {
   try {
     const supabase = await createClient();
@@ -181,6 +192,8 @@ export async function saveHackerProfile(formData: HackerProfileData) {
     console.log('Supabase client created:', !!supabase, !!supabase.auth);
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
+    //Retrieves the currently authenticated user. 
+    //If there's an authentication error or no user is found, the function returns early with an error message.
     if (authError) {
       console.error('Auth error:', authError);
       return { success: false, error: `Authentication error: ${authError.message}` };
@@ -236,8 +249,8 @@ export async function saveHackerProfile(formData: HackerProfileData) {
     console.log('Profile data to save:', JSON.stringify(profileData, null, 2));
 
     const { data, error } = await supabase
-      .from('user_profiles')
-      .upsert(profileData, { onConflict: 'user_id' })
+      .from('user_profiles') //Uses upsert to either insert a new profile or update an existing one
+      .upsert(profileData, { onConflict: 'user_id' }) //The onConflict: 'user_id' means if a profile already exists for this user, it updates it instead of creating a duplicate
       .select();
 
     if (error) {

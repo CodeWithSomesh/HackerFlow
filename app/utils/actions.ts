@@ -59,6 +59,31 @@ const signOut = async() => {
     redirect("/")
 }
 
+const signInWithEmailPassword = async(
+    prev: unknown, 
+  formData: FormData
+) => {
+    const supabase = await createClient()
+
+    const {data, error} = await supabase.auth.signUp({
+        email: formData.get('email') as string,
+        password: formData.get('password') as string,
+    })
+
+    if(error){
+        console.log('error', error)
+        return {
+            success:null,
+            error: error.message,
+        }
+    }
+
+    return{
+        success: 'Please check your email',
+        error: null,
+    }
+}
+
 // Hacker authentication actions
 const signInWithGoogle = signInWith('google', 'hacker')
 const signInWithGithub = signInWith('github', 'hacker')
@@ -72,5 +97,6 @@ export {
   signInWithGithub, 
   signInWithGoogleOrganizer, 
   signInWithGithubOrganizer, 
-  signOut
+  signOut,
+  signInWithEmailPassword
 }

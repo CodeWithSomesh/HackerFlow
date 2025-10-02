@@ -5,12 +5,8 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { saveOrganizerProfile } from "@/lib/actions/profile-actions"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Textarea } from "@/components/ui/textarea"
 import { ProgressIndicator } from "./progress-indicator"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { 
   Users, 
   Loader2, 
@@ -26,14 +22,23 @@ import {
   Sparkles,
   Trophy,
   Home,
-  AlertCircle
+  AlertCircle,
+  TriangleAlert,
+  CheckCircle,
+  CalendarClock,
+  X
 } from "lucide-react"
+import { showCustomToast } from "@/components/toast-notification"
+import { triggerSideCannons, 
+  // triggerFireworks, triggerCustomShapes, triggerEmoji, triggerStars 
+} from "@/lib/confetti"
 
 export function OrganizerProfileSetup() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  
+  const [isProfileComplete, setIsProfileComplete] = useState(false)
+
   const [formData, setFormData] = useState({
     fullName: "",
     bio: "",
@@ -93,6 +98,60 @@ export function OrganizerProfileSetup() {
     willingToMentor: false,
     availableForConsulting: false,
   })
+  type PreviousEvent = {
+    id: number;
+    eventName: string;
+    eventType: string;
+    participantCount: string;
+    date: string;
+    description: string;
+    role: string;
+  };
+  
+  const [previousEvents, setPreviousEvents] = useState<PreviousEvent[]>([])
+
+  // Check if all required fields are filled
+  useEffect(() => {
+    const requiredFieldsFilled = 
+      formData.fullName.trim() !== '' &&
+      formData.organizationType !== '' &&
+      formData.organizationName.trim() !== '' &&
+      formData.position.trim() !== '' &&
+      formData.city.trim() !== '' &&
+      formData.state.trim() !== '' &&
+      formData.eventOrganizingExperience !== '';
+    
+    setIsProfileComplete(requiredFieldsFilled)
+  }, [formData])
+
+  // Prevent browser back/close
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!isProfileComplete) {
+        e.preventDefault()
+        e.returnValue = 'Please complete your profile registration before leaving.'
+        return 'Please complete your profile registration before leaving.'
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [isProfileComplete])
+
+  // Prevent browser back button
+  useEffect(() => {
+    if (!isProfileComplete) {
+      window.history.pushState(null, '', window.location.href)
+      
+      const handlePopState = () => {
+        window.history.pushState(null, '', window.location.href)
+        showCustomToast('warning', 'Please complete your profile registration before leaving this page.')
+      }
+
+      window.addEventListener('popstate', handlePopState)
+      return () => window.removeEventListener('popstate', handlePopState)
+    }
+  }, [isProfileComplete])
 
   useEffect(() => {
     // Get user's full name if available from auth
@@ -106,7 +165,16 @@ export function OrganizerProfileSetup() {
     { value: "individual", label: "Individual", icon: Users },
     { value: "company", label: "Company/Startup", icon: Building },
     { value: "university", label: "University/School", icon: Trophy },
-    { value: "non-profit", label: "Non-Profit/NGO", icon: Award }
+    { value: "non-profit", label: "Non-Profit/NGO", icon: Sparkles }
+  ]
+
+  const budgetRanges = [
+    "< RM 5,000", 
+    "RM 5,000 - RM 15,000", 
+    "RM 15,000 - RM 50,000", 
+    "RM 50,000 - RM 100,000", 
+    "RM 100,000 - RM 300,000", 
+    "> RM 300,000"
   ]
 
   const eventTypes = [
@@ -129,11 +197,6 @@ export function OrganizerProfileSetup() {
   //   "Entrepreneurs", "Researchers"
   // ]
 
-  const budgetRanges = [
-    "< RM 5,000", "RM 5,000 - RM 15,000", "RM 15,000 - RM 50,000", 
-    "RM 50,000 - RM 100,000", "RM 100,000 - RM 300,000", "> RM 300,000"
-  ]
-
   // const handleSkillToggle = (
   //   skill: string,
   //   category: "preferredEventTypes" | "primaryGoals" | "targetAudience"
@@ -147,54 +210,95 @@ export function OrganizerProfileSetup() {
   // }
 
   const addPreviousEvent = () => {
-    setFormData(prev => ({
-      ...prev,
-      previousEvents: [...prev.previousEvents, {
-        id: Date.now().toString(),
-        eventName: "",
-        eventType: "",
-        participantCount: "",
-        date: "",
-        description: "",
-        role: "Lead Organizer"
-      }]
-    }))
+    setPreviousEvents([...previousEvents, {
+      id: Date.now(),
+      eventName: "",
+      eventType: "",
+      participantCount: "",
+      date: "",
+      description: "",
+      role: "Lead Organizer"
+    }])
   }
   
-  const updatePreviousEvent = (id: string, field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      previousEvents: prev.previousEvents.map(event => 
-        event.id === id ? { ...event, [field]: value } : event
-      )
-    }))
+  const removePreviousEvent = (id: number) => {
+    setPreviousEvents(previousEvents.filter(event => event.id !== id))
   }
   
-  const removePreviousEvent = (id: string) => {
-    setFormData(prev => ({
-      ...prev,
-      previousEvents: prev.previousEvents.filter(event => event.id !== id)
-    }))
+  const updatePreviousEvent = (id: number, field: keyof PreviousEvent, value: string) => {
+    setPreviousEvents(previousEvents.map(event => 
+      event.id === id ? { ...event, [field]: value } : event
+    ))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
-
+    
+    // Validation - only crucial fields
+    if (!formData.fullName.trim()) {
+      showCustomToast('warning', 'Please enter your full name')
+      setIsLoading(false)
+      return
+    }
+    
+    if (!formData.organizationType) {
+      showCustomToast('warning', 'Please select your organization type')
+      setIsLoading(false)
+      return
+    }
+    
+    if (!formData.organizationName.trim()) {
+      showCustomToast('warning', 'Please enter your organization name')
+      setIsLoading(false)
+      return
+    }
+    
+    if (!formData.position.trim()) {
+      showCustomToast('warning', 'Please enter your position/role')
+      setIsLoading(false)
+      return
+    }
+    
+    if (!formData.city.trim()) {
+      showCustomToast('warning', 'Please enter your city')
+      setIsLoading(false)
+      return
+    }
+    
+    if (!formData.state.trim()) {
+      showCustomToast('warning', 'Please enter your state')
+      setIsLoading(false)
+      return
+    }
+    
+    if (!formData.eventOrganizingExperience) {
+      showCustomToast('warning', 'Please select your event organizing experience level')
+      setIsLoading(false)
+      return
+    }
+  
     try {
-      // Save profile data to database
+      console.log('Submitting organizer profile:', formData)
+      
       const result = await saveOrganizerProfile(formData)
       
       if (!result.success) {
         throw new Error(result.error || 'Failed to save profile')
       }
 
-      // Redirect to completion page
-      router.push("/onboarding/complete")
+      // Mark profile as complete to allow navigation
+      setIsProfileComplete(true)
+      
+      showCustomToast('success', "Successfully Created Your Profile!")
+      triggerSideCannons(); //Trigger Confetti
+      router.push("/hackathons") //Redirect to Hackathon Page 
     } catch (err) {
       console.error('Error saving profile:', err)
-      setError(err instanceof Error ? err.message : 'Failed to save profile')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save profile'
+      setError(errorMessage)
+      showCustomToast('error', "Failed To Create Your Profile")
     } finally {
       setIsLoading(false)
     }
@@ -204,755 +308,561 @@ export function OrganizerProfileSetup() {
     router.push("/onboarding/complete")
   }
 
-  const handleHomeClick = () => {
-    router.push("/")
-  }
 
   return (
     <div className="min-h-screen">
-      {/* Home Button - Floating in top right */}
-      <div className="fixed top-6 right-6 z-50">
-        <Button
-          onClick={handleHomeClick}
-          className="group relative backdrop-blur-xl bg-slate-800/30 border border-white hover:border-slate-500/50 text-white hover:text-white rounded-2xl p-3 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-          size="sm"
-        >
-          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-green-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-          <Home className="w-5 h-5 relative z-10 group-hover:rotate-12 transition-transform duration-300" />
-          <span className="s-only">Go to Home</span>
-        </Button>
-      </div>
-
       {/* Background Effects */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-500 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-teal-500 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-green-500/5 to-emerald-500/5 rounded-full blur-3xl"></div>
+      <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10">
+        <div className="absolute top-96 left-2 w-96 h-96 bg-emerald-500 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-20 right-4 w-96 h-96 bg-teal-500 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-green-500/15 to-emerald-500/15 rounded-full blur-3xl"></div>
       </div>
 
-      <div className="relative flex flex-col items-center justify-center px-4 py-8">
-        <div className="w-full max-w-4xl mx-auto mt-12">
-          <div className="text-center mb-8">
-            <ProgressIndicator currentStep={3} totalSteps={3} />
-          </div>
-
-          <div className="text-center mb-8">
-            <div className="relative inline-block mb-4">
-              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/20 via-teal-500/20 to-green-500/20 rounded-2xl blur-xl"></div>
-              <h1 className="relative text-4xl font-bold mb-2 bg-gradient-to-r from-emerald-400 via-teal-400 to-green-400 bg-clip-text text-transparent">
-                Complete Your Organizer Profile
-              </h1>
+      {/* Header */}
+      <div className="bg-gradient-to-br from-gray-900 to-gray-800 border-b border-gray-700">
+        <div className="max-w-6xl mx-auto px-6 py-8">
+          <div className="text-center">
+            <h1 className="text-5xl font-blackops text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-cyan-400 to-teal-400">
+              ORGANIZER PROFILE SETUP
+            </h1>
+            <p className="text-gray-300 font-mono text-lg mt-2">
+              Build your profile to attract the best hackers and partners
+            </p>
+            
+            {/* Progress Indicator */}
+            <div className="flex items-center justify-center gap-3 pt-4 mt-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-teal-500 border-2 border-teal-300 flex items-center justify-center">
+                  <CheckCircle className="w-5 h-5 text-black" />
+                </div>
+                <span className="text-gray-400 font-mono text-sm">Account</span>
+              </div>
+              <div className="h-px w-12 bg-gray-600"></div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-teal-500 border-2 border-teal-300 flex items-center justify-center">
+                  <CheckCircle className="w-5 h-5 text-black" />
+                </div>
+                <span className="text-gray-400 font-mono text-sm">Role</span>
+              </div>
+              <div className="h-px w-12 bg-gray-600"></div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-teal-500 border-2 border-teal-300 flex items-center justify-center font-bold text-black">
+                  3
+                </div>
+                <span className="text-white font-mono text-sm font-bold">Profile</span>
+              </div>
             </div>
-            <p className="text-white text-lg">Build your profile to attract the best hackers and partners</p>
+
+            <div className="text-center flex mx-auto max-w-2xl mt-8">
+              <ProgressIndicator currentStep={3} totalSteps={3} />
+            </div>
           </div>
+        </div>
+      </div>
 
-          <form onSubmit={handleSubmit} className="space-y-8">
-            {/* Error Display */}
-            {error && (
-              <div className="bg-red-500/10 border border-red-500/30 text-red-300 px-4 py-3 rounded-xl flex items-center gap-3 backdrop-blur-sm">
-                <AlertCircle className="h-5 w-5 flex-shrink-0" />
-                <span className="text-sm">{error}</span>
-              </div>
-            )}
+      {/* Warning Banner */}
+      <div className="max-w-6xl mx-auto px-6 py-6">
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-md p-4 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-sm bg-yellow-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <TriangleAlert className="text-yellow-400" />
+          </div>
+          <p className="text-yellow-300 text-sm font-mono">
+            Complete all required fields (*) before leaving this page to ensure your account is properly set up.
+          </p>
+        </div>
+      </div>
 
-            {/* Basic Information */}
-            <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-400 shadow-2xl">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-3 text-xl text-white">
-                  <div className="w-10 h-10 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center">
-                    <Users className="w-5 h-5 text-white" />
-                  </div>
-                  Basic Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="fullName" className="text-slate-300 font-medium">Full Name *</Label>
-                    <Input
-                      id="fullName"
-                      value={formData.fullName}
-                      onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                      placeholder="John Doe"
-                      className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 rounded-xl py-3"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-slate-300 font-medium">Organization Type *</Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {organizationTypes.map((type) => (
-                        <Button
-                          key={type.value}
-                          type="button"
-                          variant={formData.organizationType === type.value ? "default" : "outline"}
-                          onClick={() => setFormData({ ...formData, organizationType: type.value })}
-                          className={`py-3 rounded-xl text-sm ${
-                            formData.organizationType === type.value
-                              ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white"
-                              : "bg-slate-700/50 border-slate-600 text-slate-300 hover:bg-emerald-500/10 hover:border-emerald-500/50"
-                          }`}
-                        >
-                          <type.icon className="w-4 h-4 mr-1" />
-                          {type.label}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid md:grid-cols-3 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="city" className="text-slate-300 font-medium">City *</Label>
-                    <Input
-                      id="city"
-                      value={formData.city}
-                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                      placeholder="Kuala Lumpur"
-                      className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 rounded-xl py-3"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="state" className="text-slate-300 font-medium">State *</Label>
-                    <Input
-                      id="state"
-                      value={formData.state}
-                      onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                      placeholder="Selangor"
-                      className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 rounded-xl py-3"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="country" className="text-slate-300 font-medium">Country</Label>
-                    <Input
-                      id="country"
-                      value={formData.country}
-                      onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                      className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 rounded-xl py-3"
-                      readOnly
-                    />
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="bio" className="text-slate-300 font-medium">Bio</Label>
-                  <Textarea
-                    id="bio"
-                    value={formData.bio}
-                    onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                    placeholder="Tell us about your passion for organizing events, your vision, and what drives you to create amazing hackathons..."
-                    className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 rounded-xl resize-none"
-                    rows={3}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Organization Details */}
-            {formData.organizationType && (
-              <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-400 shadow-2xl">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-3 text-xl text-white">
-                    <div className="w-10 h-10 bg-gradient-to-r from-teal-600 to-emerald-600 rounded-xl flex items-center justify-center">
-                      <Building className="w-5 h-5 text-white" />
-                    </div>
-                    Organization Details
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="organizationName" className="text-slate-300 font-medium">
-                        {formData.organizationType === "individual" ? "Brand/Personal Name" : 
-                         formData.organizationType === "company" ? "Company Name" :
-                         formData.organizationType === "university" ? "Institution Name" : "Organization Name"} *
-                      </Label>
-                      <Input
-                        id="organizationName"
-                        value={formData.organizationName}
-                        onChange={(e) => setFormData({ ...formData, organizationName: e.target.value })}
-                        placeholder={
-                          formData.organizationType === "individual" ? "Your Brand Name" :
-                          formData.organizationType === "company" ? "Tech Company Sdn Bhd" :
-                          formData.organizationType === "university" ? "University of Malaya" : "Your Organization"
-                        }
-                        className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 rounded-xl py-3"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="position" className="text-slate-300 font-medium">Your Position/Role *</Label>
-                      <Input
-                        id="position"
-                        value={formData.position}
-                        onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-                        placeholder="Event Manager, Co-founder, Student Leader"
-                        className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 rounded-xl py-3"
-                        required
-                      />
-                    </div>
-                  </div>
-                  
-                  {formData.organizationType !== "individual" && (
-                    <div className="grid md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <Label htmlFor="organizationSize" className="text-slate-300 font-medium">Organization Size</Label>
-                        <select
-                          id="organizationSize"
-                          value={formData.organizationSize}
-                          onChange={(e) => setFormData({ ...formData, organizationSize: e.target.value })}
-                          className="w-full py-3 px-3 text-sm bg-slate-700/50 border border-slate-600 rounded-xl text-white"
-                        >
-                          <option value="">Select size</option>
-                          <option value="1-10">1-10 people</option>
-                          <option value="11-50">11-50 people</option>
-                          <option value="51-200">51-200 people</option>
-                          <option value="201-1000">201-1000 people</option>
-                          <option value="1000+">1000+ people</option>
-                        </select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="organizationWebsite" className="text-slate-300 font-medium">Organization Website</Label>
-                        <Input
-                          id="organizationWebsite"
-                          value={formData.organizationWebsite}
-                          onChange={(e) => setFormData({ ...formData, organizationWebsite: e.target.value })}
-                          placeholder="https://company.com"
-                          className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 rounded-xl py-3"
-                        />
-                      </div>
-                    </div>
-                  )}
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="organizationDescription" className="text-slate-300 font-medium">Organization Description</Label>
-                    <Textarea
-                      id="organizationDescription"
-                      value={formData.organizationDescription}
-                      onChange={(e) => setFormData({ ...formData, organizationDescription: e.target.value })}
-                      placeholder="Describe your organization, its mission, and focus areas..."
-                      className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 rounded-xl resize-none"
-                      rows={3}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Event Experience */}
-            <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-400 shadow-2xl">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-3 text-xl text-white">
-                  <div className="w-10 h-10 bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl flex items-center justify-center">
-                    <Calendar className="w-5 h-5 text-white" />
-                  </div>
-                  Event Organizing Experience
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label className="text-slate-300 font-medium">Experience Level *</Label>
-                  <select
-                    value={formData.eventOrganizingExperience}
-                    onChange={(e) => setFormData({ ...formData, eventOrganizingExperience: e.target.value })}
-                    className="w-full py-3 px-3 text-sm bg-slate-700/50 border border-slate-600 rounded-xl text-white"
-                    required
-                  >
-                    <option value="">Select your experience level</option>
-                    <option value="first-time">First-time organizer</option>
-                    <option value="beginner">Beginner (1-3 events)</option>
-                    <option value="intermediate">Intermediate (4-10 events)</option>
-                    <option value="experienced">Experienced (11+ events)</option>
-                    <option value="expert">Expert (50+ events)</option>
-                  </select>
-                </div>
-
-                {/* Previous Events */}
-                <div className="space-y-4 pt-4 border-t border-slate-700">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-slate-300 font-medium">Previous Events</Label>
-                    <Button
-                      type="button"
-                      onClick={addPreviousEvent}
-                      className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-sm px-4 py-2 rounded-lg"
-                    >
-                      + Add Event
-                    </Button>
-                  </div>
-                  
-                  {formData.previousEvents.map((event, index) => (
-                    <div key={event.id} className="p-4 bg-slate-700/30 border border-slate-600/50 rounded-xl space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-white font-medium">Event #{index + 1}</h4>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          onClick={() => removePreviousEvent(event.id)}
-                          className="text-red-400 hover:text-red-300 hover:bg-red-500/10 text-sm px-3 py-1"
-                        >
-                          Remove
-                        </Button>
-                      </div>
-                      
-                      <div className="grid md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label className="text-slate-300 text-sm">Event Name</Label>
-                          <Input
-                            value={event.eventName}
-                            onChange={(e) => updatePreviousEvent(event.id, "eventName", e.target.value)}
-                            placeholder="Hackathon Malaysia 2024"
-                            className="bg-slate-600/50 border-slate-500 text-white placeholder:text-slate-400 rounded-lg py-2"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-slate-300 text-sm">Event Type</Label>
-                          <select
-                            value={event.eventType}
-                            onChange={(e) => updatePreviousEvent(event.id, "eventType", e.target.value)}
-                            className="w-full py-2 px-3 text-sm bg-slate-600/50 border border-slate-500 rounded-lg text-white"
-                          >
-                            <option value="">Select type</option>
-                            {eventTypes.map(type => (
-                              <option key={type} value={type}>{type}</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                      
-                      <div className="grid md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label className="text-slate-300 text-sm">Participant Count</Label>
-                          <Input
-                            value={event.participantCount}
-                            onChange={(e) => updatePreviousEvent(event.id, "participantCount", e.target.value)}
-                            placeholder="e.g., 200, 50-100"
-                            className="bg-slate-600/50 border-slate-500 text-white placeholder:text-slate-400 rounded-lg py-2"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-slate-300 text-sm">Date</Label>
-                          <Input
-                            value={event.date}
-                            onChange={(e) => updatePreviousEvent(event.id, "date", e.target.value)}
-                            placeholder="March 2024, Q1 2024"
-                            className="bg-slate-600/50 border-slate-500 text-white placeholder:text-slate-400 rounded-lg py-2"
-                          />
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label className="text-slate-300 text-sm">Your Role</Label>
-                        <select
-                          value={event.role}
-                          onChange={(e) => updatePreviousEvent(event.id, "role", e.target.value)}
-                          className="w-full py-2 px-3 text-sm bg-slate-600/50 border border-slate-500 rounded-lg text-white"
-                        >
-                          <option value="Lead Organizer">Lead Organizer</option>
-                          <option value="Co-Organizer">Co-Organizer</option>
-                          <option value="Committee Member">Committee Member</option>
-                          <option value="Volunteer Coordinator">Volunteer Coordinator</option>
-                          <option value="Sponsorship Manager">Sponsorship Manager</option>
-                          <option value="Technical Lead">Technical Lead</option>
-                        </select>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label className="text-slate-300 text-sm">Description & Achievements</Label>
-                        <Textarea
-                          value={event.description}
-                          onChange={(e) => updatePreviousEvent(event.id, "description", e.target.value)}
-                          placeholder="Describe the event, your role, achievements, and key learnings..."
-                          className="bg-slate-600/50 border-slate-500 text-white placeholder:text-slate-400 rounded-lg resize-none"
-                          rows={3}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                  
-                  {formData.previousEvents.length === 0 && (
-                    <p className="text-slate-400 text-sm italic text-center py-4">
-                      Click &lsquo;Add Event&lsquo; to showcase your event organizing experience
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Goals & Target Audience */}
-            {/* <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-400 shadow-2xl">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-3 text-xl text-white">
-                  <div className="w-10 h-10 bg-gradient-to-r from-yellow-500 to-emerald-600 rounded-xl flex items-center justify-center">
-                    <Target className="w-5 h-5 text-white" />
-                  </div>
-                  Goals & Target Audience
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-
-                <div className="space-y-3">
-                  <Label className="text-slate-300 font-medium">Primary Goals</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {primaryGoals.map((goal) => (
-                      <Badge
-                        key={goal}
-                        variant={formData.primaryGoals.includes(goal) ? "default" : "outline"}
-                        className={`cursor-pointer transition-all duration-200 hover:scale-105 ${
-                          formData.primaryGoals.includes(goal)
-                            ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg"
-                            : "bg-slate-700/50 border-slate-600 text-slate-300 hover:bg-emerald-500/10 hover:border-emerald-500/50"
-                        }`}
-                        onClick={() => handleSkillToggle(goal, "primaryGoals")}
-                      >
-                        {goal}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-
-
-                <div className="space-y-3">
-                  <Label className="text-slate-300 font-medium">Target Audience</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {targetAudience.map((audience) => (
-                      <Badge
-                        key={audience}
-                        variant={formData.targetAudience.includes(audience) ? "default" : "outline"}
-                        className={`cursor-pointer transition-all duration-200 hover:scale-105 ${
-                        formData.targetAudience.includes(audience)
-                          ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg"
-                          : "bg-slate-700/50 border-slate-600 text-slate-300 hover:bg-emerald-500/10 hover:border-emerald-500/50"
-                      }`}
-                      onClick={() => handleSkillToggle(audience, "targetAudience")}
-                    >
-                      {audience}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card> */}
-
-
-          <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-400 shadow-2xl">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-3 text-xl text-white">
-                <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl flex items-center justify-center">
-                  <DollarSign className="w-5 h-5 text-white" />
-                </div>
-                Budget & Resources
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
+      {/* Main Content */}
+      <div className="max-w-6xl mx-auto px-6 pb-12">
+       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Basic Information */}
+        <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-md">
+          <div className="px-8 py-6 border-b border-gray-700">
+            <div className="flex items-center gap-3">
+              <Users className="w-7 h-7 text-teal-400" />
+              <h2 className="text-2xl font-blackops text-white">BASIC INFORMATION</h2>
+            </div>
+          </div>
+          
+          <div className="px-8 py-6 space-y-6">
+            <div className="grid md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="typicalBudgetRange" className="text-slate-300 font-medium">Typical Budget Range</Label>
-                <select
-                  id="typicalBudgetRange"
-                  value={formData.typicalBudgetRange}
-                  onChange={(e) => setFormData({ ...formData, typicalBudgetRange: e.target.value })}
-                  className="w-full py-3 px-3 text-sm bg-slate-700/50 border border-slate-600 rounded-xl text-white"
-                >
-                  <option value="">Select budget range</option>
-                  {budgetRanges.map(range => (
-                    <option key={range} value={range}>{range}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    id="hasVenue"
-                    checked={formData.hasVenue}
-                    onChange={(e) => setFormData({ ...formData, hasVenue: e.target.checked })}
-                    className="w-4 h-4 text-emerald-600 bg-slate-700 border-slate-600 rounded focus:ring-emerald-500"
-                  />
-                  <Label htmlFor="hasVenue" className="text-slate-300">
-                    I have access to venues or spaces
-                  </Label>
-                </div>
-                
-                {formData.hasVenue && (
-                  <div className="space-y-2">
-                    <Label htmlFor="venueDetails" className="text-slate-300 text-sm">Venue Details</Label>
-                    <Textarea
-                      id="venueDetails"
-                      value={formData.venueDetails}
-                      onChange={(e) => setFormData({ ...formData, venueDetails: e.target.value })}
-                      placeholder="Describe your venue access, capacity, facilities, etc..."
-                      className="bg-slate-600/50 border-slate-500 text-white placeholder:text-slate-400 rounded-lg resize-none"
-                      rows={3}
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    id="hasSponsorConnections"
-                    checked={formData.hasSponsorConnections}
-                    onChange={(e) => setFormData({ ...formData, hasSponsorConnections: e.target.checked })}
-                    className="w-4 h-4 text-emerald-600 bg-slate-700 border-slate-600 rounded focus:ring-emerald-500"
-                  />
-                  <Label htmlFor="hasSponsorConnections" className="text-slate-300">
-                    I have sponsor connections or partnerships
-                  </Label>
-                </div>
-                
-                {formData.hasSponsorConnections && (
-                  <div className="space-y-2">
-                    <Label htmlFor="sponsorDetails" className="text-slate-300 text-sm">Sponsor Connection Details</Label>
-                    <Textarea
-                      id="sponsorDetails"
-                      value={formData.sponsorDetails}
-                      onChange={(e) => setFormData({ ...formData, sponsorDetails: e.target.value })}
-                      placeholder="Describe your sponsor connections, types of partnerships, etc..."
-                      className="bg-slate-600/50 border-slate-500 text-white placeholder:text-slate-400 rounded-lg resize-none"
-                      rows={3}
-                    />
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Technical & Marketing Capabilities */}
-          <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-400 shadow-2xl">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-3 text-xl text-white">
-                <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-                  <Sparkles className="w-5 h-5 text-white" />
-                </div>
-                Technical & Marketing Capabilities
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="techSetupCapability" className="text-slate-300 font-medium">Technical Setup Capability</Label>
-                <select
-                  id="techSetupCapability"
-                  value={formData.techSetupCapability}
-                  onChange={(e) => setFormData({ ...formData, techSetupCapability: e.target.value })}
-                  className="w-full py-3 px-3 text-sm bg-slate-700/50 border border-slate-600 rounded-xl text-white"
-                >
-                  <option value="">Select your technical capability</option>
-                  <option value="beginner">Basic (WiFi setup, basic AV)</option>
-                  <option value="intermediate">Intermediate (Network setup, streaming)</option>
-                  <option value="advanced">Advanced (Full tech infrastructure)</option>
-                  <option value="expert">Expert (Complex setups, custom solutions)</option>
-                </select>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-3">
-                    <input
-                      type="checkbox"
-                      id="livestreamCapability"
-                      checked={formData.livestreamCapability}
-                      onChange={(e) => setFormData({ ...formData, livestreamCapability: e.target.checked })}
-                      className="w-4 h-4 text-purple-600 bg-slate-700 border-slate-600 rounded focus:ring-purple-500"
-                    />
-                    <Label htmlFor="livestreamCapability" className="text-slate-300">
-                      Livestreaming capability
-                    </Label>
-                  </div>
-
-                  <div className="flex items-center space-x-3">
-                    <input
-                      type="checkbox"
-                      id="photographyCapability"
-                      checked={formData.photographyCapability}
-                      onChange={(e) => setFormData({ ...formData, photographyCapability: e.target.checked })}
-                      className="w-4 h-4 text-purple-600 bg-slate-700 border-slate-600 rounded focus:ring-purple-500"
-                    />
-                    <Label htmlFor="photographyCapability" className="text-slate-300">
-                      Photography/videography
-                    </Label>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-3">
-                    <input
-                      type="checkbox"
-                      id="marketingCapability"
-                      checked={formData.marketingCapability}
-                      onChange={(e) => setFormData({ ...formData, marketingCapability: e.target.checked })}
-                      className="w-4 h-4 text-purple-600 bg-slate-700 border-slate-600 rounded focus:ring-purple-500"
-                    />
-                    <Label htmlFor="marketingCapability" className="text-slate-300">
-                      Marketing & social media
-                    </Label>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Social Links */}
-          <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-400 shadow-2xl">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-3 text-xl text-white">
-                <div className="w-10 h-10 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-xl flex items-center justify-center">
-                  <Link className="w-5 h-5 text-white" />
-                </div>
-                Social Links & Contact
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="linkedinUrl" className="text-slate-300 font-medium flex items-center gap-2">
-                    <Linkedin className="w-4 h-4" />
-                    LinkedIn Profile
-                  </Label>
-                  <Input
-                    id="linkedinUrl"
-                    value={formData.linkedinUrl}
-                    onChange={(e) => setFormData({ ...formData, linkedinUrl: e.target.value })}
-                    placeholder="https://linkedin.com/in/johndoe"
-                    className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 rounded-xl py-3"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="websiteUrl" className="text-slate-300 font-medium flex items-center gap-2">
-                    <Globe className="w-4 h-4" />
-                    Website/Portfolio
-                  </Label>
-                  <Input
-                    id="websiteUrl"
-                    value={formData.websiteUrl}
-                    onChange={(e) => setFormData({ ...formData, websiteUrl: e.target.value })}
-                    placeholder="https://yoursite.com"
-                    className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 rounded-xl py-3"
-                  />
-                </div>
+                <label className="text-gray-200 font-mono text-sm">Full Name *</label>
+                <input
+                  type="text"
+                  value={formData.fullName}
+                  onChange={(e) => setFormData({...formData, fullName: e.target.value})}
+                  placeholder="John Doe"
+                  className="w-full bg-black border border-gray-700 text-gray-100 rounded-md px-4 py-3 focus:outline-none focus:border-teal-500"
+                />
               </div>
               
+              <div className="space-y-2">
+                <label className="text-gray-200 font-mono text-sm">Organization Type *</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {organizationTypes.map((type) => {
+                    const Icon = type.icon
+                    return (
+                      <button
+                        key={type.value}
+                        type="button"
+                        onClick={() => setFormData({...formData, organizationType: type.value})}
+                        className={`flex items-center gap-2 p-3 rounded-md border transition-colors ${
+                          formData.organizationType === type.value
+                            ? 'border-teal-400 bg-teal-500/10'
+                            : 'border-gray-700 bg-gray-900/40 hover:bg-gray-800/40'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4 text-teal-400" />
+                        <span className="text-white text-sm font-mono">{type.label}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <label className="text-gray-200 font-mono text-sm">City *</label>
+                <input
+                  type="text"
+                  value={formData.city}
+                  onChange={(e) => setFormData({...formData, city: e.target.value})}
+                  placeholder="Kuala Lumpur"
+                  className="w-full bg-black border border-gray-700 text-gray-100 rounded-md px-4 py-3 focus:outline-none focus:border-teal-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-gray-200 font-mono text-sm">State *</label>
+                <input
+                  type="text"
+                  value={formData.state}
+                  onChange={(e) => setFormData({...formData, state: e.target.value})}
+                  placeholder="Selangor"
+                  className="w-full bg-black border border-gray-700 text-gray-100 rounded-md px-4 py-3 focus:outline-none focus:border-teal-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-gray-200 font-mono text-sm">Country</label>
+                <input
+                  type="text"
+                  value={formData.country}
+                  readOnly
+                  className="w-full bg-gray-800 border border-gray-700 text-gray-400 rounded-md px-4 py-3"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-gray-200 font-mono text-sm">Bio</label>
+              <textarea
+                value={formData.bio}
+                onChange={(e) => setFormData({...formData, bio: e.target.value})}
+                placeholder="Tell us about your passion for organizing events..."
+                className="w-full bg-black border border-gray-700 text-gray-100 rounded-md px-4 py-3 resize-none focus:outline-none focus:border-teal-500"
+                rows={3}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Organization Details */}
+        {formData.organizationType && (
+          <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-md">
+            <div className="px-8 py-6 border-b border-gray-700">
+              <div className="flex items-center gap-3">
+                <Building className="w-7 h-7 text-teal-400" />
+                <h2 className="text-2xl font-blackops text-white">ORGANIZATION DETAILS</h2>
+              </div>
+            </div>
+            
+            <div className="px-8 py-6 space-y-6">
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="twitterUsername" className="text-slate-300 font-medium flex items-center gap-2">
-                    <Twitter className="w-4 h-4" />
-                    Twitter Username
-                  </Label>
-                  <Input
-                    id="twitterUsername"
-                    value={formData.twitterUsername}
-                    onChange={(e) => setFormData({ ...formData, twitterUsername: e.target.value })}
-                    placeholder="@johndoe"
-                    className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 rounded-xl py-3"
+                  <label className="text-gray-200 font-mono text-sm">
+                    {formData.organizationType === "individual" ? "Brand/Personal Name *" : "Organization Name *"}
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.organizationName}
+                    onChange={(e) => setFormData({...formData, organizationName: e.target.value})}
+                    placeholder="Your Organization"
+                    className="w-full bg-black border border-gray-700 text-gray-100 rounded-md px-4 py-3 focus:outline-none focus:border-teal-500"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="instagramUsername" className="text-slate-300 font-medium flex items-center gap-2">
-                    <Instagram className="w-4 h-4" />
-                    Instagram Username
-                  </Label>
-                  <Input
-                    id="instagramUsername"
-                    value={formData.instagramUsername}
-                    onChange={(e) => setFormData({ ...formData, instagramUsername: e.target.value })}
-                    placeholder="johndoe"
-                    className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 rounded-xl py-3"
+                  <label className="text-gray-200 font-mono text-sm">Your Position/Role *</label>
+                  <input
+                    type="text"
+                    value={formData.position}
+                    onChange={(e) => setFormData({...formData, position: e.target.value})}
+                    placeholder="Event Manager, Co-founder"
+                    className="w-full bg-black border border-gray-700 text-gray-100 rounded-md px-4 py-3 focus:outline-none focus:border-teal-500"
                   />
                 </div>
               </div>
-            </CardContent>
-          </Card>
 
-          {/* Collaboration & Mentorship */}
-          {/* <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-400 shadow-2xl">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-3 text-xl text-white">
-                <div className="w-10 h-10 bg-gradient-to-r from-amber-500 to-orange-600 rounded-xl flex items-center justify-center">
-                  <UserCheck className="w-5 h-5 text-white" />
+              {formData.organizationType !== "individual" && (
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-gray-200 font-mono text-sm">Organization Size</label>
+                    <Select value={formData.organizationSize} onValueChange={(value) => setFormData({...formData, organizationSize: value})}>
+                      <SelectTrigger className="bg-black border-gray-700 text-gray-200 py-6 text-md">
+                        <SelectValue placeholder="Select size" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-black border-gray-700">
+                        <SelectItem value="1-10">1-10 people</SelectItem>
+                        <SelectItem value="11-50">11-50 people</SelectItem>
+                        <SelectItem value="51-200">51-200 people</SelectItem>
+                        <SelectItem value="201-1000">201-1000 people</SelectItem>
+                        <SelectItem value="1000+">1000+ people</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-gray-200 font-mono text-sm">Organization Website</label>
+                    <input
+                      type="url"
+                      value={formData.organizationWebsite}
+                      onChange={(e) => setFormData({...formData, organizationWebsite: e.target.value})}
+                      placeholder="https://company.com"
+                      className="w-full bg-black border border-gray-700 text-gray-100 rounded-md px-4 py-3 focus:outline-none focus:border-teal-500"
+                    />
+                  </div>
                 </div>
-                Collaboration & Opportunities
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    id="lookingForCoOrganizers"
-                    checked={formData.lookingForCoOrganizers}
-                    onChange={(e) => setFormData({ ...formData, lookingForCoOrganizers: e.target.checked })}
-                    className="w-4 h-4 text-emerald-600 bg-slate-700 border-slate-600 rounded focus:ring-emerald-500"
-                  />
-                  <Label htmlFor="lookingForCoOrganizers" className="text-slate-300">
-                    I'm looking for co-organizers for future events
-                  </Label>
-                </div>
-
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    id="willingToMentor"
-                    checked={formData.willingToMentor}
-                    onChange={(e) => setFormData({ ...formData, willingToMentor: e.target.checked })}
-                    className="w-4 h-4 text-emerald-600 bg-slate-700 border-slate-600 rounded focus:ring-emerald-500"
-                  />
-                  <Label htmlFor="willingToMentor" className="text-slate-300">
-                    I'm willing to mentor new organizers
-                  </Label>
-                </div>
-
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    id="availableForConsulting"
-                    checked={formData.availableForConsulting}
-                    onChange={(e) => setFormData({ ...formData, availableForConsulting: e.target.checked })}
-                    className="w-4 h-4 text-emerald-600 bg-slate-700 border-slate-600 rounded focus:ring-emerald-500"
-                  />
-                  <Label htmlFor="availableForConsulting" className="text-slate-300">
-                    Available for event organizing consulting
-                  </Label>
-                </div>
-              </div>
-            </CardContent>
-          </Card> */}
-
-          {/* Submit Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-            <Button
-              type="submit"
-              disabled={isLoading || !formData.fullName || !formData.organizationType}
-              className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-semibold px-12 py-4 rounded-2xl shadow-lg hover:shadow-emerald-500/25 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-              size="lg"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Completing Profile...
-                </>
-              ) : (
-                <>
-                  <Trophy className="w-5 h-5 mr-2" />
-                  Complete Organizer Profile
-                </>
               )}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleSkip}
-              className="border-2 border-slate-600/50 bg-slate-700/30 hover:bg-slate-600/50 text-slate-300 hover:text-white px-12 py-4 rounded-2xl backdrop-blur-sm transition-all duration-300"
-              size="lg"
-            >
-              Skip for Now
-            </Button>
+
+              <div className="space-y-2">
+                <label className="text-gray-200 font-mono text-sm">Organization Description</label>
+                <textarea
+                  value={formData.organizationDescription}
+                  onChange={(e) => setFormData({...formData, organizationDescription: e.target.value})}
+                  placeholder="Describe your organization, its mission, and focus areas..."
+                  className="w-full bg-black border border-gray-700 text-gray-100 rounded-md px-4 py-3 resize-none focus:outline-none focus:border-teal-500"
+                  rows={3}
+                />
+              </div>
+            </div>
           </div>
+        )}
+
+        {/* Event Experience */}
+        <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-md">
+          <div className="px-8 py-6 border-b border-gray-700">
+            <div className="flex items-center gap-3">
+              <CalendarClock className="w-7 h-7 text-teal-400" />
+              <h2 className="text-2xl font-blackops text-white">EVENT ORGANIZING EXPERIENCE</h2>
+            </div>
+          </div>
+          
+          <div className="px-8 py-6 space-y-6">
+            <div className="space-y-2">
+              <label className="text-gray-200 font-mono text-sm">Experience Level *</label>
+              <Select value={formData.eventOrganizingExperience} onValueChange={(value) => setFormData({...formData, eventOrganizingExperience: value})}>
+                <SelectTrigger className="bg-black border-gray-700 text-gray-200 py-6 text-md">
+                  <SelectValue placeholder="Select your experience level" />
+                </SelectTrigger>
+                <SelectContent className="bg-black border-gray-700">
+                  <SelectItem value="first-time">First-time organizer</SelectItem>
+                  <SelectItem value="beginner">Beginner (1-3 events)</SelectItem>
+                  <SelectItem value="intermediate">Intermediate (4-10 events)</SelectItem>
+                  <SelectItem value="experienced">Experienced (11+ events)</SelectItem>
+                  <SelectItem value="expert">Expert (50+ events)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-4 pt-4 border-t border-gray-700">
+              <div className="flex items-center justify-between">
+                <label className="text-gray-200 font-mono text-sm">Previous Events</label>
+                <button
+                  type="button"
+                  onClick={addPreviousEvent}
+                  className="bg-gradient-to-r from-green-500 via-cyan-500 to-teal-500 text-white font-mono font-bold text-sm px-4 py-2 rounded-md hover:opacity-90 transition-opacity"
+                >
+                  + Add Event
+                </button>
+              </div>
+
+              {previousEvents.map((event, index) => (
+                <div key={event.id} className="p-4 bg-gray-800/30 border border-gray-700/50 rounded-md space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-white font-mono">Event #{index + 1}</h4>
+                    <button
+                      type="button"
+                      onClick={() => removePreviousEvent(event.id)}
+                      className="text-red-400 hover:text-red-300 transition-colors"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-gray-300 font-mono text-xs">Event Name</label>
+                      <input
+                        type="text"
+                        value={event.eventName}
+                        onChange={(e) => updatePreviousEvent(event.id, "eventName", e.target.value)}
+                        placeholder="Hackathon Malaysia 2024"
+                        className="w-full bg-gray-900 border border-gray-600 text-gray-100 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-teal-500"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-gray-300 font-mono text-xs">Participant Count</label>
+                      <input
+                        type="text"
+                        value={event.participantCount}
+                        onChange={(e) => updatePreviousEvent(event.id, "participantCount", e.target.value)}
+                        placeholder="e.g., 200"
+                        className="w-full bg-gray-900 border border-gray-600 text-gray-100 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-teal-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-gray-300 font-mono text-xs">Description</label>
+                    <textarea
+                      value={event.description}
+                      onChange={(e) => updatePreviousEvent(event.id, "description", e.target.value)}
+                      placeholder="Describe the event, your role, and achievements..."
+                      className="w-full bg-gray-900 border border-gray-600 text-gray-100 rounded-md px-3 py-2 text-sm resize-none focus:outline-none focus:border-teal-500"
+                      rows={2}
+                    />
+                  </div>
+                </div>
+              ))}
+
+              {previousEvents.length === 0 && (
+                <p className="text-gray-400 font-mono text-sm text-center py-4 italic">
+                  Click 'Add Event' to showcase your event organizing experience
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Budget & Resources */}
+        <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-md">
+          <div className="px-8 py-6 border-b border-gray-700">
+            <div className="flex items-center gap-3">
+              <DollarSign className="w-7 h-7 text-teal-400" />
+              <h2 className="text-2xl font-blackops text-white">BUDGET & RESOURCES</h2>
+            </div>
+          </div>
+          
+          <div className="px-8 py-6 space-y-6">
+            <div className="space-y-2">
+              <label className="text-gray-200 font-mono text-sm">Typical Budget Range</label>
+              <Select value={formData.typicalBudgetRange} onValueChange={(value) => setFormData({...formData, typicalBudgetRange: value})}>
+                <SelectTrigger className="bg-black border-gray-700 text-gray-200 py-6 text-md">
+                  <SelectValue placeholder="Select budget range" />
+                </SelectTrigger>
+                <SelectContent className="bg-black border-gray-700">
+                  {budgetRanges.map(range => (
+                    <SelectItem key={range} value={range}>{range}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-4">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.hasVenue}
+                  onChange={(e) => setFormData({...formData, hasVenue: e.target.checked})}
+                  className="w-4 h-4 text-teal-500 bg-gray-900 border-gray-600 rounded focus:ring-teal-500"
+                />
+                <span className="text-gray-200 font-mono text-sm">I have access to venues or spaces</span>
+              </label>
+
+              {formData.hasVenue && (
+                <textarea
+                  value={formData.venueDetails}
+                  onChange={(e) => setFormData({...formData, venueDetails: e.target.value})}
+                  placeholder="Describe your venue access, capacity, facilities..."
+                  className="w-full bg-black border border-gray-700 text-gray-100 rounded-md px-4 py-3 resize-none focus:outline-none focus:border-teal-500"
+                  rows={2}
+                />
+              )}
+            </div>
+
+            <div className="space-y-4">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.hasSponsorConnections}
+                  onChange={(e) => setFormData({...formData, hasSponsorConnections: e.target.checked})}
+                  className="w-4 h-4 text-teal-500 bg-gray-900 border-gray-600 rounded focus:ring-teal-500"
+                />
+                <span className="text-gray-200 font-mono text-sm">I have sponsor connections or partnerships</span>
+              </label>
+
+              {formData.hasSponsorConnections && (
+                <textarea
+                  value={formData.sponsorDetails}
+                  onChange={(e) => setFormData({...formData, sponsorDetails: e.target.value})}
+                  placeholder="Describe your sponsor connections..."
+                  className="w-full bg-black border border-gray-700 text-gray-100 rounded-md px-4 py-3 resize-none focus:outline-none focus:border-teal-500"
+                  rows={2}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Technical Capabilities */}
+        <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-md">
+          <div className="px-8 py-6 border-b border-gray-700">
+            <div className="flex items-center gap-3">
+              <Sparkles className="w-7 h-7 text-teal-400" />
+              <h2 className="text-2xl font-blackops text-white">TECHNICAL & MARKETING CAPABILITIES</h2>
+            </div>
+          </div>
+          
+          <div className="px-8 py-6 space-y-6">
+            <div className="space-y-2">
+              <label className="text-gray-200 font-mono text-sm">Technical Setup Capability</label>
+              <Select value={formData.techSetupCapability} onValueChange={(value) => setFormData({...formData, techSetupCapability: value})}>
+                <SelectTrigger className="bg-black border-gray-700 text-gray-200 py-6 text-md">
+                  <SelectValue placeholder="Select your technical capability" />
+                </SelectTrigger>
+                <SelectContent className="bg-black border-gray-700">
+                  <SelectItem value="beginner">Basic (WiFi setup, basic AV)</SelectItem>
+                  <SelectItem value="intermediate">Intermediate (Network setup, streaming)</SelectItem>
+                  <SelectItem value="advanced">Advanced (Full tech infrastructure)</SelectItem>
+                  <SelectItem value="expert">Expert (Complex setups, custom solutions)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-4">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.livestreamCapability}
+                  onChange={(e) => setFormData({...formData, livestreamCapability: e.target.checked})}
+                  className="w-4 h-4 text-teal-500 bg-gray-900 border-gray-600 rounded focus:ring-teal-500"
+                />
+                <span className="text-gray-200 font-mono text-sm">Livestreaming</span>
+              </label>
+
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.photographyCapability}
+                  onChange={(e) => setFormData({...formData, photographyCapability: e.target.checked})}
+                  className="w-4 h-4 text-teal-500 bg-gray-900 border-gray-600 rounded focus:ring-teal-500"
+                />
+                <span className="text-gray-200 font-mono text-sm">Photography</span>
+              </label>
+
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.marketingCapability}
+                  onChange={(e) => setFormData({...formData, marketingCapability: e.target.checked})}
+                  className="w-4 h-4 text-teal-500 bg-gray-900 border-gray-600 rounded focus:ring-teal-500"
+                />
+                <span className="text-gray-200 font-mono text-sm">Marketing</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {/* Social Links */}
+        <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-md">
+          <div className="px-8 py-6 border-b border-gray-700">
+            <div className="flex items-center gap-3">
+              <Link className="w-7 h-7 text-teal-400" />
+              <h2 className="text-2xl font-blackops text-white">SOCIAL LINKS & CONTACT</h2>
+            </div>
+          </div>
+          
+          <div className="px-8 py-6 space-y-6">
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-gray-200 font-mono text-sm flex items-center gap-2">
+                  <Linkedin className="w-4 h-4 text-blue-400" />
+                  LinkedIn Profile
+                </label>
+                <input
+                  type="url"
+                  value={formData.linkedinUrl}
+                  onChange={(e) => setFormData({...formData, linkedinUrl: e.target.value})}
+                  placeholder="https://linkedin.com/in/johndoe"
+                  className="w-full bg-black border border-gray-700 text-gray-100 rounded-md px-4 py-3 focus:outline-none focus:border-teal-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-gray-200 font-mono text-sm flex items-center gap-2">
+                  <Globe className="w-4 h-4 text-teal-400" />
+                  Website/Portfolio
+                </label>
+                <input
+                  type="url"
+                  value={formData.websiteUrl}
+                  onChange={(e) => setFormData({...formData, websiteUrl: e.target.value})}
+                  placeholder="https://yoursite.com"
+                  className="w-full bg-black border border-gray-700 text-gray-100 rounded-md px-4 py-3 focus:outline-none focus:border-teal-500"
+                />
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-gray-200 font-mono text-sm flex items-center gap-2">
+                  <Twitter className="w-4 h-4 text-blue-400" />
+                  Twitter Username
+                </label>
+                <input
+                  type="text"
+                  value={formData.twitterUsername}
+                  onChange={(e) => setFormData({...formData, twitterUsername: e.target.value})}
+                  placeholder="@johndoe"
+                  className="w-full bg-black border border-gray-700 text-gray-100 rounded-md px-4 py-3 focus:outline-none focus:border-teal-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-gray-200 font-mono text-sm flex items-center gap-2">
+                  <Instagram className="w-4 h-4 text-pink-400" />
+                  Instagram Username
+                </label>
+                <input
+                  type="text"
+                  value={formData.instagramUsername}
+                  onChange={(e) => setFormData({...formData, instagramUsername: e.target.value})}
+                  placeholder="johndoe"
+                  className="w-full bg-black border border-gray-700 text-gray-100 rounded-md px-4 py-3 focus:outline-none focus:border-teal-500"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Submit Buttons */}
+        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center py-4 ">
+          <button
+            type="submit"
+            className="bg-gradient-to-r from-green-500 via-cyan-500 to-teal-500 text-white font-mono font-bold px-12 py-4 rounded-md hover:opacity-90 transition-opacity shadow-lg"
+          >
+            <div className="flex items-center gap-2">
+              <Trophy className="w-5 h-5" />
+              Complete Organizer Profile
+            </div>
+          </button>
+          
+          {/* <button
+            type="button"
+            className="border border-gray-600 bg-gray-800/50 hover:bg-gray-700/50 text-gray-300 font-mono px-12 py-4 rounded-md transition-colors"
+          >
+            Skip for Now
+          </button> */}
+        </div>
         </form>
       </div>
-    </div>
   </div>
 )
 }
