@@ -6,14 +6,15 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Toggle } from '@/components/ui/toggle'
 import { useState } from 'react'
+import { Globe, User, Users } from 'lucide-react'
 
 export default function OrganizeRegistrationDetailsPage() {
   const router = useRouter()
-  const [teamEnabled, setTeamEnabled] = useState(true)
+  const [teamEnabled, setTeamEnabled] = useState(false)
 
   return (
     <div className="min-h-screen bg-black">
-      <div className="max-w-5xl mx-auto px-6 py-10">
+      <div className="max-w-7xl mx-auto px-6 py-10">
         {/* Stepper */}
         <div className="flex items-center gap-4 mb-8">
           <div className="flex items-center gap-3 opacity-80">
@@ -31,19 +32,42 @@ export default function OrganizeRegistrationDetailsPage() {
           <h2 className="font-blackops text-3xl text-white mb-6">Registrations Details</h2>
 
           {/* Take registrations elsewhere - simplified banner */}
-          <div className="mb-6 rounded-md border border-yellow-600/50 bg-yellow-500/10 p-4 text-yellow-200">
+          {/* <div className="mb-6 rounded-md border border-yellow-600/50 bg-yellow-500/10 p-4 text-yellow-200">
             For exclusive analytics and unlimited credits, take registrations on HackerFlow.
-          </div>
+          </div> */}
 
           {/* Participation Type */}
           <div className="grid sm:grid-cols-2 gap-3">
-            <button className="p-4 rounded-md border border-gray-700 bg-gray-900/40 text-left">
-              <div className="text-white font-mono">Individual</div>
-              <div className="text-xs text-gray-400">Solo participation</div>
+            <button 
+            onClick={() => setTeamEnabled(false)}
+            className={`flex items-start gap-3 p-4 rounded-md border transition-colors ${
+              !teamEnabled
+                ? 'border-teal-400 bg-teal-500/10'
+                : 'border-gray-700 bg-gray-900/40 hover:bg-gray-800/40'
+            }`}>
+              <div className="w-9 h-9 rounded-md bg-teal-500/20 text-teal-400 flex items-center justify-center">
+                <User className="w-5 h-5"/>
+              </div>
+              <div className='text-left'>
+                <div className="text-white font-mono">Individual</div>
+                <div className="text-xs text-gray-400">Solo participation</div>
+              </div>
             </button>
-            <button className={`p-4 rounded-md border text-left ${teamEnabled ? 'border-teal-400 bg-teal-500/10' : 'border-gray-700 bg-gray-900/40'}`} onClick={() => setTeamEnabled(!teamEnabled)}>
-              <div className="text-white font-mono">Participation as a team</div>
-              <div className="text-xs text-gray-400">Enable teams</div>
+
+            <button 
+            onClick={() => setTeamEnabled(true)}
+            className={`flex items-start gap-3 p-4 rounded-md border transition-colors ${
+              teamEnabled
+                ? 'border-cyan-400 bg-cyan-500/10'
+                : 'border-gray-700 bg-gray-900/40 hover:bg-gray-800/40'
+            }`}>
+              <div className="w-9 h-9 rounded-md bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
+                <Users className="w-5 h-5"/>
+              </div>
+              <div className='text-left'>
+                <div className="text-white font-mono">Participation as a team</div>
+                <div className="text-xs text-gray-400">Enable teams</div>
+              </div>
             </button>
           </div>
 
@@ -73,8 +97,8 @@ export default function OrganizeRegistrationDetailsPage() {
 
           {/* Optional settings */}
           <div className="mt-5 grid gap-2">
-            <Label className="text-gray-200 font-mono">Number of Registrations allowed</Label>
-            <Input type="number" placeholder="Unlimited if empty" className="bg-black border-gray-700 text-gray-100" />
+            <Label className="text-gray-200 font-mono">Number of Registrations Allowed (Leave It Empty if Unlimited)</Label>
+            <Input type="number" placeholder="Enter if only certain number of participants can apply" className="bg-black border-gray-700 text-gray-100" />
           </div>
 
           <div className="mt-8 flex justify-between">

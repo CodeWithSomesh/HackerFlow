@@ -137,7 +137,7 @@ export default function OrganizeStep3Page() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[26%_74%] gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[26%_72%] gap-6">
           {/* Left Navigation */}
           <aside className="lg:sticky lg:top-6 lg:self-start">
             <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-xl p-4 shadow-xl">
@@ -192,7 +192,7 @@ export default function OrganizeStep3Page() {
                 </div>
               )}
               
-              <div className="p-8">
+              <div className="p-5">
                 {/* Header with Logo */}
                 <div className="grid grid-cols-[100px_1fr] gap-6 items-start mb-8">
                   <div 

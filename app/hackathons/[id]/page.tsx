@@ -300,11 +300,13 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
       </div>
 
       <div className="mt-4 max-w-7xl mx-auto px-6">
-        <div className="  max-h-full border border-gray-400 rounded-md flex mx-auto overflow-hidden">
+        <div className=" max-h-full border border-gray-400 rounded-md flex mx-auto overflow-hidden">
           {hackathon.image !== "/api/placeholder/400/200" && (
             <Image
               src={hackathon.image}
               alt={hackathon.title}
+              width={1200}
+              height={500}
               className="object-cover w-full object-top rounded-md"
             />
           )}
@@ -353,6 +355,8 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
                         <Image
                           src={hackathon.image}
                           alt={hackathon.title}
+                          // width={100}
+                          // height={100}
                           className="object-cover h-[100px]"
                         />
                       </div>
@@ -805,6 +809,8 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
                           <Image
                             src={organizer.image || "/placeholder.svg"}
                             alt={organizer.name}
+                            width={48}
+                            height={48}
                             className="w-full h-full rounded-lg object-cover"
                           />
                         ) : (
@@ -877,6 +883,8 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
                             <img
                               src={sponsor.logo || "/placeholder.svg"}
                               alt={sponsor.name}
+                              width={48}
+                              height={48}
                               className="max-w-12 max-h-12 object-contain"
                             />
                           </div>

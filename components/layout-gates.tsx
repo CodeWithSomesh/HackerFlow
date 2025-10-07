@@ -9,15 +9,29 @@ function isOnboardingPath(pathname: string | null): boolean {
   return pathname.startsWith("/onboarding")
 }
 
+function isAuthPath(pathname: string | null): boolean {
+  if (!pathname) return false
+  return pathname.startsWith("/auth")
+}
+
+function isHackathonDetailsPath(pathname: string | null): boolean {
+  if (!pathname) return false
+  return pathname.startsWith("/hackathons/")
+}
+
 export function NavbarGate() {
   const pathname = usePathname()
   if (isOnboardingPath(pathname)) return null
+  if (isAuthPath(pathname)) return null
+  if (isHackathonDetailsPath(pathname)) return null
   return <Navbar />
 }
 
 export function FooterGate() {
   const pathname = usePathname()
   if (isOnboardingPath(pathname)) return null
+  if (isAuthPath(pathname)) return null
+  if (isHackathonDetailsPath(pathname)) return null
   return <Footer />
 }
 

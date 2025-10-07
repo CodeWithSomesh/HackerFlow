@@ -539,6 +539,7 @@ const Hackathons = () => {
                       src={hackathon.image}
                       alt="Hackathon banner"
                       width={600}
+                      title="Hackathon Image"
                       height={500}
                       />
                     }

@@ -54,7 +54,7 @@ export interface Hackathon {
   totalPrizePool: string
   sponsors?: Array<{
     name: string;
-    logo: string;
+    logo?: string | StaticImageData;
     description?: string;
     image?: StaticImageData;
     websiteLink?: string;
@@ -242,42 +242,42 @@ export const mockHackathons: Hackathon[] = [
         sponsors: [
             {
             name: "Genesis DAO",
-            logo: "title",
+            logo: "/title",
             description: "Leading Web3 innovation platform",
             },
             {
             name: "Cursor",
-            logo: "platinum",
+            logo: "/platinum",
             description: "AI-powered code editor",
             },
             {
             name: "Vercel",
-            logo: "platinum",
+            logo: "/platinum",
             description: "Frontend cloud platform",
             },
             {
             name: "Ethereum Foundation",
-            logo: "gold",
+            logo: "/gold",
             description: "Supporting Ethereum ecosystem",
             },
             {
             name: "Polygon",
-            logo: "gold",
+            logo: "/gold",
             description: "Scaling Ethereum solutions",
             },
             {
             name: "Chainlink",
-            logo: "silver",
+            logo: "/silver",
             description: "Decentralized oracle networks",
             },
             {
             name: "The Graph",
-            logo: "silver",
+            logo: "/silver",
             description: "Indexing protocol for Web3",
             },
             {
             name: "IPFS",
-            logo: "bronze",
+            logo: "/bronze",
             description: "Distributed storage network",
             },
         ],
@@ -388,12 +388,12 @@ export const mockHackathons: Hackathon[] = [
         sponsors: [
             {
             name: "Hyperliquid Labs",
-            logo: "title",
+            logo: "/title",
             description: "Advanced DeFi trading infrastructure"
             },
             {
             name: "Binance Labs",
-            logo: "platinum",
+            logo: "/platinum",
             description: "Blockchain incubator and investment arm of Binance"
             }
         ],
@@ -506,12 +506,12 @@ export const mockHackathons: Hackathon[] = [
         sponsors: [
             {
             name: "European Space Agency",
-            logo: "title",
+            logo: "/title",
             description: "European leader in Earth observation and space missions"
             },
             {
             name: "Copernicus Programme",
-            logo: "platinum",
+            logo: "/platinum",
             description: "Global Earth observation program by the EU"
             }
         ],
