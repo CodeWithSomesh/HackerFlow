@@ -1008,7 +1008,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 							getPopoverAnimationClass(),
 							screenSize === "mobile" && "w-[85vw] max-w-[280px]",
 							screenSize === "tablet" && "w-[70vw] max-w-md",
-							screenSize === "desktop" && "min-w-[300px]",
+							screenSize === "desktop" && "min-w-[800px]",
 							popoverClassName
 						)}
 						style={{
@@ -1061,7 +1061,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 											className="cursor-pointer">
 											<div
 												className={cn(
-													"flex h-4 w-4 items-center justify-center rounded-[2px] border border-primary",
+													"mr-2 flex h-4 w-4 items-center justify-center rounded-[2px] border border-primary",
 													selectedValues.length ===
 														getAllOptions().filter((opt) => !opt.disabled)
 															.length
@@ -1105,7 +1105,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 														disabled={option.disabled}>
 														<div
 															className={cn(
-																"flex h-4 w-4 items-center justify-center rounded-[2px] border border-primary",
+																"mr-2 flex h-4 w-4 items-center justify-center rounded-[2px] border border-primary",
 																isSelected
 																	? "bg-primary text-primary-foreground"
 																	: "opacity-50 [&_svg]:invisible"
@@ -1146,7 +1146,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 													disabled={option.disabled}>
 													<div
 														className={cn(
-															"flex h-4 w-4 items-center justify-center rounded-[2px] border border-primary",
+															"mr-2 flex h-4 w-4 items-center justify-center rounded-[2px] border border-primary",
 															isSelected
 																? "bg-primary text-primary-foreground"
 																: "opacity-50 [&_svg]:invisible"
