@@ -13,7 +13,7 @@ export default async function ProtectedPage() {
   }
 
   // Check if user has completed profile setup
-  const userType = data.claims.user_metadata?.user_type || 'hacker';
+  const userType = data.claims.user_metadata?.user_primary_type || 'hacker';
   
   // Redirect to appropriate profile setup if not completed
   // This is a fallback in case users somehow reach this page

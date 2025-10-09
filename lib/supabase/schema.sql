@@ -2,7 +2,7 @@
 CREATE TABLE IF NOT EXISTS user_profiles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  user_type VARCHAR(20) NOT NULL CHECK (user_type IN ('hacker', 'organizer')),
+  user_primary_type VARCHAR(20) NOT NULL CHECK (user_primary_type IN ('hacker', 'organizer')),
   full_name VARCHAR(255) NOT NULL,
   bio TEXT,
   city VARCHAR(100),
@@ -165,7 +165,7 @@ ALTER TABLE user_profiles ADD CONSTRAINT fk_github_integration
 
 -- Indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_user_profiles_user_id ON user_profiles(user_id);
-CREATE INDEX IF NOT EXISTS idx_user_profiles_user_type ON user_profiles(user_type);
+CREATE INDEX IF NOT EXISTS idx_user_profiles_user_primary_type ON user_profiles(user_primary_type);
 CREATE INDEX IF NOT EXISTS idx_user_profiles_github_integration ON user_profiles(github_integration_id) WHERE github_integration_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_github_projects_user_id ON github_projects(user_id);
 CREATE INDEX IF NOT EXISTS idx_github_projects_selected ON github_projects(user_id, is_selected);
@@ -266,7 +266,7 @@ CREATE OR REPLACE VIEW user_dashboard AS
 SELECT 
   up.user_id,
   up.full_name,
-  up.user_type,
+  up.user_primary_type,
   up.programming_languages,
   up.frameworks,
   up.github_username,
@@ -280,7 +280,7 @@ FROM user_profiles up
 LEFT JOIN github_integrations gi ON up.user_id = gi.user_id
 LEFT JOIN github_projects gp ON up.user_id = gp.user_id AND gp.is_selected = true
 GROUP BY 
-  up.user_id, up.full_name, up.user_type, up.programming_languages, 
+  up.user_id, up.full_name, up.user_primary_type, up.programming_languages, 
   up.frameworks, up.github_username, gi.github_username, gi.is_active, 
   gi.integration_status, gi.last_sync_at, gi.auth_method;
 

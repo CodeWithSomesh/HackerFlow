@@ -57,43 +57,63 @@ export function HackerAuth() {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
-
-    //Basic validation
+  
+    // Basic validation
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match")
       showCustomToast('error', "Passwords do not match") 
       return
     }
-
-    if (formData.password.length < 8) {
-      setError("Password must be at least 8 characters long")
-      showCustomToast('error', "Password must be at least 8 characters long") 
+  
+    if (!Object.values(validations).every(Boolean)) {
+      setError("Please meet all password requirements")
+      showCustomToast('error', "Please meet all password requirements") 
       return
     }
-
+  
     setIsLoading(true)
-
+  
     try {
       const supabase = createClient()
-      const { error } = await supabase.auth.signUp({
+  
+      // Attempt to sign up
+      const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback?user_type=hacker`,
-          data: { user_type: 'hacker' },
+          emailRedirectTo: `${window.location.origin}/auth/callback?user_primary_type=hacker`,
+          data: { user_primary_type: 'hacker' },
         },
       })
-      if (error) throw error
-
-      // Get user data to determine user type
-      const { data: { user } } = await supabase.auth.getUser()
-      const userType = user?.user_metadata?.user_type || 'hacker'
       
-      // Send the user to a confirmation page to check their email
+      if (error) {
+        // Check if error is due to existing user
+        if (error.message.includes('already registered') || 
+            error.message.includes('already been registered') ||
+            error.status === 422) {
+          setError("This email is already registered. Please log in instead.")
+          showCustomToast('error', "Account already exists. Redirecting to Login Page")
+          setTimeout(() => router.push("/auth/login"), 2000)
+          return
+        }
+        throw error
+      }
+  
+      // Check if user already exists (Supabase returns user even if already registered)
+      // If identities is empty, it means user already exists but hasn't confirmed email
+      if (data.user && data.user.identities && data.user.identities.length === 0) {
+        setError("This email is already registered. Please log in instead.")
+        showCustomToast('error', "Account already exists. Redirecting to Login Page")
+        setTimeout(() => router.push("/auth/login"), 2000)
+        return
+      }
+  
+      showCustomToast('success', "Account created! Please check your email to verify.")
       router.push("/auth/sign-up-success")
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "An error occurred during sign in")
-      showCustomToast('error', err instanceof Error ? err.message : "An error occurred during sign in")
+      const errorMessage = err instanceof Error ? err.message : "An error occurred during sign up"
+      setError(errorMessage)
+      showCustomToast('error', errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -125,8 +145,8 @@ export function HackerAuth() {
   //       email: formData.email,
   //       password: formData.password,
   //       options: {
-  //         emailRedirectTo: `${window.location.origin}/auth/callback?user_type=hacker`,
-  //         data: { user_type: "hacker" },
+  //         emailRedirectTo: `${window.location.origin}/auth/callback?user_primary_type=hacker`,
+  //         data: { user_primary_type: "hacker" },
   //       },
   //     })
   //     if (error) throw error
@@ -264,6 +284,7 @@ export function HackerAuth() {
                 onClick={async () => {
                   setAuthMethod("github")
                   setIsLoading(true)
+                  showCustomToast('info', "Redirecting to GitHub...")
                   await signInWithGithub()
                 }}
                 disabled={isLoading}
@@ -304,6 +325,7 @@ export function HackerAuth() {
               onClick={async() => {
                 setAuthMethod("google")
                 setIsLoading(true)
+                showCustomToast('info', "Redirecting to Google...")
                 await signInWithGoogle()
               }}
               disabled={isLoading}

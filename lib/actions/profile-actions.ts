@@ -207,7 +207,7 @@ export async function saveHackerProfile(formData: HackerProfileData) {
 
     const profileData = {
       user_id: user.id,
-      user_type: 'hacker',
+      user_primary_typeary_type: 'hacker',
       full_name: formData.fullName,
       bio: formData.bio || null,
       city: formData.city,
@@ -285,7 +285,7 @@ export async function saveOrganizerProfile(profileData: OrganizerProfileData) {
     // Prepare data for database
     const dbData = {
       user_id: user.id,
-      user_type: 'organizer',
+      user_primary_type: 'organizer',
       full_name: profileData.fullName,
       bio: profileData.bio,
       city: profileData.city,
@@ -359,7 +359,7 @@ export async function getUserProfile(userType: 'hacker' | 'organizer') {
       .from('user_profiles')
       .select('*')
       .eq('user_id', user.id)
-      .eq('user_type', userType)
+      .eq('user_primary_type', userType)
       .single()
 
     if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned

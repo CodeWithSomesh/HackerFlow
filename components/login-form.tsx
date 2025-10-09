@@ -41,7 +41,7 @@
       
 //       // Get user data to determine user type
 //       const { data: { user } } = await supabase.auth.getUser();
-//       const userType = user?.user_metadata?.user_type || 'hacker';
+//       const userType = user?.user_metadata?.user_primary_type || 'hacker';
       
 //       // Redirect based on user type
 //       if (userType === 'organizer') {
@@ -166,7 +166,7 @@ export function LoginForm() {
 
       // Get user data to determine user type
       const { data: { user } } = await supabase.auth.getUser()
-      const userType = user?.user_metadata?.user_type
+      const userType = user?.user_metadata?.user_primary_type
       
       showCustomToast('success', "Welcome Back!")
       router.push("/hackathons")
@@ -251,7 +251,7 @@ export function LoginForm() {
       </div>
 
       {/* Main Content */}
-      <div className=" mx-auto px-6 py-12">
+      <div className=" mx-auto max-w-4xl px-6 py-12">
         {/* Error Display */}
         {error && (
           <div className="mb-6 bg-red-500/10 border border-red-500/30 rounded-md p-4 flex items-center gap-3">

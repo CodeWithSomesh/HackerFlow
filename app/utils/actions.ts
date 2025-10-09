@@ -20,7 +20,7 @@ const signInWith = (provider: Provider, userType: 'hacker' | 'organizer') => asy
         }
     }
     
-    const auth_callback_url = `${siteUrl}/auth/callback?user_type=${userType}`
+    const auth_callback_url = `${siteUrl}/auth/callback?user_primary_type=${userType}`
     
     console.log(`Initiating ${provider} OAuth for ${userType}`)
     console.log('Callback URL:', auth_callback_url)
@@ -83,6 +83,64 @@ const signInWithEmailPassword = async(
         error: null,
     }
 }
+
+// Check if user exists
+export async function checkUserExists(email: string) {
+    const supabase = await createClient()
+    
+    // Check if user exists in auth.users
+    const { data: { user }, error } = await supabase.auth.getUser()
+    
+    if (error || !user) {
+      return { exists: false, hasProfile: false }
+    }
+  
+    // Check if profile exists based on user_primary_type
+    const userType = user.user_metadata?.user_primary_type
+    
+    if (userType === 'hacker') {
+      const { data } = await supabase
+        .from('hacker_profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single()
+      
+      return { 
+        exists: true, 
+        hasProfile: !!data,
+        userType: 'hacker'
+      }
+    } else if (userType === 'organizer') {
+      const { data } = await supabase
+        .from('organizer_profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single()
+      
+      return { 
+        exists: true, 
+        hasProfile: !!data,
+        userType: 'organizer'
+      }
+    }
+    
+    return { exists: true, hasProfile: false }
+  }
+  
+  // Check if email is already registered
+  export async function checkEmailRegistered(email: string) {
+    const supabase = await createClient()
+    
+    const { data, error } = await supabase
+      .from('auth.users')
+      .select('email')
+      .eq('email', email)
+      .single()
+    
+    return { isRegistered: !!data }
+  }
+
+
 
 // Hacker authentication actions
 const signInWithGoogle = signInWith('google', 'hacker')

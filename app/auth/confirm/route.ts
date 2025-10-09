@@ -25,8 +25,8 @@ export async function GET(request: NextRequest) {
       // After email verification, there is no OAuth code to exchange.
       // Determine user type and redirect directly to profile setup.
       const { data: { user } } = await supabase.auth.getUser();
-      const userTypeFromQuery = searchParams.get("user_type");
-      const userType = (user?.user_metadata?.user_type || userTypeFromQuery || 'hacker') as 'hacker' | 'organizer';
+      const userTypeFromQuery = searchParams.get("user_primary_type");
+      const userType = (user?.user_metadata?.user_primary_type || userTypeFromQuery || 'hacker') as 'hacker' | 'organizer';
 
       const redirectPath = userType === 'organizer'
         ? '/onboarding/organizer/profile-setup'

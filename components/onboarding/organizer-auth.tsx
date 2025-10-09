@@ -57,45 +57,67 @@ export function OrganizerAuth() {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
-
-    //Basic validation
+  
     if (!formData.fullName.trim()) {
       setError("Full name is required")
       showCustomToast('error', "Full name is required") 
       return
     }
-
+  
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match")
       showCustomToast('error', "Passwords do not match") 
       return
     }
-
-    if (formData.password.length < 8) {
-      setError("Password must be at least 8 characters long")
-      showCustomToast('error', "Password must be at least 8 characters long") 
+  
+    if (!Object.values(validations).every(Boolean)) {
+      setError("Please meet all password requirements")
+      showCustomToast('error', "Please meet all password requirements") 
       return
     }
-
+  
     setIsLoading(true)
-
+  
     try {
       const supabase = createClient()
-      const { error } = await supabase.auth.signUp({
+  
+      // Attempt to sign up
+      const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback?user_type=organizer`,
-          data: { user_type: 'organizer', full_name: formData.fullName },
+          emailRedirectTo: `${window.location.origin}/auth/callback?user_primary_type=organizer`,
+          data: { user_primary_type: 'organizer', full_name: formData.fullName },
         },
       })
-      if (error) throw error
-
-      // Send the user to a confirmation page to check their email
+      
+      if (error) {
+        // Check if error is due to existing user
+        if (error.message.includes('already registered') || 
+            error.message.includes('already been registered') ||
+            error.status === 422) {
+          setError("This email is already registered. Please log in instead.")
+          showCustomToast('error', "Account already exists. Redirecting to Login Page")
+          setTimeout(() => router.push("/auth/login"), 2000)
+          return
+        }
+        throw error
+      }
+  
+      // Check if user already exists (Supabase returns user even if already registered)
+      if (data.user && data.user.identities && data.user.identities.length === 0) {
+        setError("This email is already registered. Please log in instead.")
+        showCustomToast('error', "Account already exists. Redirecting to Login Page")
+        setTimeout(() => router.push("/auth/login"), 2000)
+        return
+      }
+  
+      showCustomToast('success', "Account created! Please check your email to verify.")
       router.push("/auth/sign-up-success")
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "An error occurred during sign up")
-      showCustomToast('error', err instanceof Error ? err.message : "An error occurred during sign up")
+      const errorMessage = err instanceof Error ? err.message : "An error occurred during sign up"
+      setError(errorMessage)
+      showCustomToast('error', errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -133,8 +155,8 @@ export function OrganizerAuth() {
   //       email: formData.email,
   //       password: formData.password,
   //       options: {
-  //         emailRedirectTo: `${window.location.origin}/auth/callback?user_type=organizer`,
-  //         data: { user_type: "organizer", full_name: formData.fullName },
+  //         emailRedirectTo: `${window.location.origin}/auth/callback?user_primary_type=organizer`,
+  //         data: { user_primary_type: "organizer", full_name: formData.fullName },
   //       },
   //     })
   //     if (error) throw error
