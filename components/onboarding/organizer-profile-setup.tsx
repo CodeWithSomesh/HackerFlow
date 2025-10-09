@@ -9,10 +9,7 @@ import { ProgressIndicator } from "./progress-indicator"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { 
   Users, 
-  Loader2, 
   Building, 
-  Calendar,
-  Award,
   Link,
   Twitter,
   Linkedin,
@@ -21,8 +18,6 @@ import {
   DollarSign,
   Sparkles,
   Trophy,
-  Home,
-  AlertCircle,
   TriangleAlert,
   CheckCircle,
   CalendarClock,
@@ -38,6 +33,8 @@ export function OrganizerProfileSetup() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isProfileComplete, setIsProfileComplete] = useState(false)
+
+  console.log(`Debugging ${isLoading} and ${error}`)
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -177,12 +174,12 @@ export function OrganizerProfileSetup() {
     "> RM 300,000"
   ]
 
-  const eventTypes = [
-    "Hackathons", "Coding Bootcamps", "Tech Conferences", "Workshops", 
-    "Networking Events", "Startup Competitions", "Game Jams", "Design Sprints",
-    "AI/ML Competitions", "Blockchain Events", "Mobile Development", "Web Development",
-    "Cybersecurity", "Data Science", "IoT Events", "Student Competitions"
-  ]
+  // const eventTypes = [
+  //   "Hackathons", "Coding Bootcamps", "Tech Conferences", "Workshops", 
+  //   "Networking Events", "Startup Competitions", "Game Jams", "Design Sprints",
+  //   "AI/ML Competitions", "Blockchain Events", "Mobile Development", "Web Development",
+  //   "Cybersecurity", "Data Science", "IoT Events", "Student Competitions"
+  // ]
 
   // const primaryGoals = [
   //   "Foster Innovation", "Build Community", "Education & Learning", "Networking",
@@ -304,9 +301,6 @@ export function OrganizerProfileSetup() {
     }
   }
 
-  const handleSkip = () => {
-    router.push("/onboarding/complete")
-  }
 
 
   return (
@@ -636,7 +630,7 @@ export function OrganizerProfileSetup() {
 
               {previousEvents.length === 0 && (
                 <p className="text-gray-400 font-mono text-sm text-center py-4 italic">
-                  Click 'Add Event' to showcase your event organizing experience
+                  Click &apos;Add Event&apos; to showcase your event organizing experience
                 </p>
               )}
             </div>

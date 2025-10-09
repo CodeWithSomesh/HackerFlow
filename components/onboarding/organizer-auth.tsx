@@ -4,14 +4,14 @@ import type React from "react"
 
 import { useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
+// import { Button } from "@/components/ui/button"
+// import { Input } from "@/components/ui/input"
+// import { Label } from "@/components/ui/label"
+// import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { ProgressIndicator } from "./progress-indicator"
 import { AlertCircle, Github, Home, Eye, EyeOff, Users, CheckCircle } from "lucide-react"
 import { FcGoogle } from "react-icons/fc"
-import { signInWithGoogleOrganizer, signInWithGithubOrganizer, signInWithEmailPassword } from "@/app/utils/actions"
+import { signInWithGoogleOrganizer, signInWithGithubOrganizer } from "@/app/utils/actions"
 import { createClient } from "@/lib/supabase/client"
 import { showCustomToast } from "../toast-notification"
 
@@ -36,7 +36,7 @@ export function OrganizerAuth() {
     hasSpecialChar: false,
   })
   const searchParams = useSearchParams()
-  const authType = searchParams.get('authtype')?.toLocaleLowerCase()
+  // const authType = searchParams.get('authtype')?.toLocaleLowerCase()
 
   const validatePassword = (pwd: string) => {
     const newValidations = {

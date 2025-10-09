@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   const normalizedType = rawType === 'email' ? 'signup' : rawType;
   const type = (normalizedType ?? 'signup') as EmailOtpType | null;
   // Support both next and redirect_to
-  const next = searchParams.get("next") ?? searchParams.get("redirect_to") ?? "/";
+  // const next = searchParams.get("next") ?? searchParams.get("redirect_to") ?? "/";
 
   if (token_hash && type) {
     const supabase = await createClient();

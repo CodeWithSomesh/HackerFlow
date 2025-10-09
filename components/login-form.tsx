@@ -166,7 +166,7 @@ export function LoginForm() {
 
       // Get user data to determine user type
       const { data: { user } } = await supabase.auth.getUser()
-      const userType = user?.user_metadata?.user_primary_type
+      // const userType = user?.user_metadata?.user_primary_type
       
       showCustomToast('success', "Welcome Back!")
       router.push("/hackathons")
@@ -413,7 +413,7 @@ export function LoginForm() {
         {/* Footer Links */}
         <div className="text-center space-y-4 pt-8">
           <p className="text-gray-400 font-mono text-sm">
-            Don't have an account?{" "}
+            Don&apos;t have an account?{" "}
             <button 
               onClick={() => router.push("/onboarding/user-type")}
               className="text-blue-400 hover:text-blue-300 font-bold transition-colors"

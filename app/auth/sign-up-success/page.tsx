@@ -46,7 +46,7 @@ export default function SignUpSuccessPage() {
               ACCOUNT CREATED
             </h1>
             <p className="text-gray-300 font-mono text-lg mt-2">
-              You're almost there!
+              You&apos;re almost there!
             </p>
           </div>
         </div>
@@ -82,7 +82,7 @@ export default function SignUpSuccessPage() {
                 <div className="flex-1">
                   <h3 className="text-white font-mono font-bold mb-2">Email Confirmation Required</h3>
                   <p className="text-gray-300 font-mono text-sm leading-relaxed">
-                    We've sent a confirmation email to your inbox. Please click the link in the email to verify your account before signing in.
+                    We&apos;ve sent a confirmation email to your inbox. Please click the link in the email to verify your account before signing in.
                   </p>
                 </div>
               </div>
@@ -90,7 +90,7 @@ export default function SignUpSuccessPage() {
 
             {/* What's Next Section */}
             <div className="space-y-4 mb-8">
-              <h3 className="text-white font-mono font-bold text-lg">What's Next?</h3>
+              <h3 className="text-white font-mono font-bold text-lg">What&apos;s Next?</h3>
               <div className="space-y-3">
                 <div className="flex items-start gap-3">
                   <div className="w-6 h-6 rounded-full bg-green-500/20 border border-green-500 flex items-center justify-center flex-shrink-0 mt-0.5">

@@ -493,9 +493,9 @@ export function HackerProfileSetup() {
     }
   }
 
-  const handleSkip = () => {
-    router.push("/onboarding/complete")
-  }
+  // const handleSkip = () => {
+  //   router.push("/onboarding/complete")
+  // }
 
 
   // const handleConnectGitHub = async () => {
@@ -921,7 +921,7 @@ export function HackerProfileSetup() {
                   
                   {formData.workExperiences.length === 0 && (
                     <p className="text-gray-400 text-sm italic text-center py-4" style={{fontFamily: 'monospace'}}>
-                      Click 'Add Experience' to add your work or internship experience
+                      Click &apos;Add Experience&apos; to add your work or internship experience
                     </p>
                   )}
                 </div>
@@ -1097,7 +1097,7 @@ export function HackerProfileSetup() {
                   className="w-4 h-4 text-pink-500 bg-gray-900 border-gray-600 rounded focus:ring-pink-500"
                 />
                 <label htmlFor="openToRecruitment" className="text-gray-200 font-mono text-sm">
-                  I'm open to recruitment opportunities
+                  I&apos;m open to recruitment opportunities
                 </label>
               </div>
             </div>

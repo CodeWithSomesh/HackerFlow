@@ -48,7 +48,7 @@ export function UserTypeSelection() {
               WELCOME TO HACKERFLOW
             </h1>
             <p className="text-gray-300 font-mono text-lg mt-2">
-              Join Malaysia's most innovative hackathon platform
+              Join Malaysia&apos;s most innovative hackathon platform
             </p>
             
             {/* Progress Indicator */}
@@ -121,7 +121,7 @@ export function UserTypeSelection() {
                 </div>
 
                 <h3 className="text-2xl font-blackops text-white mb-3 group-hover:text-pink-300 transition-colors">
-                  I'M A HACKER
+                  I&apos;M A HACKER
                 </h3>
                 <p className="text-gray-300 font-mono text-sm mb-6 leading-relaxed">
                   Join hackathons, form teams, and build amazing projects
@@ -181,7 +181,7 @@ export function UserTypeSelection() {
                 </div>
 
                 <h3 className="text-2xl font-blackops text-white mb-3 group-hover:text-teal-300 transition-colors">
-                  I'M AN ORGANIZER
+                  I&apos;M AN ORGANIZER
                 </h3>
                 <p className="text-gray-300 font-mono text-sm mb-6 leading-relaxed">
                   Host events, manage participants, and track success

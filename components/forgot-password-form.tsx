@@ -72,7 +72,7 @@ export function ForgotPasswordForm() {
               RESET PASSWORD
             </h1>
             <p className="text-gray-300 font-mono text-lg mt-2">
-              We'll send you a reset link
+              We&apos;ll send you a reset link
             </p>
           </div>
         </div>

@@ -207,7 +207,7 @@ export function HackerAuth() {
               CREATE YOUR ACCOUNT
             </h1>
             <p className="text-gray-300 font-mono text-lg mt-2">
-              Join Malaysia's most innovative hackathon platform
+              Join Malaysia&apos;s most innovative hackathon platform
             </p>
             
             {/* Progress Indicator */}
@@ -274,7 +274,7 @@ export function HackerAuth() {
               </div>
               
               <p className="text-gray-300 font-mono text-sm">
-                We'll analyze your repos for better team matching
+                We&apos;ll analyze your repos for better team matching
               </p>
             </div>
 
