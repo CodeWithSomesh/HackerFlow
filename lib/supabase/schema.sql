@@ -336,3 +336,15 @@ CREATE POLICY "Public can view logos"
 ON storage.objects FOR SELECT
 TO public
 USING (bucket_id = 'hackathons');
+
+CREATE POLICY "Authenticated users can upload hackathon files"
+ON storage.objects
+FOR INSERT
+TO authenticated
+WITH CHECK (bucket_id = 'hackathons');
+
+CREATE POLICY "Public can view hackathon files"
+ON storage.objects
+FOR SELECT
+TO public
+USING (bucket_id = 'hackathons');

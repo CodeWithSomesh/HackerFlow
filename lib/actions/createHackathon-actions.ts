@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server';
-import { CreateHackathonStep1FormData, CreateHackathonStep2FormData } from '@/lib/validations/createHackathons';
+import { CreateHackathonStep1FormData, CreateHackathonStep2FormData, CreateHackathonStep3FormData } from '@/lib/validations/createHackathons';
 
 export async function createHackathon(data: CreateHackathonStep1FormData, hackathonId?: string) {
   try {
@@ -155,6 +155,47 @@ export async function updateHackathonStep2(hackathonId: string, data: CreateHack
     }
   }
   
+  export async function uploadHackathonBanner(file: File) {
+    try {
+      const supabase = await createClient();
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        return { success: false, error: 'User not authenticated' };
+      }
+  
+      if (!file.type.startsWith('image/')) {
+        return { success: false, error: 'Please upload an image file (PNG/JPG)' };
+      }
+  
+      if (file.size > 2 * 1024 * 1024) { // 2MB for banners
+        return { success: false, error: 'Image size must be less than 2MB' };
+      }
+  
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}-banner-${Date.now()}.${fileExt}`;
+      // Use same folder as logos since that's working
+      const filePath = `hackathon-logos/${fileName}`;
+  
+      const { error: uploadError } = await supabase.storage
+        .from('hackathons')
+        .upload(filePath, file);
+  
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        return { success: false, error: `Failed to upload banner: ${uploadError.message}` };
+      }
+  
+      const { data: { publicUrl } } = supabase.storage
+        .from('hackathons')
+        .getPublicUrl(filePath);
+  
+      return { success: true, url: publicUrl };
+    } catch (error) {
+      console.error('Upload error:', error);
+      return { success: false, error: 'An unexpected error occurred' };
+    }
+  }
+
   export async function getHackathonById(hackathonId: string) {
     try {
       const supabase = await createClient();
@@ -177,6 +218,59 @@ export async function updateHackathonStep2(hackathonId: string, data: CreateHack
   
       return { success: true, data };
     } catch (error) {
+      return { success: false, error: 'An unexpected error occurred' };
+    }
+  }
+
+  export async function updateHackathonStep3(hackathonId: string, data: CreateHackathonStep3FormData) {
+    try {
+      const supabase = await createClient();
+      
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        return { success: false, error: 'User not authenticated' };
+      }
+  
+      const { data: hackathon, error: updateError } = await supabase
+        .from('hackathons')
+        .update({
+          title: data.title,
+          organization: data.organizer,
+          mode: data.mode,
+          location: data.location,
+          participants: data.participants,
+          max_participants: data.maxParticipants,
+          total_prize_pool: data.totalPrizePool,
+          banner_url: data.bannerUrl,
+          logo_url: data.logoUrl,
+          about: data.about,
+          duration: data.duration,
+          registration_deadline: data.registrationDeadline,
+          eligibility: data.eligibility,
+          requirements: data.requirements,
+          categories: data.categories,
+          prizes: data.prizes,
+          timeline: data.timeline,
+          important_dates: data.importantDates,
+          faq: data.faq,
+          organizers: data.organizers,
+          sponsors: data.sponsors,
+          step: 3,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', hackathonId)
+        .eq('created_by', user.id)
+        .select()
+        .single();
+  
+      if (updateError) {
+        console.error('Update error:', updateError);
+        return { success: false, error: updateError.message };
+      }
+  
+      return { success: true, data: hackathon };
+    } catch (error) {
+      console.error('Server error:', error);
       return { success: false, error: 'An unexpected error occurred' };
     }
   }
