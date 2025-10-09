@@ -7,12 +7,6 @@ import { useRouter } from "next/navigation"
 import { saveHackerProfile, saveGitHubProjects, testDatabaseConnection } from "@/lib/actions/profile-actions"
 // import { getMockGitHubRepositories, analyzeGitHubRepositories } from "@/lib/utils/github-utils"
 import { GitHubProject } from "@/lib/actions/profile-actions"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Textarea } from "@/components/ui/textarea"
 import { ProgressIndicator } from "./progress-indicator"
 import { 
   Github, 
@@ -28,7 +22,8 @@ import {
   Globe,
   Instagram,
   Sparkles,
-  AlertCircle
+  AlertCircle,
+  TriangleAlert
 } from "lucide-react"
 import { useGitHubIntegration } from "@/hooks/useGitHubIntegration"
 import { createClient } from '@/lib/supabase/client';
@@ -38,6 +33,7 @@ import { triggerSideCannons,
   // triggerFireworks, triggerCustomShapes, triggerEmoji, triggerStars 
 } from "@/lib/confetti"
 import type { User } from "@supabase/supabase-js";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 
 export function HackerProfileSetup() {
@@ -53,6 +49,7 @@ export function HackerProfileSetup() {
   const [githubRepositories, setGithubRepositories] = useState<GitHubProject[]>([])
   const [error, setError] = useState<string | null>(null)
   const [userAuthMethod, setUserAuthMethod] = useState<string | null>(null);
+  const [isProfileComplete, setIsProfileComplete] = useState(false)
   const [formData, setFormData] = useState({
     fullName: "",
     bio: "",
@@ -99,6 +96,50 @@ export function HackerProfileSetup() {
     // Other
     openToRecruitment: false,
   })
+
+  // Check if all required fields are filled
+  useEffect(() => {
+    const requiredFieldsFilled = 
+      formData.fullName.trim() !== '' &&
+      formData.profileType !== '' &&
+      formData.city.trim() !== '' &&
+      formData.state.trim() !== '' &&
+      (formData.profileType === 'student' 
+        ? formData.university?.trim() !== '' && formData.course?.trim() !== ''
+        : formData.company?.trim() !== '' && formData.position?.trim() !== '') &&
+      formData.programmingLanguages.length > 0;
+    
+    setIsProfileComplete(requiredFieldsFilled)
+  }, [formData])
+
+  // Prevent browser back/close
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!isProfileComplete) {
+        e.preventDefault()
+        e.returnValue = 'Please complete your profile registration before leaving.'
+        return 'Please complete your profile registration before leaving.'
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [isProfileComplete])
+
+  // Prevent browser back button
+  useEffect(() => {
+    if (!isProfileComplete) {
+      window.history.pushState(null, '', window.location.href)
+      
+      const handlePopState = () => {
+        window.history.pushState(null, '', window.location.href)
+        showCustomToast('warning', 'Please complete your profile registration before leaving this page.')
+      }
+
+      window.addEventListener('popstate', handlePopState)
+      return () => window.removeEventListener('popstate', handlePopState)
+    }
+  }, [isProfileComplete])
   
   // Add this authentication check at the top of your component
   useEffect(() => {
@@ -111,13 +152,13 @@ export function HackerProfileSetup() {
         
         if (sessionError) {
           console.error('Session error:', sessionError);
-          router.push('/auth/signin');
+          router.push('/auth/login');
           return;
         }
 
         if (!session) {
           console.log('No session found, redirecting to signin');
-          router.push('/auth/signin');
+          router.push('/auth/login');
           return;
         }
 
@@ -126,7 +167,7 @@ export function HackerProfileSetup() {
         
         if (userError || !user) {
           console.error('User error:', userError);
-          router.push('/auth/signin');
+          router.push('/auth/login');
           return;
         }
 
@@ -135,7 +176,7 @@ export function HackerProfileSetup() {
         
       } catch (error) {
         console.error('Auth check failed:', error);
-        router.push('/auth/signin');
+        router.push('/auth/login');
       } finally {
         setIsAuthChecking(false);
       }
@@ -182,6 +223,7 @@ export function HackerProfileSetup() {
     console.log('OAuth callback detected:', { code, error });
     
     if (error) {
+      showCustomToast('error', `GitHub connection failed: ${error}`)
       setError(`GitHub connection failed: ${error}`);
       return;
     }
@@ -242,6 +284,7 @@ export function HackerProfileSetup() {
         window.history.replaceState({}, '', window.location.pathname);
       }).catch((err) => {
         console.error('GitHub integration failed:', err);
+        showCustomToast('error', `GitHub integration failed: ${err.message}`)
         setError(`GitHub integration failed: ${err.message}`);
       });
     }
@@ -257,8 +300,8 @@ export function HackerProfileSetup() {
       const { data: { user }, error } = await supabase.auth.getUser();
       
       if (error || !user) {
-        console.log('No authenticated user, redirecting to sign in');
-        router.push('/auth/signin');
+        console.log('No authenticated user, redirecting to Login Page');
+        router.push('/auth/login');
         return;
       }
       
@@ -387,20 +430,10 @@ export function HackerProfileSetup() {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
-
-    // // Check authentication first
-    // const supabase = createClient();
-    // const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    // if (authError || !user) {
-    //   setError('You must be logged in to create a profile. Please sign in again.');
-    //   setIsLoading(false);
-    //   router.push('/auth/signin'); // Redirect to sign in
-    //   return;
-    // }
   
     // Basic validation
     if (!formData.fullName || !formData.profileType || !formData.city || !formData.state) {
+      showCustomToast('error', 'Please fill in all required fields (Name, Profile Type, City, State)')
       setError('Please fill in all required fields (Name, Profile Type, City, State)')
       setIsLoading(false)
       return
@@ -409,12 +442,14 @@ export function HackerProfileSetup() {
     // Profile type specific validation
     if (formData.profileType === 'student') {
       if (!formData.university || !formData.course || !formData.yearOfStudy || !formData.graduationYear) {
+        showCustomToast('error', 'Please fill in all required academic information')
         setError('Please fill in all required academic information')
         setIsLoading(false)
         return
       }
     } else if (formData.profileType === 'working') {
       if (!formData.company || !formData.position || !formData.workExperience) {
+        showCustomToast('error', 'Please fill in all required professional information')
         setError('Please fill in all required professional information')
         setIsLoading(false)
         return
@@ -430,8 +465,11 @@ export function HackerProfileSetup() {
       console.log('Profile save result:', result); // Debug log
       
       if (!result.success) {
+        showCustomToast('error', "Failed To Create Your Profile") //Show Error Toast
         throw new Error(result.error || 'Failed to save profile')
       }
+
+      setIsProfileComplete(true) // Allow navigation
   
       // Save GitHub projects if connected
       if (githubConnected && githubRepositories.length > 0) {
@@ -443,20 +481,22 @@ export function HackerProfileSetup() {
         }
       }
       
-      showCustomToast('success', "Successfully Created Hacker Profile") //Show Success Toast
+      showCustomToast('success', "Successfully Created Your Profile!") //Show Success Toast
       triggerSideCannons(); //Trigger Confetti
       router.push("/hackathons") //Redirect to Hackathon Page
     } catch (err) {
       console.error('Error saving profile:', err)
+      showCustomToast('error', "Failed To Create Your Profile") //Show Error Toast
       setError(err instanceof Error ? err.message : 'Failed to save profile')
     } finally {
       setIsLoading(false)
     }
   }
 
-  const handleSkip = () => {
-    router.push("/onboarding/complete")
-  }
+  // const handleSkip = () => {
+  //   router.push("/onboarding/complete")
+  // }
+
 
   // const handleConnectGitHub = async () => {
   //   setGithubAnalyzing(true)
@@ -490,862 +530,726 @@ export function HackerProfileSetup() {
   // }
 
   return (
-    <div className="min-h-screen ">
+    <div className="min-h-screen">
       {/* Background Effects */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-pink-500 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-cyan-500 to-purple-500 rounded-full blur-3xl"></div>
+      <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10">
+        <div className="absolute top-96 left-2 w-96 h-96 bg-pink-500 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-20 right-4 w-96 h-96 bg-purple-500 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-pink-500/15 to-purple-500/15 rounded-full blur-3xl"></div>
       </div>
 
-      {/* Home Button - Floating in top right */}
-      {/* <div className="fixed top-6 right-6 z-50">
-        <Button
-          onClick={handleHomeClick}
-          className="group relative backdrop-blur-xl bg-slate-800/30 border border-white hover:border-slate-500/50 text-white hover:text-white rounded-2xl p-3 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-          size="sm"
-        >
-          <div className="absolute inset-0 bg-gradient-to-r from-pink-500/10 via-purple-500/10 to-cyan-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-          <Home className="w-5 h-5 relative z-10 group-hover:rotate-12 transition-transform duration-300" />
-          <span className="s-only">Go to Home</span>
-        </Button>
-      </div> */}
-
-      <div className="relative flex flex-col items-center justify-center px-4 py-8">
-        <div className="w-full max-w-4xl mx-auto">
-          <div className="text-center mb-8">
-            <ProgressIndicator currentStep={3} totalSteps={3} />
-          </div>
-
-          <div className="text-center mb-8">
-            <div className="relative inline-block mb-4">
-              <div className="absolute inset-0 bg-gradient-to-r from-pink-500/20 via-purple-500/20 to-cyan-500/20 rounded-2xl blur-xl"></div>
-              <h1 className="relative text-4xl font-bold mb- bg-gradient-to-r from-pink-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent">
-                Complete Your Hacker Profile
-              </h1>
-            </div>
-            <p className="text-white text-lg">Help us find your perfect hackathon teammates and opportunities</p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-8">
-            {/* Error Display */}
-            {error && (
-              <div className="bg-red-500/10 border border-red-500/30 text-red-300 px-4 py-3 rounded-xl flex items-center gap-3 backdrop-blur-sm">
-                <AlertCircle className="h-5 w-5 flex-shrink-0" />
-                <span className="text-sm">{error}</span>
+      {/* Header */}
+      <div className="bg-gradient-to-br from-gray-900 to-gray-800 border-b border-gray-700">
+        <div className="max-w-6xl mx-auto px-6 py-8">
+          <div className="text-center">
+            <h1 className="text-5xl font-blackops text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-purple-400 to-yellow-500">
+              HACKER PROFILE SETUP
+            </h1>
+            <p className="text-gray-300 font-mono text-lg mt-2">
+              Build your profile to find the perfect hackathon team
+            </p>
+            
+            {/* Progress Indicator */}
+            <div className="flex items-center justify-center gap-3 pt-4 mt-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-pink-500 border-2 border-pink-300 flex items-center justify-center">
+                  <CheckCircle className="w-5 h-5 text-black" />
+                </div>
+                <span className="text-gray-400 font-mono text-sm">Account</span>
               </div>
-            )}
+              <div className="h-px w-12 bg-gray-600"></div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-pink-500 border-2 border-pink-300 flex items-center justify-center">
+                  <CheckCircle className="w-5 h-5 text-black" />
+                </div>
+                <span className="text-gray-400 font-mono text-sm">Role</span>
+              </div>
+              <div className="h-px w-12 bg-gray-600"></div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-pink-500 border-2 border-pink-300 flex items-center justify-center font-bold text-black">
+                  3
+                </div>
+                <span className="text-white font-mono text-sm font-bold">Profile</span>
+              </div>
+            </div>
 
-            {/* Basic Information */}
-            <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-400 shadow-2xl">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-3 text-xl text-white">
-                  <div className="w-10 h-10 bg-gradient-to-r from-pink-500 to-purple-600 rounded-xl flex items-center justify-center">
-                    <Users className="w-5 h-5 text-white" />
-                  </div>
-                  Basic Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
+            <div className="text-center flex mx-auto max-w-2xl mt-8">
+              <ProgressIndicator currentStep={3} totalSteps={3} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Warning Banner */}
+      <div className="max-w-6xl mx-auto px-6 py-6">
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-md p-4 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-sm bg-yellow-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <TriangleAlert className="text-yellow-400" />
+          </div>
+          <p className="text-yellow-300 text-sm font-mono">
+            Complete all required fields (*) before leaving this page to ensure your account is properly set up.
+          </p>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="max-w-6xl mx-auto px-6 pb-12">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Error Display */}
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-md p-4 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-sm bg-red-500/20 flex items-center justify-center flex-shrink-0">
+                <AlertCircle className="text-red-400" />
+              </div>
+              <span className="text-red-300 text-sm font-mono">{error}</span>
+            </div>
+          )}
+
+
+          {/* Basic Information */}
+      <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-md">
+        <div className="px-8 py-6 border-b border-gray-700">
+          <div className="flex items-center gap-3">
+            <Users className="w-7 h-7 text-pink-400" />
+            <h2 className="text-2xl font-bold text-white" style={{fontFamily: 'monospace'}}>BASIC INFORMATION</h2>
+          </div>
+        </div>
+        
+        <div className="px-8 py-6 space-y-6">
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-gray-200 text-sm" style={{fontFamily: 'monospace'}}>Full Name *</label>
+              <input
+                type="text"
+                value={formData.fullName}
+                onChange={(e) => setFormData({...formData, fullName: e.target.value})}
+                placeholder="John Doe"
+                className="w-full bg-black border border-gray-700 text-gray-100 rounded-md px-4 py-3 focus:outline-none focus:border-pink-500"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-gray-200 text-sm" style={{fontFamily: 'monospace'}}>I am a *</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFormData({...formData, profileType: "student"})}
+                  className={`flex items-center gap-2 p-3 rounded-md border transition-colors ${
+                    formData.profileType === "student"
+                      ? 'border-pink-400 bg-pink-500/10'
+                      : 'border-gray-700 bg-gray-900/40 hover:bg-gray-800/40'
+                  }`}
+                >
+                  <GraduationCap className="w-4 h-4 text-pink-400" />
+                  <span className="text-white text-sm" style={{fontFamily: 'monospace'}}>Student</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData({...formData, profileType: "working"})}
+                  className={`flex items-center gap-2 p-3 rounded-md border transition-colors ${
+                    formData.profileType === "working"
+                      ? 'border-purple-400 bg-purple-500/10'
+                      : 'border-gray-700 bg-gray-900/40 hover:bg-gray-800/40'
+                  }`}
+                >
+                  <Briefcase className="w-4 h-4 text-purple-400" />
+                  <span className="text-white text-sm" style={{fontFamily: 'monospace'}}>Working</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            <div className="space-y-2">
+              <label className="text-gray-200 text-sm" style={{fontFamily: 'monospace'}}>City *</label>
+              <input
+                type="text"
+                value={formData.city}
+                onChange={(e) => setFormData({...formData, city: e.target.value})}
+                placeholder="Kuala Lumpur"
+                className="w-full bg-black border border-gray-700 text-gray-100 rounded-md px-4 py-3 focus:outline-none focus:border-pink-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-gray-200 text-sm" style={{fontFamily: 'monospace'}}>State *</label>
+              <input
+                type="text"
+                value={formData.state}
+                onChange={(e) => setFormData({...formData, state: e.target.value})}
+                placeholder="Selangor"
+                className="w-full bg-black border border-gray-700 text-gray-100 rounded-md px-4 py-3 focus:outline-none focus:border-pink-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-gray-200 text-sm" style={{fontFamily: 'monospace'}}>Country</label>
+              <input
+                type="text"
+                value={formData.country}
+                readOnly
+                className="w-full bg-gray-800 border border-gray-700 text-gray-400 rounded-md px-4 py-3"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-gray-200 text-sm" style={{fontFamily: 'monospace'}}>Bio</label>
+            <textarea
+              value={formData.bio}
+              onChange={(e) => setFormData({...formData, bio: e.target.value})}
+              placeholder="Tell us about yourself, your interests, and what you love building..."
+              className="w-full bg-black border border-gray-700 text-gray-100 rounded-md px-4 py-3 resize-none focus:outline-none focus:border-pink-500"
+              rows={3}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Academic/Professional Information */}
+      {formData.profileType && (
+        <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-md">
+          <div className="px-8 py-6 border-b border-gray-700">
+            <div className="flex items-center gap-3">
+              {formData.profileType === "student" ? (
+                <GraduationCap className="w-7 h-7 text-pink-400" />
+              ) : (
+                <Briefcase className="w-7 h-7 text-purple-400" />
+              )}
+              <h2 className="text-2xl font-bold text-white" style={{fontFamily: 'monospace'}}>
+                {formData.profileType === "student" ? "ACADEMIC INFORMATION" : "PROFESSIONAL INFORMATION"}
+              </h2>
+            </div>
+          </div>
+          
+          <div className="px-8 py-6 space-y-6">
+            {formData.profileType === "student" ? (
+              <>
                 <div className="grid md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="fullName" className="text-slate-300 font-medium">Full Name *</Label>
-                    <Input
-                      id="fullName"
-                      value={formData.fullName}
-                      onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                      placeholder="John Doe"
-                      className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 rounded-xl py-3"
-                      required
+                    <label className="text-gray-200 text-sm" style={{fontFamily: 'monospace'}}>University *</label>
+                    <input
+                      type="text"
+                      value={formData.university}
+                      onChange={(e) => setFormData({...formData, university: e.target.value})}
+                      placeholder="University of Malaya"
+                      className="w-full bg-black border border-gray-700 text-gray-100 rounded-md px-4 py-3 focus:outline-none focus:border-pink-500"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-slate-300 font-medium">I am a *</Label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Button
-                        type="button"
-                        variant={formData.profileType === "student" ? "default" : "outline"}
-                        onClick={() => setFormData({ ...formData, profileType: "student" })}
-                        className={`py-3 rounded-xl ${
-                          formData.profileType === "student"
-                            ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
-                            : "bg-slate-700/50 border-slate-600 text-slate-300 hover:bg-blue-500/10 hover:border-blue-500/50"
-                        }`}
-                      >
-                        <GraduationCap className="w-4 h-4 mr-2" />
-                        Student
-                      </Button>
-                      <Button
-                        type="button"
-                        variant={formData.profileType === "working" ? "default" : "outline"}
-                        onClick={() => setFormData({ ...formData, profileType: "working" })}
-                        className={`py-3 rounded-xl ${
-                          formData.profileType === "working"
-                            ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white"
-                            : "bg-slate-700/50 border-slate-600 text-slate-300 hover:bg-emerald-500/10 hover:border-emerald-500/50"
-                        }`}
-                      >
-                        <Briefcase className="w-4 h-4 mr-2" />
-                        Working
-                      </Button>
-                    </div>
+                    <label className="text-gray-200 text-sm" style={{fontFamily: 'monospace'}}>Course/Major *</label>
+                    <input
+                      type="text"
+                      value={formData.course}
+                      onChange={(e) => setFormData({...formData, course: e.target.value})}
+                      placeholder="Computer Science"
+                      className="w-full bg-black border border-gray-700 text-gray-100 rounded-md px-4 py-3 focus:outline-none focus:border-pink-500"
+                    />
                   </div>
                 </div>
-
-                <div className="grid md:grid-cols-3 gap-6">
+                
+                <div className="grid md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="city" className="text-slate-300 font-medium">City *</Label>
-                    <Input
-                      id="city"
-                      value={formData.city}
-                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                      placeholder="Kuala Lumpur"
-                      className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 rounded-xl py-3"
-                      required
+                    <label className="text-gray-200 text-sm" style={{fontFamily: 'monospace'}}>Current Year *</label>
+                    <Select value={formData.yearOfStudy} onValueChange={(value) => setFormData({...formData, yearOfStudy: value})}>
+                      <SelectTrigger className="bg-black border-gray-700 text-gray-200 py-6 text-md">
+                        <SelectValue placeholder="Select year" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-black border-gray-700">
+                        <SelectItem value="Year 1">Year 1</SelectItem>
+                        <SelectItem value="Year 2">Year 2</SelectItem>
+                        <SelectItem value="Year 3">Year 3</SelectItem>
+                        <SelectItem value="Year 4">Year 4</SelectItem>
+                        <SelectItem value="Year 5">Year 5</SelectItem>
+                        <SelectItem value="Final Year">Final Year</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-gray-200 text-sm" style={{fontFamily: 'monospace'}}>Expected Graduation *</label>
+                    <input
+                      type="number"
+                      min="2024"
+                      max="2030"
+                      value={formData.graduationYear}
+                      onChange={(e) => setFormData({...formData, graduationYear: e.target.value})}
+                      placeholder="2025"
+                      className="w-full bg-black border border-gray-700 text-gray-100 rounded-md px-4 py-3 focus:outline-none focus:border-pink-500"
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-gray-200 text-sm" style={{fontFamily: 'monospace'}}>Company *</label>
+                    <input
+                      type="text"
+                      value={formData.company}
+                      onChange={(e) => setFormData({...formData, company: e.target.value})}
+                      placeholder="Tech Company Sdn Bhd"
+                      className="w-full bg-black border border-gray-700 text-gray-100 rounded-md px-4 py-3 focus:outline-none focus:border-purple-500"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="state" className="text-slate-300 font-medium">State *</Label>
-                    <Input
-                      id="state"
-                      value={formData.state}
-                      onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                      placeholder="Selangor"
-                      className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 rounded-xl py-3"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="country" className="text-slate-300 font-medium">Country</Label>
-                    <Input
-                      id="country"
-                      value={formData.country}
-                      onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                      className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 rounded-xl py-3"
-                      readOnly
+                    <label className="text-gray-200 text-sm" style={{fontFamily: 'monospace'}}>Position *</label>
+                    <input
+                      type="text"
+                      value={formData.position}
+                      onChange={(e) => setFormData({...formData, position: e.target.value})}
+                      placeholder="Software Developer"
+                      className="w-full bg-black border border-gray-700 text-gray-100 rounded-md px-4 py-3 focus:outline-none focus:border-purple-500"
                     />
                   </div>
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="bio" className="text-slate-300 font-medium">Bio</Label>
-                  <Textarea
-                    id="bio"
-                    value={formData.bio}
-                    onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                    placeholder="Tell us about yourself, your interests, and what you love building..."
-                    className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 rounded-xl resize-none"
-                    rows={3}
-                  />
+                  <label className="text-gray-200 text-sm" style={{fontFamily: 'monospace'}}>Years of Experience *</label>
+                  <Select value={formData.workExperience} onValueChange={(value) => setFormData({...formData, workExperience: value})}>
+                    <SelectTrigger className="bg-black border-gray-700 text-gray-200 py-6 text-md">
+                      <SelectValue placeholder="Select experience" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-black border-gray-700">
+                      <SelectItem value="<1 year">Less than 1 year</SelectItem>
+                      <SelectItem value="1-2 years">1-2 years</SelectItem>
+                      <SelectItem value="3-5 years">3-5 years</SelectItem>
+                      <SelectItem value="5-10 years">5-10 years</SelectItem>
+                      <SelectItem value="10+ years">10+ years</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-              </CardContent>
-            </Card>
+              </>
+            )}
 
-            {/* Academic/Professional Information */}
-            {formData.profileType && (
-              <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-400 shadow-2xl">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-3 text-xl text-white">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                      formData.profileType === "student" 
-                        ? "bg-gradient-to-r from-blue-600 to-purple-600"
-                        : "bg-gradient-to-r from-emerald-600 to-teal-600"
-                    }`}>
-                      {formData.profileType === "student" ? 
-                        <GraduationCap className="w-5 h-5 text-white" /> : 
-                        <Briefcase className="w-5 h-5 text-white" />
-                      }
-                    </div>
-                    {formData.profileType === "student" ? "Academic Information" : "Professional Information"}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {formData.profileType === "student" ? (
-                    <>
-                      <div className="grid md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <Label htmlFor="university" className="text-slate-300 font-medium">University *</Label>
-                          <Input
-                            id="university"
-                            value={formData.university}
-                            onChange={(e) => setFormData({ ...formData, university: e.target.value })}
-                            placeholder="University of Malaya"
-                            className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 rounded-xl py-3"
-                            required
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="course" className="text-slate-300 font-medium">Course/Major *</Label>
-                          <Input
-                            id="course"
-                            value={formData.course}
-                            onChange={(e) => setFormData({ ...formData, course: e.target.value })}
-                            placeholder="Computer Science"
-                            className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 rounded-xl py-3"
-                            required
-                          />
-                        </div>
+            {/* Work Experience Section */}
+            <div className="space-y-4 pt-4 border-t border-gray-700">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.hasWorkExperience}
+                  onChange={(e) => setFormData({...formData, hasWorkExperience: e.target.checked})}
+                  className="w-4 h-4 text-pink-500 bg-gray-900 border-gray-600 rounded focus:ring-pink-500"
+                />
+                <span className="text-gray-200 text-sm" style={{fontFamily: 'monospace'}}>
+                  {formData.profileType === "student" ? "I have internship/work experience" : "Add additional work experience details"}
+                </span>
+              </label>
+              
+              {formData.hasWorkExperience && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <label className="text-gray-200 text-sm font-semibold" style={{fontFamily: 'monospace'}}>Work Experience Details</label>
+                    <button
+                      type="button"
+                      onClick={addWorkExperience}
+                      className="bg-gradient-to-r from-pink-500 via-purple-500 to-yellow-500 font-bold text-white text-sm px-4 py-2 rounded-md hover:opacity-90 transition-opacity"
+                      style={{fontFamily: 'monospace'}}
+                    >
+                      + Add Experience
+                    </button>
+                  </div>
+                  
+                  {formData.workExperiences.map((experience, index) => (
+                    <div key={experience.id} className="p-4 bg-gray-800/30 border border-gray-700/50 rounded-md space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-white" style={{fontFamily: 'monospace'}}>Experience #{index + 1}</h4>
+                        <button
+                          type="button"
+                          onClick={() => removeWorkExperience(experience.id)}
+                          className="text-red-400 hover:text-red-300 transition-colors text-sm"
+                          style={{fontFamily: 'monospace'}}
+                        >
+                          Remove
+                        </button>
                       </div>
                       
-                      <div className="grid md:grid-cols-2 gap-6">
+                      <div className="grid md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="yearOfStudy" className="text-slate-300 font-medium">Current Year *</Label>
-                          <select
-                            id="yearOfStudy"
-                            value={formData.yearOfStudy}
-                            onChange={(e) => setFormData({ ...formData, yearOfStudy: e.target.value })}
-                            className="w-full py-[9px] px-3 text-sm bg-slate-700/50 border border-slate-600 rounded-xl text-white"
-                            required
-                          >
-                            <option value="Year 1">Year 1</option>
-                            <option value="Year 2">Year 2</option>
-                            <option value="Year 3">Year 3</option>
-                            <option value="Year 4">Year 4</option>
-                            <option value="Year 5">Year 5</option>
-                            <option value="Final Year">Final Year</option>
-                          </select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="graduationYear" className="text-slate-300 font-medium">Expected Graduation *</Label>
-                          <Input
-                            id="graduationYear"
-                            type="number"
-                            min="2024"
-                            max="2030"
-                            value={formData.graduationYear}
-                            onChange={(e) => setFormData({ ...formData, graduationYear: e.target.value })}
-                            placeholder="2025"
-                            className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 rounded-xl py-3"
-                            required
-                          />
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="grid md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <Label htmlFor="company" className="text-slate-300 font-medium">Company *</Label>
-                          <Input
-                            id="company"
-                            value={formData.company}
-                            onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                            placeholder="Tech Company Sdn Bhd"
-                            className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 rounded-xl py-3"
-                            required
+                          <label className="text-gray-300 text-xs" style={{fontFamily: 'monospace'}}>Company/Organization</label>
+                          <input
+                            type="text"
+                            value={experience.company}
+                            onChange={(e) => updateWorkExperience(experience.id, "company", e.target.value)}
+                            placeholder="Company name"
+                            className="w-full bg-gray-900 border border-gray-600 text-gray-100 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-pink-500"
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="position" className="text-slate-300 font-medium">Position *</Label>
-                          <Input
-                            id="position"
-                            value={formData.position}
-                            onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-                            placeholder="Software Developer"
-                            className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 rounded-xl py-3"
-                            required
+                          <label className="text-gray-300 text-xs" style={{fontFamily: 'monospace'}}>Position/Role</label>
+                          <input
+                            type="text"
+                            value={experience.position}
+                            onChange={(e) => updateWorkExperience(experience.id, "position", e.target.value)}
+                            placeholder="Your role"
+                            className="w-full bg-gray-900 border border-gray-600 text-gray-100 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-pink-500"
                           />
                         </div>
                       </div>
                       
                       <div className="space-y-2">
-                        <Label htmlFor="workExperience" className="text-slate-300 font-medium">Years of Experience *</Label>
-                        <select
-                          id="workExperience"
-                          value={formData.workExperience}
-                          onChange={(e) => setFormData({ ...formData, workExperience: e.target.value })}
-                          className="w-full py-3 px-3 text-sm bg-slate-700/50 border border-slate-600 rounded-xl text-white"
-                          required
-                        >
-                          <option value="">Select experience</option>
-                          <option value="<1 year">Less than 1 year</option>
-                          <option value="1-2 years">1-2 years</option>
-                          <option value="3-5 years">3-5 years</option>
-                          <option value="5-10 years">5-10 years</option>
-                          <option value="10+ years">10+ years</option>
-                        </select>
+                        <label className="text-gray-300 text-xs" style={{fontFamily: 'monospace'}}>Duration</label>
+                        <input
+                          type="text"
+                          value={experience.duration}
+                          onChange={(e) => updateWorkExperience(experience.id, "duration", e.target.value)}
+                          placeholder="e.g., Jun 2023 - Aug 2023, 6 months, Currently working"
+                          className="w-full bg-gray-900 border border-gray-600 text-gray-100 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-pink-500"
+                        />
                       </div>
-                    </>
+                      
+                      <div className="space-y-2">
+                        <label className="text-gray-300 text-xs" style={{fontFamily: 'monospace'}}>Description</label>
+                        <textarea
+                          value={experience.description}
+                          onChange={(e) => updateWorkExperience(experience.id, "description", e.target.value)}
+                          placeholder="Describe your responsibilities, achievements, and technologies used..."
+                          className="w-full bg-gray-900 border border-gray-600 text-gray-100 rounded-md px-3 py-2 text-sm resize-none focus:outline-none focus:border-pink-500"
+                          rows={3}
+                        />
+                      </div>
+                      
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={experience.isInternship}
+                          onChange={(e) => updateWorkExperience(experience.id, "isInternship", e.target.checked)}
+                          className="w-4 h-4 text-pink-500 bg-gray-900 border-gray-600 rounded focus:ring-pink-500"
+                        />
+                        <span className="text-gray-300 text-sm" style={{fontFamily: 'monospace'}}>This was an internship</span>
+                      </label>
+                    </div>
+                  ))}
+                  
+                  {formData.workExperiences.length === 0 && (
+                    <p className="text-gray-400 text-sm italic text-center py-4" style={{fontFamily: 'monospace'}}>
+                      Click &apos;Add Experience&apos; to add your work or internship experience
+                    </p>
                   )}
-
-                  {/* Work Experience Section for both */}
-                  <div className="space-y-4 pt-4 border-t border-slate-700">
-                    <div className="flex items-center space-x-3">
-                      <input
-                        type="checkbox"
-                        id="hasWorkExperience"
-                        checked={formData.hasWorkExperience}
-                        onChange={(e) => setFormData({ ...formData, hasWorkExperience: e.target.checked })}
-                        className="w-4 h-4 text-purple-600 bg-slate-700 border-slate-600 rounded focus:ring-purple-500"
-                      />
-                      <Label htmlFor="hasWorkExperience" className="text-slate-300">
-                        {formData.profileType === "student" ? "I have internship/work experience" : "Add additional work experience details"}
-                      </Label>
-                    </div>
-                    
-                    {formData.hasWorkExperience && (
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-slate-300 font-medium">Work Experience Details</Label>
-                          <Button
-                            type="button"
-                            onClick={addWorkExperience}
-                            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white text-sm px-4 py-2 rounded-lg"
-                          >
-                            + Add Experience
-                          </Button>
-                        </div>
-                        
-                        {formData.workExperiences.map((experience, index) => (
-                          <div key={experience.id} className="p-4 bg-slate-700/30 border border-slate-600/50 rounded-xl space-y-4">
-                            <div className="flex items-center justify-between">
-                              <h4 className="text-white font-medium">Experience #{index + 1}</h4>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                onClick={() => removeWorkExperience(experience.id)}
-                                className="text-red-400 hover:text-red-300 hover:bg-red-500/10 text-sm px-3 py-1"
-                              >
-                                Remove
-                              </Button>
-                            </div>
-                            
-                            <div className="grid md:grid-cols-2 gap-4">
-                              <div className="space-y-2">
-                                <Label className="text-slate-300 text-sm">Company/Organization</Label>
-                                <Input
-                                  value={experience.company}
-                                  onChange={(e) => updateWorkExperience(experience.id, "company", e.target.value)}
-                                  placeholder="Company name"
-                                  className="bg-slate-600/50 border-slate-500 text-white placeholder:text-slate-400 rounded-lg py-2"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label className="text-slate-300 text-sm">Position/Role</Label>
-                                <Input
-                                  value={experience.position}
-                                  onChange={(e) => updateWorkExperience(experience.id, "position", e.target.value)}
-                                  placeholder="Your role"
-                                  className="bg-slate-600/50 border-slate-500 text-white placeholder:text-slate-400 rounded-lg py-2"
-                                />
-                              </div>
-                            </div>
-                            
-                            <div className="space-y-2">
-                              <Label className="text-slate-300 text-sm">Duration</Label>
-                              <Input
-                                value={experience.duration}
-                                onChange={(e) => updateWorkExperience(experience.id, "duration", e.target.value)}
-                                placeholder="e.g., Jun 2023 - Aug 2023, 6 months, Currently working"
-                                className="bg-slate-600/50 border-slate-500 text-white placeholder:text-slate-400 rounded-lg py-2"
-                              />
-                            </div>
-                            
-                            <div className="space-y-2">
-                              <Label className="text-slate-300 text-sm">Description</Label>
-                              <Textarea
-                                value={experience.description}
-                                onChange={(e) => updateWorkExperience(experience.id, "description", e.target.value)}
-                                placeholder="Describe your responsibilities, achievements, and technologies used..."
-                                className="bg-slate-600/50 border-slate-500 text-white placeholder:text-slate-400 rounded-lg resize-none"
-                                rows={3}
-                              />
-                            </div>
-                            
-                            <div className="flex items-center space-x-3">
-                              <input
-                                type="checkbox"
-                                id={`internship-${experience.id}`}
-                                checked={experience.isInternship}
-                                onChange={(e) => updateWorkExperience(experience.id, "isInternship", e.target.checked)}
-                                className="w-4 h-4 text-purple-600 bg-slate-700 border-slate-600 rounded focus:ring-purple-500"
-                              />
-                              <Label htmlFor={`internship-${experience.id}`} className="text-slate-300 text-sm">
-                                This was an internship
-                              </Label>
-                            </div>
-                          </div>
-                        ))}
-                        
-                        {formData.workExperiences.length === 0 && (
-                          <p className="text-slate-400 text-sm italic text-center py-4">
-                            Click &lsquo;Add Experience&lsquo; to add your work or internship experience
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Technical Skills */}
-            <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-400 shadow-2xl">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-3 text-xl text-white">
-                  <div className="w-10 h-10 bg-gradient-to-r from-yellow-500 to-teal-600 rounded-xl flex items-center justify-center">
-                    <Code2 className="w-5 h-5 text-white" />
-                  </div>
-                  Technical Skills
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Programming Languages */}
-                <div className="space-y-3">
-                  <Label className="text-slate-300 font-medium">Programming Languages</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {programmingLanguages.map((lang) => (
-                      <Badge
-                        key={lang}
-                        variant={formData.programmingLanguages.includes(lang) ? "default" : "outline"}
-                        className={`cursor-pointer transition-all duration-200 hover:scale-105 ${
-                          formData.programmingLanguages.includes(lang)
-                            ? "bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg"
-                            : "bg-slate-700/50 border-slate-600 text-slate-300 hover:bg-pink-500/10 hover:border-pink-500/50"
-                        }`}
-                        onClick={() => handleSkillToggle(lang, "programmingLanguages")}
-                      >
-                        {lang}
-                      </Badge>
-                    ))}
-                  </div>
                 </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
-                {/* Frameworks & Tools */}
-                <div className="space-y-3">
-                  <Label className="text-slate-300 font-medium">Frameworks & Tools</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {frameworks.map((framework) => (
-                      <Badge
-                        key={framework}
-                        variant={formData.frameworks.includes(framework) ? "default" : "outline"}
-                        className={`cursor-pointer transition-all duration-200 hover:scale-105 ${
-                          formData.frameworks.includes(framework)
-                            ? "bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-lg"
-                            : "bg-slate-700/50 border-slate-600 text-slate-300 hover:bg-purple-500/10 hover:border-purple-500/50"
-                        }`}
-                        onClick={() => handleSkillToggle(framework, "frameworks")}
-                      >
-                        {framework}
-                      </Badge>
-                    ))}
-                  </div>
+          {/* Technical Skills Card */}
+          <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-md">
+            <div className="px-8 py-6 border-b border-gray-700">
+              <div className="flex items-center gap-3">
+                <Code2 className="w-7 h-7 text-yellow-400" />
+                <h2 className="text-2xl font-blackops text-white">TECHNICAL SKILLS</h2>
+              </div>
+            </div>
+            
+            <div className="px-8 py-6 space-y-6">
+              {/* Programming Languages - update badge colors */}
+              <div className="space-y-3">
+                <label className="text-gray-200 font-mono text-sm">Programming Languages *</label>
+                <div className="flex flex-wrap gap-2">
+                  {programmingLanguages.map((lang) => (
+                    <button
+                      key={lang}
+                      type="button"
+                      onClick={() => handleSkillToggle(lang, "programmingLanguages")}
+                      className={`px-4 py-2 rounded-md border text-sm font-mono transition-colors ${
+                        formData.programmingLanguages.includes(lang)
+                          ? 'bg-pink-500/20 border-pink-400 text-pink-300'
+                          : 'bg-gray-900/40 border-gray-700 text-gray-400 hover:bg-pink-500/10 hover:border-pink-500/50'
+                      }`}
+                    >
+                      {lang}
+                    </button>
+                  ))}
                 </div>
+              </div>
 
-                {/* OTHER SKILLS - NEW SECTION */}
-                <div className="space-y-">
-                  <Label className="text-slate-300 font-medium">Other Skills</Label>
-                  <p className="text-sm text-slate-400 mb-3">Design, content creation, and other valuable skills for hackathons</p>
-                  <div className="flex flex-wrap gap-2">
-                    {otherSkills.map((skill) => (
-                      <Badge
-                        key={skill}
-                        variant={formData.otherSkills.includes(skill) ? "default" : "outline"}
-                        className={`cursor-pointer transition-all duration-200 hover:scale-105 ${
-                          formData.otherSkills.includes(skill)
-                            ? "bg-gradient-to-r from-teal-500 to-cyan-500 text-white shadow-lg"
-                            : "bg-slate-700/50 border-slate-600 text-slate-300 hover:bg-teal-500/10 hover:border-teal-500/50"
-                        }`}
-                        onClick={() => handleSkillToggle(skill, "otherSkills")}
-                      >
-                        {skill}
-                      </Badge>
-                    ))}
-                  </div>
+              {/* Frameworks - purple theme */}
+              <div className="space-y-3">
+                <label className="text-gray-200 font-mono text-sm">Frameworks & Tools</label>
+                <div className="flex flex-wrap gap-2">
+                  {frameworks.map((framework) => (
+                    <button
+                      key={framework}
+                      type="button"
+                      onClick={() => handleSkillToggle(framework, "frameworks")}
+                      className={`px-4 py-2 rounded-md border text-sm font-mono transition-colors ${
+                        formData.frameworks.includes(framework)
+                          ? 'bg-purple-500/20 border-purple-400 text-purple-300'
+                          : 'bg-gray-900/40 border-gray-700 text-gray-400 hover:bg-purple-500/10 hover:border-purple-500/50'
+                      }`}
+                    >
+                      {framework}
+                    </button>
+                  ))}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
 
-            {/* Social Links */}
-            <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-400 shadow-2xl">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-3 text-xl text-white">
-                  <div className="w-10 h-10 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-xl flex items-center justify-center">
-                    <Link className="w-5 h-5 text-white" />
-                  </div>
-                  Social Links & Portfolio
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="githubUsername" className="text-slate-300 font-medium flex items-center gap-2">
-                      <Github className="w-4 h-4" />
-                      GitHub Username
-                    </Label>
-                    <Input
-                      id="githubUsername"
-                      value={formData.githubUsername}
-                      onChange={(e) => setFormData({ ...formData, githubUsername: e.target.value })}
-                      placeholder="johndoe"
-                      className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 rounded-xl py-3"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="linkedinUrl" className="text-slate-300 font-medium flex items-center gap-2">
-                      <Linkedin className="w-4 h-4" />
-                      LinkedIn Profile
-                    </Label>
-                    <Input
-                      id="linkedinUrl"
-                      value={formData.linkedinUrl}
-                      onChange={(e) => setFormData({ ...formData, linkedinUrl: e.target.value })}
-                      placeholder="https://linkedin.com/in/johndoe"
-                      className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 rounded-xl py-3"
-                    />
-                  </div>
+              {/* Other Skills - yellow theme */}
+              <div className="space-y-3">
+                <label className="text-gray-200 font-mono text-sm">Other Skills</label>
+                <div className="flex flex-wrap gap-2">
+                  {otherSkills.map((skill) => (
+                    <button
+                      key={skill}
+                      type="button"
+                      onClick={() => handleSkillToggle(skill, "otherSkills")}
+                      className={`px-4 py-2 rounded-md border text-sm font-mono transition-colors ${
+                        formData.otherSkills.includes(skill)
+                          ? 'bg-yellow-500/20 border-yellow-400 text-yellow-300'
+                          : 'bg-gray-900/40 border-gray-700 text-gray-400 hover:bg-yellow-500/10 hover:border-yellow-500/50'
+                      }`}
+                    >
+                      {skill}
+                    </button>
+                  ))}
                 </div>
-                
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="portfolioUrl" className="text-slate-300 font-medium flex items-center gap-2">
-                      <Globe className="w-4 h-4" />
-                      Portfolio Website
-                    </Label>
-                    <Input
-                      id="portfolioUrl"
-                      value={formData.portfolioUrl}
-                      onChange={(e) => setFormData({ ...formData, portfolioUrl: e.target.value })}
-                      placeholder="https://johndoe.dev"
-                      className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 rounded-xl py-3"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="twitterUsername" className="text-slate-300 font-medium flex items-center gap-2">
-                      <Twitter className="w-4 h-4" />
-                      Twitter Username
-                    </Label>
-                    <Input
-                      id="twitterUsername"
-                      value={formData.twitterUsername}
-                      onChange={(e) => setFormData({ ...formData, twitterUsername: e.target.value })}
-                      placeholder="@johndoe"
-                      className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 rounded-xl py-3"
-                    />
-                  </div>
-                </div>
+              </div>
+            </div>
+          </div>
 
+          {/* Social Links & Portfolio */}
+          <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-md">
+            <div className="px-8 py-6 border-b border-gray-700">
+              <div className="flex items-center gap-3">
+                <Link className="w-7 h-7 text-pink-400" />
+                <h2 className="text-2xl font-blackops text-white">SOCIAL LINKS & PORTFOLIO</h2>
+              </div>
+            </div>
+            
+            <div className="px-8 py-6 space-y-6">
+              <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="instagramUsername" className="text-slate-300 font-medium flex items-center gap-2">
-                    <Instagram className="w-4 h-4" />
-                    Instagram Username
-                  </Label>
-                  <Input
-                    id="instagramUsername"
-                    value={formData.instagramUsername}
-                    onChange={(e) => setFormData({ ...formData, instagramUsername: e.target.value })}
-                    placeholder="johndoe"
-                    className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 rounded-xl py-3"
-                  />
-                </div>
-
-                <div className="flex items-center space-x-3 pt-4 border-t border-slate-700">
+                  <label className="text-gray-200 font-mono text-sm flex items-center gap-2">
+                    <Github className="w-4 h-4 text-gray-300" />
+                    GitHub Username
+                  </label>
                   <input
-                    type="checkbox"
-                    id="openToRecruitment"
-                    checked={formData.openToRecruitment}
-                    onChange={(e) => setFormData({ ...formData, openToRecruitment: e.target.checked })}
-                    className="w-4 h-4 text-purple-600 bg-slate-700 border-slate-600 rounded focus:ring-purple-500"
+                    type="text"
+                    value={formData.githubUsername}
+                    onChange={(e) => setFormData({...formData, githubUsername: e.target.value})}
+                    placeholder="johndoe"
+                    className="w-full bg-black border border-gray-700 text-gray-100 rounded-md px-4 py-3 focus:outline-none focus:border-pink-500"
                   />
-                  <Label htmlFor="openToRecruitment" className="text-slate-300">
-                    I&lsquo;m open to recruitment opportunities
-                  </Label>
                 </div>
-              </CardContent>
-            </Card>
+                <div className="space-y-2">
+                  <label className="text-gray-200 font-mono text-sm flex items-center gap-2">
+                    <Linkedin className="w-4 h-4 text-blue-400" />
+                    LinkedIn Profile
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.linkedinUrl}
+                    onChange={(e) => setFormData({...formData, linkedinUrl: e.target.value})}
+                    placeholder="https://linkedin.com/in/johndoe"
+                    className="w-full bg-black border border-gray-700 text-gray-100 rounded-md px-4 py-3 focus:outline-none focus:border-pink-500"
+                  />
+                </div>
+              </div>
 
-            {/* GitHub Integration */}
-            <Card className="backdrop-blur-xl bg-slate-800/50 border border-slate-400 shadow-2xl">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-3 text-xl text-white">
-                  <div className="w-10 h-10 bg-gradient-to-r from-gray-600 to-gray-800 rounded-xl flex items-center justify-center">
-                    <Github className="w-5 h-5 text-white" />
-                  </div>
-                  GitHub Integration
-                </CardTitle>
-              </CardHeader>
-              {/* <CardContent className="space-y-6">
-                {githubConnected ? (
-                  <div className="space-y-6">
-                    {githubAnalyzing ? (
-                      <div className="flex items-center gap-3 p-6 bg-blue-500/10 border border-blue-500/30 rounded-xl">
-                        <Loader2 className="w-6 h-6 text-blue-400 animate-spin" />
-                        <div>
-                          <h4 className="font-semibold text-blue-300 text-lg">GitHub Connected!</h4>
-                          <p className="text-sm text-blue-200">We're analyzing your repositories and extracting your skills...</p>
-                        </div>
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-gray-200 font-mono text-sm flex items-center gap-2">
+                    <Globe className="w-4 h-4 text-pink-400" />
+                    Portfolio Website
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.portfolioUrl}
+                    onChange={(e) => setFormData({...formData, portfolioUrl: e.target.value})}
+                    placeholder="https://johndoe.dev"
+                    className="w-full bg-black border border-gray-700 text-gray-100 rounded-md px-4 py-3 focus:outline-none focus:border-pink-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-gray-200 font-mono text-sm flex items-center gap-2">
+                    <Twitter className="w-4 h-4 text-blue-400" />
+                    Twitter Username
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.twitterUsername}
+                    onChange={(e) => setFormData({...formData, twitterUsername: e.target.value})}
+                    placeholder="@johndoe"
+                    className="w-full bg-black border border-gray-700 text-gray-100 rounded-md px-4 py-3 focus:outline-none focus:border-pink-500"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-gray-200 font-mono text-sm flex items-center gap-2">
+                  <Instagram className="w-4 h-4 text-pink-400" />
+                  Instagram Username
+                </label>
+                <input
+                  type="text"
+                  value={formData.instagramUsername}
+                  onChange={(e) => setFormData({...formData, instagramUsername: e.target.value})}
+                  placeholder="johndoe"
+                  className="w-full bg-black border border-gray-700 text-gray-100 rounded-md px-4 py-3 focus:outline-none focus:border-pink-500"
+                />
+              </div>
+
+              <div className="flex items-center gap-3 pt-4 border-t border-gray-700">
+                <input
+                  type="checkbox"
+                  id="openToRecruitment"
+                  checked={formData.openToRecruitment}
+                  onChange={(e) => setFormData({...formData, openToRecruitment: e.target.checked})}
+                  className="w-4 h-4 text-pink-500 bg-gray-900 border-gray-600 rounded focus:ring-pink-500"
+                />
+                <label htmlFor="openToRecruitment" className="text-gray-200 font-mono text-sm">
+                  I&apos;m open to recruitment opportunities
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* GitHub Integration */}
+          <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-md">
+            <div className="px-8 py-6 border-b border-gray-700">
+              <div className="flex items-center gap-3">
+                <Github className="w-7 h-7 text-gray-400" />
+                <h2 className="text-2xl font-blackops text-white">GITHUB INTEGRATION</h2>
+              </div>
+            </div>
+            
+            <div className="px-8 py-6">
+              {githubConnected ? (
+                <div className="space-y-4">
+                  <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-md">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle className="w-5 h-5 text-green-400" />
+                      <div>
+                        <h4 className="font-mono text-green-300 font-semibold">GitHub Connected Successfully!</h4>
+                        <p className="text-sm text-green-200 font-mono">
+                          {formData.githubUsername ? `Connected as @${formData.githubUsername}` : 'GitHub account connected'}
+                        </p>
                       </div>
-                    ) : (
-                      <div className="space-y-6">
-                        <div className="flex items-center gap-3 p-6 bg-green-500/10 border border-green-500/30 rounded-xl">
-                          <CheckCircle className="w-6 h-6 text-green-400" />
-                          <div>
-                            <h4 className="font-semibold text-green-300 text-lg">Analysis Complete!</h4>
-                            <p className="text-sm text-green-200">We've detected your skills and found your repositories</p>
-                          </div>
-                        </div>
-
-                        {showGithubProjects && (
-                          <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                              <h4 className="text-lg font-semibold text-white">Select Projects to Showcase</h4>
-                              <Badge variant="outline" className="bg-slate-700/50 border-slate-600 text-slate-300">
-                                {selectedProjects.length} selected
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-slate-400 mb-4">
-                              Choose your best projects to display on your profile. These will help teammates understand your expertise.
-                            </p>
-                            
-                            <div className="grid gap-4 max-h-96 overflow-y-auto">
-                              {githubRepositories.map((project) => (
-                                <div
-                                  key={project.id}
-                                  className={`group cursor-pointer p-4 rounded-xl border-2 transition-all duration-200 ${
-                                    selectedProjects.includes(project.id)
-                                      ? "border-purple-500/50 bg-purple-500/10 shadow-lg"
-                                      : "border-slate-600/50 bg-slate-700/30 hover:border-purple-400/50 hover:bg-purple-500/5"
-                                  }`}
-                                  onClick={() => handleProjectToggle(project.id)}
-                                >
-                                  <div className="flex items-start justify-between mb-3">
-                                    <div className="flex items-center gap-3">
-                                      <div className={`w-3 h-3 rounded-full ${
-                                        project.language === "JavaScript" ? "bg-yellow-400" :
-                                        project.language === "Python" ? "bg-blue-500" :
-                                        project.language === "TypeScript" ? "bg-blue-600" :
-                                        project.language === "Solidity" ? "bg-gray-400" : "bg-gray-500"
-                                      }`}></div>
-                                      <h5 className="font-semibold text-white group-hover:text-purple-300 transition-colors">
-                                        {project.name}
-                                      </h5>
-                                    </div>
-                                    <div className={`w-5 h-5 rounded border-2 transition-all ${
-                                      selectedProjects.includes(project.id)
-                                        ? "bg-purple-500 border-purple-500"
-                                        : "border-slate-500 group-hover:border-purple-400"
-                                    }`}>
-                                      {selectedProjects.includes(project.id) && (
-                                        <CheckCircle className="w-3 h-3 text-white m-0.5" />
-                                      )}
-                                    </div>
-                                  </div>
-                                  
-                                  <p className="text-sm text-slate-300 mb-3">
-                                    {project.description}
-                                  </p>
-                                  
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4 text-xs text-slate-400">
-                                      <div className="flex items-center gap-1">
-                                        <Star className="w-3 h-3" />
-                                        {project.stars_count}
-                                      </div>
-                                      <div className="flex items-center gap-1">
-                                        <GitFork className="w-3 h-3" />
-                                        {project.forks_count}
-                                      </div>
-                                      <div className="flex items-center gap-1">
-                                        <Calendar className="w-3 h-3" />
-                                        {new Date(project.updated_at).toLocaleDateString()}
-                                      </div>
-                                    </div>
-                                  </div>
-                                  
-                                  <div className="flex flex-wrap gap-1 mt-3">
-                                    {project.topics.map((topic) => (
-                                      <Badge
-                                        key={topic}
-                                        variant="outline"
-                                        className="text-xs bg-slate-800/50 border-slate-600 text-slate-300"
-                                      >
-                                        {topic}
-                                      </Badge>
-                                    ))}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
+                    </div>
+                  </div>
+                  
+                  {githubRepositories.length > 0 && (
+                    <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-md">
+                      <h4 className="font-mono text-blue-300 font-semibold mb-2">Repository Analysis Complete</h4>
+                      <p className="text-sm text-blue-200 font-mono mb-3">
+                        Found {githubRepositories.length} repositories and detected your skills automatically.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {formData.programmingLanguages.slice(0, 5).map((lang) => (
+                          <span key={lang} className="px-2 py-1 bg-blue-500/20 border border-blue-400/50 text-blue-200 text-xs font-mono rounded">
+                            {lang}
+                          </span>
+                        ))}
+                        {formData.programmingLanguages.length > 5 && (
+                          <span className="px-2 py-1 bg-blue-500/20 border border-blue-400/50 text-blue-200 text-xs font-mono rounded">
+                            +{formData.programmingLanguages.length - 5} more
+                          </span>
                         )}
                       </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="p-6 bg-slate-700/30 rounded-xl border border-slate-600/50">
-                      <h4 className="font-semibold mb-3 text-white text-lg">Connect GitHub for Enhanced Profile</h4>
-                      <div className="space-y-3 mb-4">
-                        <div className="flex items-center gap-3 text-sm text-slate-300">
-                          <div className="w-2 h-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"></div>
-                          <span>Showcase your best repositories</span>
-                        </div>
-                        <div className="flex items-center gap-3 text-sm text-slate-300">
-                          <div className="w-2 h-2 bg-gradient-to-r from-pink-500 to-red-500 rounded-full"></div>
-                          <span>Auto-detect your technical skills</span>
-                        </div>
-                        <div className="flex items-center gap-3 text-sm text-slate-300">
-                          <div className="w-2 h-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full"></div>
-                          <span>Get matched with compatible teammates</span>
-                        </div>
-                      </div>
-                      <Button
-                        type="button"
-                        onClick={handleConnectGitHub}
-                        className="bg-gradient-to-r from-gray-700 to-gray-900 hover:from-gray-600 hover:to-gray-800 text-white py-3 px-6 rounded-xl"
-                      >
-                        <Github className="w-5 h-5 mr-2" />
-                        Connect GitHub
-                      </Button>
                     </div>
-                  </div>
-                )}
-              </CardContent> */}
-              <CardContent>
-                {githubConnected ? (
-                  // GitHub is connected - show success state
-                  <div className="space-y-4">
-                    <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
-                      <div className="flex items-center gap-3">
-                        <CheckCircle className="w-5 h-5 text-green-400" />
-                        <div>
-                          <h4 className="font-semibold text-green-300">GitHub Connected Successfully!</h4>
-                          <p className="text-sm text-green-200">
-                            {formData.githubUsername ? `Connected as @${formData.githubUsername}` : 'GitHub account connected'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {githubRepositories.length > 0 && (
-                      <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
-                        <h4 className="font-semibold text-blue-300 mb-2">Repository Analysis Complete</h4>
-                        <p className="text-sm text-blue-200 mb-3">
-                          Found {githubRepositories.length} repositories and detected your skills automatically.
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {formData.programmingLanguages.slice(0, 5).map((lang) => (
-                            <Badge key={lang} variant="outline" className="bg-blue-500/20 border-blue-400/50 text-blue-200">
-                              {lang}
-                            </Badge>
-                          ))}
-                          {formData.programmingLanguages.length > 5 && (
-                            <Badge variant="outline" className="bg-blue-500/20 border-blue-400/50 text-blue-200">
-                              +{formData.programmingLanguages.length - 5} more
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : isConnecting || isAnalyzing ? (
-                  // Loading state
-                  <div className="space-y-4">
-                    <div className="p-6 bg-blue-500/10 border border-blue-500/30 rounded-xl">
-                      <div className="flex items-center gap-3">
-                        <Loader2 className="w-6 h-6 text-blue-400 animate-spin" />
-                        <div>
-                          <h4 className="font-semibold text-blue-300 text-lg">
-                            {isConnecting ? 'Connecting to GitHub...' : 'Analyzing your repositories...'}
-                          </h4>
-                          <p className="text-sm text-blue-200">
-                            {isConnecting ? 'Redirecting to GitHub for authorization' : 'Extracting your skills and projects'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : userAuthMethod === 'github' ? (
-                  // User signed up with GitHub - show enhanced integration
-                  <div className="space-y-4">
-                    <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
-                      <div className="flex items-center gap-3">
-                        <CheckCircle className="w-5 h-5 text-green-400" />
-                        <div>
-                          <h4 className="font-semibold text-green-300">GitHub Account Connected</h4>
-                          <p className="text-sm text-green-200">You signed up with GitHub ({formData.githubUsername})</p>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
-                      <h4 className="font-semibold text-blue-300 mb-2">Import Your GitHub Data</h4>
-                      <p className="text-sm text-blue-200 mb-4">
-                        Connect your GitHub account to import your repositories and automatically detect your skills.
+                  )}
+                </div>
+              ) : isConnecting || isAnalyzing ? (
+                <div className="p-6 bg-blue-500/10 border border-blue-500/30 rounded-md">
+                  <div className="flex items-center gap-3">
+                    <Loader2 className="w-6 h-6 text-blue-400 animate-spin" />
+                    <div>
+                      <h4 className="font-mono text-blue-300 font-semibold text-lg">
+                        {isConnecting ? 'Connecting to GitHub...' : 'Analyzing your repositories...'}
+                      </h4>
+                      <p className="text-sm text-blue-200 font-mono">
+                        {isConnecting ? 'Redirecting to GitHub for authorization' : 'Extracting your skills and projects'}
                       </p>
-                      <Button
-                        onClick={handleConnectGitHub}
-                        className="w-full bg-gradient-to-r from-gray-700 to-gray-900 hover:from-gray-600 hover:to-gray-800 text-white"
-                      >
-                        <Github className="w-5 h-5 mr-2" />
-                        Import GitHub Data
-                      </Button>
                     </div>
                   </div>
-                ) : (
-                  // User signed up with email/Google - show regular integration
-                  <div className="space-y-4">
-                    <div className="p-6 bg-slate-700/30 rounded-xl border border-slate-600/50">
-                      <h4 className="font-semibold mb-3 text-white text-lg">Connect GitHub for Enhanced Profile</h4>
-                      <div className="space-y-3 mb-4">
-                        <div className="flex items-center gap-3 text-sm text-slate-300">
-                          <div className="w-2 h-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"></div>
-                          <span>Showcase your best repositories</span>
-                        </div>
-                        <div className="flex items-center gap-3 text-sm text-slate-300">
-                          <div className="w-2 h-2 bg-gradient-to-r from-pink-500 to-red-500 rounded-full"></div>
-                          <span>Auto-detect your technical skills</span>
-                        </div>
-                        <div className="flex items-center gap-3 text-sm text-slate-300">
-                          <div className="w-2 h-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full"></div>
-                          <span>Get matched with compatible teammates</span>
-                        </div>
+                </div>
+              ) : userAuthMethod === 'github' ? (
+                <div className="space-y-4">
+                  <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-md">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle className="w-5 h-5 text-green-400" />
+                      <div>
+                        <h4 className="font-mono text-green-300 font-semibold">GitHub Account Connected</h4>
+                        <p className="text-sm text-green-200 font-mono">You signed up with GitHub ({formData.githubUsername})</p>
                       </div>
-                      <Button
-                        onClick={handleConnectGitHub}
-                        className="w-full bg-gradient-to-r from-gray-700 to-gray-900 hover:from-gray-600 hover:to-gray-800 text-white"
-                      >
-                        <Github className="w-5 h-5 mr-2" />
-                        Connect GitHub Account
-                      </Button>
                     </div>
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                  
+                  <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-md">
+                    <h4 className="font-mono text-blue-300 font-semibold mb-2">Import Your GitHub Data</h4>
+                    <p className="text-sm text-blue-200 font-mono mb-4">
+                      Connect your GitHub account to import your repositories and automatically detect your skills.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleConnectGitHub}
+                      className="w-full bg-gradient-to-r from-gray-700 to-gray-900 hover:from-gray-600 hover:to-gray-800 text-white font-mono px-6 py-3 rounded-md transition-all flex items-center justify-center gap-2"
+                    >
+                      <Github className="w-5 h-5" />
+                      Import GitHub Data
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-6 bg-gray-800/30 border border-gray-700/50 rounded-md space-y-4">
+                  <h4 className="font-mono text-white font-semibold text-lg">Connect GitHub for Enhanced Profile</h4>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3 text-sm text-gray-300 font-mono">
+                      <div className="w-2 h-2 bg-gradient-to-r from-pink-500 to-purple-500 rounded-full"></div>
+                      <span>Showcase your best repositories</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-sm text-gray-300 font-mono">
+                      <div className="w-2 h-2 bg-gradient-to-r from-purple-500 to-yellow-500 rounded-full"></div>
+                      <span>Auto-detect your technical skills</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-sm text-gray-300 font-mono">
+                      <div className="w-2 h-2 bg-gradient-to-r from-yellow-500 to-pink-500 rounded-full"></div>
+                      <span>Get matched with compatible teammates</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleConnectGitHub}
+                    className="w-full bg-gradient-to-r from-gray-700 to-gray-900 hover:from-gray-600 hover:to-gray-800 text-white font-mono px-6 py-3 rounded-md transition-all flex items-center justify-center gap-2"
+                  >
+                    <Github className="w-5 h-5" />
+                    Connect GitHub Account
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
 
-            {/* Submit Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-              <Button
-                type="submit"
-                disabled={isLoading || !formData.fullName || !formData.profileType}
-                className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-semibold px-12 py-4 rounded-2xl shadow-lg hover:shadow-pink-500/25 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                size="lg"
-              >
+          {/* Submit Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center py-4">
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="bg-gradient-to-r from-pink-500 via-purple-500 to-yellow-500 text-white font-mono font-bold px-12 py-4 rounded-md hover:opacity-90 transition-opacity shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <div className="flex items-center gap-2">
                 {isLoading ? (
                   <>
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    <Loader2 className="w-5 h-5 animate-spin" />
                     Completing Profile...
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-5 h-5 mr-2" />
+                    <Sparkles className="w-5 h-5" />
                     Complete Profile
                   </>
                 )}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleSkip}
-                className="border-2 border-slate-600/50 bg-slate-700/30 hover:bg-slate-600/50 text-slate-300 hover:text-white px-12 py-4 rounded-2xl backdrop-blur-sm transition-all duration-300"
-                size="lg"
-              >
-                Skip for Now
-              </Button>
-            </div>
-          </form>
-        </div>
+              </div>
+            </button>
+            
+            {/* <button
+              type="button"
+              onClick={handleSkip}
+              className="border border-gray-600 bg-gray-800/50 hover:bg-gray-700/50 text-gray-300 font-mono px-12 py-4 rounded-md transition-colors"
+            >
+              Skip for Now
+            </button> */}
+          </div>
+        </form>
       </div>
     </div>
   )

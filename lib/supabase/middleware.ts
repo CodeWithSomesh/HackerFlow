@@ -52,12 +52,13 @@ export async function updateSession(request: NextRequest) {
     !user &&
     !request.nextUrl.pathname.startsWith("/auth") &&
     !request.nextUrl.pathname.startsWith("/onboarding/user-type") &&
-    !request.nextUrl.pathname.startsWith("/onboarding/hacker") &&
-    !request.nextUrl.pathname.startsWith("/onboarding/organizer") &&
+    request.nextUrl.pathname !== "/onboarding/hacker/auth" &&
+    request.nextUrl.pathname !== "/onboarding/organizer/auth" &&
+    request.nextUrl.pathname !== "/onboarding/organizer/auth" &&
     !request.nextUrl.pathname.startsWith("/_next") &&
     request.nextUrl.pathname !== "/favicon.ico"
   ) {
-    // no user, potentially respond by redirecting the user to the login page
+    // No session yet: send the user to email confirmation prompt page
     const url = request.nextUrl.clone();
     url.pathname = "/onboarding/user-type";
     return NextResponse.redirect(url);
