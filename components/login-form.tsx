@@ -166,6 +166,7 @@ export function LoginForm() {
 
       // Get user data to determine user type
       const { data: { user } } = await supabase.auth.getUser()
+      console.log(user)
       // const userType = user?.user_metadata?.user_primary_type
       
       showCustomToast('success', "Welcome Back!")
