@@ -2,13 +2,13 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
+// import { redirect } from 'next/navigation'
 
 // Types
 export interface HackerProfileData {
   fullName: string
   bio?: string
-  profileType: 'student' | 'working'
+  profileType: string
   city: string
   state: string
   country: string
@@ -17,7 +17,7 @@ export interface HackerProfileData {
   university?: string
   course?: string
   yearOfStudy?: string
-  graduationYear?: number
+  graduationYear?: string
   
   // Working professional fields
   company?: string
@@ -55,7 +55,7 @@ export interface HackerProfileData {
 export interface OrganizerProfileData {
   fullName: string
   bio?: string
-  organizationType: 'individual' | 'company' | 'university' | 'non-profit'
+  organizationType: string
   
   // Organization details
   organizationName: string
@@ -116,7 +116,7 @@ export interface GitHubProject {
   id: number
   name: string
   full_name: string
-  description?: string
+  description?: string | null
   language?: string
   stars_count: number
   forks_count: number
@@ -138,10 +138,21 @@ export interface GitHubProject {
   is_disabled: boolean
 }
 
+interface GitHubIntegrationData {
+  login: string
+  id: number
+  avatar_url: string
+  html_url: string
+  name?: string
+  email?: string
+  repos_url: string
+  [key: string]: unknown
+}
+
 // Add this function to your profile-actions.ts file
 export async function testDatabaseConnection() {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     
     // Test auth
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -163,13 +174,26 @@ export async function testDatabaseConnection() {
 }
 
 // Save Hacker Profile
-export async function saveHackerProfile(formData: any) {
+// User fills form → saveHackerProfile() receives data
+//                           ↓
+//               Transform camelCase to snake_case
+//                           ↓
+//               Add user_id from authenticated session
+//                           ↓
+//               UPSERT to user_profiles table
+//                           ↓
+//               Database checks UNIQUE constraint
+//                           ↓
+//          INSERT (new user) or UPDATE (existing user)
+export async function saveHackerProfile(formData: HackerProfileData) {
   try {
     const supabase = await createClient();
     // Add this debug line to check if supabase is properly created
     console.log('Supabase client created:', !!supabase, !!supabase.auth);
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
+    //Retrieves the currently authenticated user. 
+    //If there's an authentication error or no user is found, the function returns early with an error message.
     if (authError) {
       console.error('Auth error:', authError);
       return { success: false, error: `Authentication error: ${authError.message}` };
@@ -183,7 +207,7 @@ export async function saveHackerProfile(formData: any) {
 
     const profileData = {
       user_id: user.id,
-      user_type: 'hacker',
+      user_primary_typeary_type: 'hacker',
       full_name: formData.fullName,
       bio: formData.bio || null,
       city: formData.city,
@@ -225,8 +249,8 @@ export async function saveHackerProfile(formData: any) {
     console.log('Profile data to save:', JSON.stringify(profileData, null, 2));
 
     const { data, error } = await supabase
-      .from('user_profiles')
-      .upsert(profileData)
+      .from('user_profiles') //Uses upsert to either insert a new profile or update an existing one
+      .upsert(profileData, { onConflict: 'user_id' }) //The onConflict: 'user_id' means if a profile already exists for this user, it updates it instead of creating a duplicate
       .select();
 
     if (error) {
@@ -250,7 +274,7 @@ export async function saveHackerProfile(formData: any) {
 // Save Organizer Profile
 export async function saveOrganizerProfile(profileData: OrganizerProfileData) {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     
     // Get current user
     const { data: { user }, error: userError } = await supabase.auth.getUser()
@@ -261,7 +285,7 @@ export async function saveOrganizerProfile(profileData: OrganizerProfileData) {
     // Prepare data for database
     const dbData = {
       user_id: user.id,
-      user_type: 'organizer',
+      user_primary_type: 'organizer',
       full_name: profileData.fullName,
       bio: profileData.bio,
       city: profileData.city,
@@ -324,7 +348,7 @@ export async function saveOrganizerProfile(profileData: OrganizerProfileData) {
 // Get User Profile
 export async function getUserProfile(userType: 'hacker' | 'organizer') {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     if (userError || !user) {
@@ -335,7 +359,7 @@ export async function getUserProfile(userType: 'hacker' | 'organizer') {
       .from('user_profiles')
       .select('*')
       .eq('user_id', user.id)
-      .eq('user_type', userType)
+      .eq('user_primary_type', userType)
       .single()
 
     if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
@@ -353,6 +377,7 @@ export async function getUserProfile(userType: 'hacker' | 'organizer') {
 }
 
 // Save GitHub Projects
+// export async function saveGitHubProjects(projects: GitHubProject[], selectedProjectIds: number[]) {
 export async function saveGitHubProjects(projects: GitHubProject[], selectedProjectIds: number[]) {
   try {
     const supabase = await createClient()
@@ -487,13 +512,13 @@ export async function updateSelectedGitHubProjects(selectedProjectIds: number[])
 
 export async function saveGitHubIntegrationData(
   userId: string,
-  githubData: any,
+  githubData: GitHubIntegrationData,
   accessToken: string
 ) {
   const supabase = await createClient();
   
   const { error } = await supabase
-    .from('hacker_profiles')
+    .from('user_profiles')
     .update({
       github_integration_data: githubData,
       github_access_token: accessToken, // Encrypt in production

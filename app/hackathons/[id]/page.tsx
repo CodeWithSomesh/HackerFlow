@@ -3,7 +3,6 @@
 import { useState, useEffect, use } from "react";
 import { 
     ArrowLeft, 
-    Heart, 
     Bookmark, 
     Calendar, 
     Clock, 
@@ -16,8 +15,6 @@ import {
     AlertCircle,
     Info,
     ChevronUp,
-    BadgeInfo,
-    Building2,
     Building,
     CalendarClock,
     Dot,
@@ -32,10 +29,8 @@ import {
     Award
 } from "lucide-react";
 import Link from "next/link";
-import Image, { StaticImageData } from "next/image";
+import Image from "next/image";
 import { mockHackathons, Hackathon } from "@/lib/mockHackathons"; // Adjust path if different
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { IconUserStar } from "@tabler/icons-react";
 import TrophyImage from "@/assets/Trophy Prize.png"
 import PrizeImage from "@/assets/Prize Box.png"
@@ -51,7 +46,6 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
   const resolvedParams = use(params);
   const [hackathon, setHackathon] = useState<Hackathon | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isLiked, setIsLiked] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
 
@@ -80,7 +74,12 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
   ];
 
   // Enhanced function to determine date status
-  const getDateStatus = (dateStr: string, allDates?: any[]) => {
+  type DateStatus = {
+    type: string;
+    label: string;
+    color: "blue" | "green" | "red" | "gray";
+  };
+  const getDateStatus = (dateStr: string, allDates?: { date: string }[]): DateStatus => {
     if (!allDates) return { type: 'upcoming', label: 'Upcoming', color: 'blue' };
   
     const today = new Date();
@@ -113,7 +112,7 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
   };
 
   // Enhanced styling function
-  const getDateStyling = (status: any) => {
+  const getDateStyling = (status: DateStatus) => {
     switch (status.color) {
       case 'red': // Urgent
         return {
@@ -170,7 +169,7 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
         <div className="text-center">
           <div className="text-6xl mb-4">🔍</div>
           <h1 className="text-3xl font-bold text-white mb-4">Hackathon Not Found</h1>
-          <p className="text-gray-400 mb-6">The hackathon you're looking for doesn't exist or has been removed.</p>
+          <p className="text-gray-400 mb-6">The hackathon you&apos;re looking for doesn&apos;t exist or has been removed.</p>
           <Link 
             href="/hackathons"
             className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors"
@@ -183,6 +182,7 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
     );
   }
 
+  
   const getCardTheme = (theme: string) => {
     const themes = {
       purple: {
@@ -203,8 +203,10 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
         text: "text-green-400",
         bg: "bg-green-500/10"
       }
-    };
-    return themes[theme] || themes.purple;
+    } as const;
+    type ThemeKey = keyof typeof themes;
+
+    return themes[(theme as ThemeKey)] || themes.purple;
   };
 
   const theme = getCardTheme(hackathon.colorTheme);
@@ -222,14 +224,14 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
     }
   };
 
-  const getLevelColor = (level: string) => {
-    switch (level) {
-      case "Beginner": return "bg-green-500 text-white";
-      case "Intermediate": return "bg-yellow-500 text-black";
-      case "Advanced": return "bg-red-500 text-white";
-      default: return "bg-gray-500 text-white";
-    }
-  };
+  // const getLevelColor = (level: string) => {
+  //   switch (level) {
+  //     case "Beginner": return "bg-green-500 text-white";
+  //     case "Intermediate": return "bg-yellow-500 text-black";
+  //     case "Advanced": return "bg-red-500 text-white";
+  //     default: return "bg-gray-500 text-white";
+  //   }
+  // };
 
   const getInitials = (name: string) => {
     return name
@@ -880,7 +882,7 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
                       <div className="text-center space-y-">
                         {sponsor.logo ? (
                           <div className="w-16 h-16 mx-auto bg-gray-700/50 rounded-lg flex items-center justify-center border border-gray-600 group-hover:border-blue-400/30 transition-colors">
-                            <img
+                            <Image
                               src={sponsor.logo || "/placeholder.svg"}
                               alt={sponsor.name}
                               width={48}

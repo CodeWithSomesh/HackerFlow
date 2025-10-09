@@ -91,7 +91,7 @@ export default function OnboardingComplete() {
             <CardHeader>
               <CardTitle className="text-2xl text-white flex items-center justify-center gap-3">
                 <Sparkles className="w-8 h-8 text-yellow-400" />
-                What's Next?
+                What&lsquo;s Next?
               </CardTitle>
             </CardHeader>
             <CardContent>

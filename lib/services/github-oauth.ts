@@ -81,7 +81,9 @@ export class GitHubOAuthService {
     return response.json();
   }
 
-  static async getUserRepositories(accessToken: string, username: string): Promise<GitHubRepository[]> {
+  static async getUserRepositories(accessToken: string
+    // ,username: string
+  ): Promise<GitHubRepository[]> {
     const response = await fetch(`${this.GITHUB_API_BASE}/user/repos?sort=updated&per_page=50`, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,

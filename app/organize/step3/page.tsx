@@ -15,7 +15,7 @@ import {
   Globe, 
   MapPin, 
   Settings, 
-  Image, 
+  Image as ImageIcon, 
   ChevronRight, 
   Sparkles,
   Users,
@@ -25,10 +25,10 @@ import {
   Plus,
   X,
   Building,
-  Mail,
-  Phone,
-  DollarSign,
-  Award,
+//   Mail,
+//   Phone,
+//   DollarSign,
+//   Award,
   AlertCircle,
   MessageCircle,
   Heart,
@@ -632,7 +632,9 @@ export default function OrganizeStep3Page() {
                 </h2>
               </div>
               <nav className="space-y-2">
-                {navigationSections.map(({ key, label, icon: Icon, color }) => (
+                {navigationSections.map(({ key, label, 
+                // icon: Icon, 
+                color }) => (
                   <button
                     key={key}
                     onClick={() => openEditor(key as SectionKey)}
@@ -643,7 +645,7 @@ export default function OrganizeStep3Page() {
                     }`}
                   >
                     <span className="flex items-center gap-3">
-                      <Icon className={`w-5 h-5 ${activeSection === key ? '' : 'text-gray-400 group-hover:text-gray-300'}`} />
+                      <ImageIcon className={`w-5 h-5 ${activeSection === key ? '' : 'text-gray-400 group-hover:text-gray-300'}`} />
                       <span className={`font-mono text-sm font-medium ${activeSection === key ? '' : 'text-gray-300 group-hover:text-white'}`}>
                         {label}
                       </span>
@@ -661,7 +663,7 @@ export default function OrganizeStep3Page() {
               {/* Banner */}
               {formData.banner && formData.banner !== '/api/placeholder/1200/400' && formData.banner !== '' && (
                 <div className="relative h-[280px] border-b-2 border-gray-700 overflow-hidden group">
-                  <img 
+                  <Image 
                     src={formData.banner} 
                     alt="Banner" 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
@@ -671,7 +673,7 @@ export default function OrganizeStep3Page() {
                     onClick={() => openEditor('banner')}
                     className="absolute top-4 right-4 bg-gray-900/80 hover:bg-gray-800 border border-gray-600 text-white px-4 py-2 rounded-lg text-sm font-mono transition-all hover:scale-105 opacity-0 group-hover:opacity-100"
                   >
-                    Edit Banner
+                    Edit Banner 
                   </button>
                 </div>
               )}
@@ -983,7 +985,7 @@ export default function OrganizeStep3Page() {
                   <div className={`p-2.5 rounded-lg ${getColorClasses(navigationSections.find(s => s.key === activeSection)?.color || 'blue')}`}>
                     {(() => {
                       const Icon = navigationSections.find(s => s.key === activeSection)?.icon
-                      return Icon ? <Icon className="w-5 h-5" /> : null
+                      return Icon ? <ImageIcon className="w-5 h-5" /> : null
                     })()}
                   </div>
                 )}

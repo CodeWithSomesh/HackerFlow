@@ -3,9 +3,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ error: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
+
+  const errorParam =
+    (typeof params?.error === "string"
+      ? params.error
+      : Array.isArray(params?.error)
+      ? params.error[0]
+      : undefined) ||
+    (typeof params?.message === "string"
+      ? params.message
+      : Array.isArray(params?.message)
+      ? params.message[0]
+      : undefined);
 
   return (
     <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
@@ -18,15 +30,9 @@ export default async function Page({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {params?.error ? (
-                <p className="text-sm text-muted-foreground">
-                  Code error: {params.error}
-                </p>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  An unspecified error occurred.
-                </p>
-              )}
+              <p className="text-sm text-muted-foreground">
+                {errorParam || "An unspecified error occurred."}
+              </p>
             </CardContent>
           </Card>
         </div>

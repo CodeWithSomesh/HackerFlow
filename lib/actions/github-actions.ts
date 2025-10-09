@@ -3,6 +3,33 @@
 import { createClient } from '@/lib/supabase/server'
 import { GitHubProject } from './profile-actions'
 
+interface GitHubRepoResponse {
+  id: number;
+  name: string;
+  full_name: string;
+  description?: string | null;
+  language: string | null;
+  stargazers_count: number;
+  forks_count: number;
+  watchers_count: number;
+  open_issues_count: number;
+  size: number;
+  default_branch: string;
+  topics?: string[];
+  homepage?: string | null;
+  html_url: string;
+  clone_url: string;
+  ssh_url: string;
+  created_at: string;
+  updated_at: string;
+  pushed_at: string;
+  private: boolean;
+  fork: boolean;
+  archived: boolean;
+  disabled: boolean;
+}
+
+
 // GitHub API Integration
 export async function connectGitHub() {
   try {
@@ -42,15 +69,15 @@ export async function fetchGitHubRepositories(accessToken: string): Promise<GitH
       throw new Error(`GitHub API error: ${response.status}`)
     }
 
-    const repos = await response.json()
+    const repos: GitHubRepoResponse[] = await response.json();
     
     // Transform GitHub API response to our format
-    return repos.map((repo: any) => ({
+    return repos.map((repo) => ({
       id: repo.id,
       name: repo.name,
       full_name: repo.full_name,
-      description: repo.description,
-      language: repo.language,
+      description: repo.description ?? undefined, 
+      language: repo.language ?? undefined,
       stars_count: repo.stargazers_count,
       forks_count: repo.forks_count,
       watchers_count: repo.watchers_count,
@@ -58,7 +85,7 @@ export async function fetchGitHubRepositories(accessToken: string): Promise<GitH
       size: repo.size,
       default_branch: repo.default_branch,
       topics: repo.topics || [],
-      homepage: repo.homepage,
+      homepage: repo.homepage ?? undefined, 
       html_url: repo.html_url,
       clone_url: repo.clone_url,
       ssh_url: repo.ssh_url,

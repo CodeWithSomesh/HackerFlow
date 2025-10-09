@@ -1,11 +1,8 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { ArrowRight, Zap, Users, Target, Github, Code, Rocket } from "lucide-react"
+import { ArrowRight, Zap, Users, Target } from "lucide-react"
 import { redirect } from 'next/navigation'
-import PlasmaWrapper from "./plasmawrapper"
-import PlasmaBackground from "@/components/ui/shadcn-io/plasma-background"
-
 
 export function HeroSection() {
 
@@ -20,7 +17,7 @@ export function HeroSection() {
           {/* Badge */}
           <div className="inline-flex items-center px-6 py-3 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-sm font-medium text-gray-800 dark:bg-white/10 dark:border-white/20 dark:text-white">
             <Zap className="w-4 h-4 mr-2 text-cyan-600 dark:text-cyan-400" />
-            Malaysia's #1 AI-Powered Hackathon Platform
+            Malaysia&lsquo;s #1 AI-Powered Hackathon Platform
           </div>
 
           {/* Main Headline - UNIQUE AND CREATIVE */}

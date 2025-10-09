@@ -4,10 +4,10 @@ import Link from "next/link"
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { ModeToggle } from "@/components/ui/mode-toggle"
-import { Menu, Home, Zap, Calendar, LogOut, Settings, User, ChevronDown, X } from "lucide-react"
+// import { ModeToggle } from "@/components/ui/mode-toggle"
+import { Menu, LogOut, Settings, User, ChevronDown} from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { createClient } from "@/lib/supabase/client"
 import { signOut } from "@/app/utils/actions"
 import HackerFlowLogo from '@/assets/hackerflow-logo.png';
@@ -245,7 +245,12 @@ export function Navbar() {
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="bg-white" />
                     <DropdownMenuItem asChild>
-                      <form action={signOut} className="w-full hover:bg-gray-700 hover:font-bold">
+                      <form action={signOut} 
+                        className="w-full hover:bg-gray-700 hover:font-bold"
+                        onClick={() => { 
+                          setUserEmail(null)  
+                        }}
+                      >
                         <LogOut className="h-4 w-4 text-red-500" />
                         <button type="submit" className="w-full text-left text-red-500">Sign Out</button>
                       </form>
@@ -253,12 +258,20 @@ export function Navbar() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
-                <Button
-                  asChild
-                  className="bg-[#08f8a5] text-black font-black hover:text-white hover:bg-teal-600 shadow-lg hover:shadow-xl transition-all"
-                >
-                  <Link href="/onboarding/user-type">Join HackerFlow</Link>
-                </Button>
+                <div className="flex gap-2 font-geist">
+                  <Button
+                    asChild
+                    className="bg-yellow-400 text-black rounded-sm font-bold hover:text-yellow-500 hover:bg-black border-4 hover:border-yellow-400  shadow-lg hover:shadow-xl transition-all"
+                  >
+                    <Link href="/onboarding/user-type">Join HackerFlow</Link>
+                  </Button>
+                  <Button
+                    asChild
+                    className="bg-teal-300 text-black font-bold rounded-sm  hover:text-teal-300 hover:bg-black border-4 hover:border-teal-300  shadow-lg hover:shadow-xl transition-all"
+                  >
+                    <Link href="/auth/login">Login</Link>
+                  </Button>
+                </div>
               )}
             </div>
 
