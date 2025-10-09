@@ -1,20 +1,22 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-type PageProps = {
-  searchParams?: Record<string, string | string[] | undefined>;
-};
+export default async function Page({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
 
-export default function Page({ searchParams }: PageProps) {
   const errorParam =
-    (typeof searchParams?.error === "string"
-      ? searchParams.error
-      : Array.isArray(searchParams?.error)
-      ? searchParams.error[0]
+    (typeof params?.error === "string"
+      ? params.error
+      : Array.isArray(params?.error)
+      ? params.error[0]
       : undefined) ||
-    (typeof searchParams?.message === "string"
-      ? searchParams.message
-      : Array.isArray(searchParams?.message)
-      ? searchParams.message[0]
+    (typeof params?.message === "string"
+      ? params.message
+      : Array.isArray(params?.message)
+      ? params.message[0]
       : undefined);
 
   return (
