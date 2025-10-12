@@ -7,14 +7,11 @@ export async function updateSession(request: NextRequest) {
     request,
   });
 
-  // If the env vars are not set, skip middleware check. You can remove this
-  // once you setup the project.
+  // If the env vars are not set, skip middleware check
   if (!hasEnvVars) {
     return supabaseResponse;
   }
 
-  // With Fluid compute, don't put this client in a global environment
-  // variable. Always create a new one on each request.
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY!,
@@ -38,15 +35,52 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  // Do not run code between createServerClient and
-  // supabase.auth.getClaims(). A simple mistake could make it very hard to debug
-  // issues with users being randomly logged out.
-
-  // IMPORTANT: If you remove getClaims() and you use server-side rendering
-  // with the Supabase client, your users may be randomly logged out.
   const { data } = await supabase.auth.getClaims();
   const user = data?.claims;
 
+  // If user is authenticated and trying to access onboarding, check if they already have a profile
+  if (user && request.nextUrl.pathname.startsWith("/onboarding/")) {
+    const { data: { user: fullUser } } = await supabase.auth.getUser();
+    const userType = fullUser?.user_metadata?.user_primary_type;
+    
+    // Allow user-type selection page
+    if (request.nextUrl.pathname === "/onboarding/user-type") {
+      return supabaseResponse;
+    }
+    
+    // Check if user has profile
+    if (userType === 'hacker') {
+      const { data: profile } = await supabase
+        .from('hacker_profiles')
+        .select('id')
+        .eq('user_id', fullUser?.id)
+        .single();
+      
+      if (profile) {
+        // User already has profile, redirect to hackathons
+        const url = request.nextUrl.clone();
+        url.pathname = "/hackathons";
+        url.searchParams.set('toast', 'already_registered');
+        return NextResponse.redirect(url);
+      }
+    } else if (userType === 'organizer') {
+      const { data: profile } = await supabase
+        .from('organizer_profiles')
+        .select('id')
+        .eq('user_id', fullUser?.id)
+        .single();
+      
+      if (profile) {
+        // User already has profile, redirect to hackathons
+        const url = request.nextUrl.clone();
+        url.pathname = "/hackathons";
+        url.searchParams.set('toast', 'already_registered');
+        return NextResponse.redirect(url);
+      }
+    }
+  }
+
+  // Redirect unauthenticated users to onboarding
   if (
     request.nextUrl.pathname !== "/" &&
     !user &&
@@ -54,28 +88,13 @@ export async function updateSession(request: NextRequest) {
     !request.nextUrl.pathname.startsWith("/onboarding/user-type") &&
     request.nextUrl.pathname !== "/onboarding/hacker/auth" &&
     request.nextUrl.pathname !== "/onboarding/organizer/auth" &&
-    request.nextUrl.pathname !== "/onboarding/organizer/auth" &&
     !request.nextUrl.pathname.startsWith("/_next") &&
     request.nextUrl.pathname !== "/favicon.ico"
   ) {
-    // No session yet: send the user to email confirmation prompt page
     const url = request.nextUrl.clone();
     url.pathname = "/onboarding/user-type";
     return NextResponse.redirect(url);
   }
-
-  // IMPORTANT: You *must* return the supabaseResponse object as it is.
-  // If you're creating a new response object with NextResponse.next() make sure to:
-  // 1. Pass the request in it, like so:
-  //    const myNewResponse = NextResponse.next({ request })
-  // 2. Copy over the cookies, like so:
-  //    myNewResponse.cookies.setAll(supabaseResponse.cookies.getAll())
-  // 3. Change the myNewResponse object to fit your needs, but avoid changing
-  //    the cookies!
-  // 4. Finally:
-  //    return myNewResponse
-  // If this is not done, you may be causing the browser and server to go out
-  // of sync and terminate the user's session prematurely!
 
   return supabaseResponse;
 }

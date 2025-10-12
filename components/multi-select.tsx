@@ -1004,7 +1004,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 						aria-multiselectable="true"
 						aria-label="Available options"
 						className={cn(
-							"w-auto p-0",
+							"w-auto p-0 z-[10000]",
 							getPopoverAnimationClass(),
 							screenSize === "mobile" && "w-[85vw] max-w-[280px]",
 							screenSize === "tablet" && "w-[70vw] max-w-md",

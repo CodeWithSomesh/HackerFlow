@@ -164,3 +164,15 @@
 [data-radix-popper-content-wrapper] {
   z-index: 50 !important;
 }
+
+[data-radix-popper-content-wrapper] {
+  z-index: 10000 !important;
+}
+
+.multiselect-popover {
+  z-index: 10000 !important;
+}
+
+[cmdk-root] {
+  z-index: 10000 !important;
+}

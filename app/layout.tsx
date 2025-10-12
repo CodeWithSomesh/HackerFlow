@@ -65,8 +65,14 @@ export default function RootLayout({
             <NavbarGate />
             {children}
             <FooterGate />
-            <Toaster position="top-right" reverseOrder={false} />
           </div>
+          <Toaster
+            position="top-right"
+            containerClassName="!z-[99999]"
+            toastOptions={{
+              duration: 4000,
+              className: '!z-[99999]',
+            }} />
         </ThemeProvider>
       </body>
     </html>

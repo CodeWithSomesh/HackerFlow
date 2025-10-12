@@ -25,6 +25,7 @@ export async function createHackathon(data: CreateHackathonStep1FormData, hackat
           website_url: data.websiteUrl || null,
           visibility: data.visibility,
           mode: data.mode,
+          location: data.location || null,
           categories: data.categories,
           about: data.about,
           updated_at: new Date().toISOString(),
@@ -274,3 +275,48 @@ export async function updateHackathonStep2(hackathonId: string, data: CreateHack
       return { success: false, error: 'An unexpected error occurred' };
     }
   }
+
+export async function fetchPublishedHackathons() {
+  try {
+    const supabase = await createClient();
+    
+    const { data, error } = await supabase
+      .from('hackathons')
+      .select('*')
+      .eq('status', 'published')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching hackathons:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+
+    return { success: true, data: data || [] };
+  } catch (error) {
+    console.error('Server error:', error);
+    return { success: false, error: 'An unexpected error occurred', data: [] };
+  }
+}
+
+export async function fetchHackathonById(hackathonId: string) {
+  try {
+    const supabase = await createClient();
+    
+    const { data, error } = await supabase
+      .from('hackathons')
+      .select('*')
+      .eq('id', hackathonId)
+      .eq('status', 'published')
+      .single();
+
+    if (error) {
+      console.error('Error fetching hackathon:', error);
+      return { success: false, error: error.message, data: null };
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    console.error('Server error:', error);
+    return { success: false, error: 'An unexpected error occurred', data: null };
+  }
+}

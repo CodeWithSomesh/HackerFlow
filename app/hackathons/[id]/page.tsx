@@ -30,12 +30,13 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { mockHackathons, Hackathon } from "@/lib/mockHackathons"; // Adjust path if different
+import { mockHackathons, Hackathon, faqData } from "@/lib/mockHackathons"; // Adjust path if different
 import { IconUserStar } from "@tabler/icons-react";
 import TrophyImage from "@/assets/Trophy Prize.png"
 import PrizeImage from "@/assets/Prize Box.png"
 import CertificateImage from "@/assets/Certificate.png"
 import { motion} from "framer-motion"
+import { fetchHackathonById } from "@/lib/actions/createHackathon-actions";
 
 
 interface HackathonDetailsProps {
@@ -49,29 +50,108 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
 
-  // FAQ data
-  const faqData = [
-    {
-      question: "What is the team size requirement?",
-      answer: "Teams should consist of 2-4 members maximum. Individual participation is also allowed for certain categories."
-    },
-    {
-      question: "What should I bring to the hackathon?",
-      answer: "Please bring your laptop, charger, ID card, any other devices you need, and lots of energy! We'll provide food, drinks, and workspace."
-    },
-    {
-      question: "Are there any specific technology requirements?",
-      answer: "While we encourage innovation with any technology stack, projects must align with the hackathon's theme and judging criteria."
-    },
-    {
-      question: "Will there be mentorship available?",
-      answer: "Yes! We have industry experts and experienced developers available throughout the event to help guide your project development."
-    },
-    {
-      question: "What about accommodation and food?",
-      answer: "All registered participants will be provided with accommodation and meals during the hackathon period. Details will be shared after registration."
+
+  
+
+  useEffect(() => {
+    loadHackathon();
+  }, [resolvedParams.id]);
+
+  const loadHackathon = async () => {
+    setLoading(true);
+    try {
+      // Try to fetch from database first
+      const dbResult = await fetchHackathonById(resolvedParams.id);
+      
+      if (dbResult.success && dbResult.data) {
+        // Transform DB data to match Hackathon interface
+        const transformedData: Hackathon = {
+          id: dbResult.data.id,
+          title: dbResult.data.title,
+          description: dbResult.data.about || 'No description available',
+          detailedDescription: dbResult.data.about,
+          organizer: dbResult.data.organizer, // Changed from organization
+          startDate: dbResult.data.registrationStartDate, // Changed from registration_start_date
+          endDate: dbResult.data.registrationEndDate, // Changed from registration_end_date
+          location: dbResult.data.location || 'Online',
+          mode: dbResult.data.mode as "Online" | "Hybrid" | "Physical",
+          participants: dbResult.data.participants || 0,
+          maxParticipants: dbResult.data.maxParticipants || 1000, // Changed from max_participants
+          totalPrizePool: dbResult.data.totalPrizePool || '$0', // Changed from total_prize_pool
+          tags: dbResult.data.categories || [],
+          image: dbResult.data.banner || '/api/placeholder/400/200', // Banner from DB
+          logo: dbResult.data.logo || '/api/placeholder/100/100', // Add logo field
+          status: calculateStatus(dbResult.data) as "Open" | "Closing Soon" | "Full",
+          timeLeft: calculateTimeLeft(dbResult.data.registrationEndDate), // Changed
+          featured: false,
+          colorTheme: getRandomTheme(),
+          category: dbResult.data.categories?.[0] || 'General',
+          level: dbResult.data.eligibility?.includes('Professionals') ? 'Advanced' : 
+                 dbResult.data.eligibility?.includes('Students') ? 'Intermediate' : 'Beginner',
+          prizeValue: parsePrizeValue(dbResult.data.totalPrizePool), // Changed
+          eligibility: dbResult.data.eligibility || [],
+          requirements: dbResult.data.requirements || [],
+          prizes: dbResult.data.prizes || [],
+          timeline: dbResult.data.timeline || [],
+          importantDates: dbResult.data.importantDates || [], // Changed from important_dates
+          faq: dbResult.data.faq || [],
+          organizers: dbResult.data.organizers || [],
+          sponsors: dbResult.data.sponsors || []
+        };
+        
+        setHackathon(transformedData);
+      } else {
+        // Fallback to mock data
+        const foundHackathon = mockHackathons.find(h => h.id === resolvedParams.id);
+        setHackathon(foundHackathon || null);
+      }
+    } catch (error) {
+      console.error('Error loading hackathon:', error);
+      const foundHackathon = mockHackathons.find(h => h.id === resolvedParams.id);
+      setHackathon(foundHackathon || null);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  const calculateStatus = (hack: any): string => {
+    const now = new Date();
+    const endDate = new Date(hack.registration_end_date);
+    const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    
+    const currentParticipants = hack.participants || 0;
+    const maxParticipants = hack.max_participants || 1000;
+    
+    if (currentParticipants >= maxParticipants) return "Full";
+    if (daysLeft <= 3 && daysLeft > 0) return "Closing Soon";
+    if (daysLeft < 0) return "Full";
+    return "Open";
+  };
+
+  const calculateTimeLeft = (endDate: string): string => {
+    const now = new Date();
+    const end = new Date(endDate);
+    const diffTime = end.getTime() - now.getTime();
+    const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (daysLeft < 0) return "Ended";
+    if (daysLeft === 0) return "Ends today";
+    if (daysLeft === 1) return "1 day left";
+    if (daysLeft < 7) return `${daysLeft} days left`;
+    if (daysLeft < 30) return `${Math.ceil(daysLeft / 7)} weeks left`;
+    return `${Math.ceil(daysLeft / 30)} months left`;
+  };
+
+  const getRandomTheme = () => {
+    const themes = ['purple', 'teal', 'pink', 'green', 'yellow', 'cyan'];
+    return themes[Math.floor(Math.random() * themes.length)];
+  };
+
+  const parsePrizeValue = (prizeStr: string): number => {
+    if (!prizeStr) return 0;
+    const numStr = prizeStr.replace(/[^0-9,]/g, '').replace(/,/g, '');
+    return parseInt(numStr) || 0;
+  };
 
   // Enhanced function to determine date status
   type DateStatus = {
@@ -152,12 +232,12 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
     setLoading(false);
   }, [resolvedParams.id]);
 
-  if (loading || !hackathon) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-white text-xl">Loading hackathon details...</p>
+          <div className="w-16 h-16 border-4 border-teal-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-white text-xl font-mono">Loading hackathon details...</p>
         </div>
       </div>
     );
@@ -168,11 +248,11 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
           <div className="text-6xl mb-4">🔍</div>
-          <h1 className="text-3xl font-bold text-white mb-4">Hackathon Not Found</h1>
-          <p className="text-gray-400 mb-6">The hackathon you&apos;re looking for doesn&apos;t exist or has been removed.</p>
+          <h1 className="text-3xl font-blackops text-white mb-4">Hackathon Not Found</h1>
+          <p className="text-gray-400 font-mono mb-6">The hackathon you're looking for doesn't exist or has been removed.</p>
           <Link 
             href="/hackathons"
-            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors"
+            className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white px-6 py-3 rounded-lg transition-all font-mono font-bold"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Hackathons
@@ -224,15 +304,6 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
     }
   };
 
-  // const getLevelColor = (level: string) => {
-  //   switch (level) {
-  //     case "Beginner": return "bg-green-500 text-white";
-  //     case "Intermediate": return "bg-yellow-500 text-black";
-  //     case "Advanced": return "bg-red-500 text-white";
-  //     default: return "bg-gray-500 text-white";
-  //   }
-  // };
-
   const getInitials = (name: string) => {
     return name
       .split(" ")
@@ -241,58 +312,61 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
       .toUpperCase()
   }
 
+
   return (
     <div className="min-h-screen bg-black">
-      {/* Floating Register Button - Mobile */}
+      {/* Enhanced Floating Register Button - Mobile */}
       <div className="fixed bottom-6 right-6 z-50 lg:hidden">
         <button 
           disabled={hackathon.status === "Full"}
-          className={`px-6 py-3 rounded-full font-semibold shadow-2xl transition-all ${
+          className={`group relative px-8 py-4 rounded-2xl font-blackops text-lg shadow-2xl transition-all duration-300 ${
             hackathon.status === "Full" 
-              ? "bg-gray-700 text-gray-400 cursor-not-allowed" 
-              : `${theme.gradient} text-white hover:scale-105`
+              ? "bg-gray-700 text-gray-400 cursor-not-allowed border-2 border-gray-600" 
+              : "bg-gradient-to-r from-purple-500 via-blue-500 to-teal-500 text-white hover:scale-110 hover:shadow-purple-500/50 border-2 border-transparent hover:border-white/20"
           }`}
         >
-          {hackathon.status === "Full" ? "Full" : "Register"}
+          {hackathon.status === "Full" ? (
+            "FULL"
+          ) : (
+            <>
+              <span className="relative z-10">REGISTER NOW</span>
+              {/* Animated glow effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-500 via-blue-500 to-teal-500 blur-xl opacity-50 group-hover:opacity-75 transition-opacity"></div>
+            </>
+          )}
         </button>
       </div>
 
-      {/* Header Navigation */}
-      <div className="bg-gray-900/95 backdrop-blur-lg border-b-2 border-gray-700 sticky top-0 z-40 shadow-2xl">
+      {/* Enhanced Header Navigation */}
+      <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 backdrop-blur-xl border-b-2 border-gray-700 sticky top-0 z-40 shadow-2xl">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            {/* Back Button - Enhanced */}
             <Link 
               href="/hackathons"
-              className="group flex items-center gap-3 bg-gradient-to-r from-blue-500/20 to-purple-500/20 hover:from-blue-500/30 hover:to-purple-500/30 border border-blue-500/40 hover:border-blue-400 text-white hover:text-blue-300 px-5 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-blue-500/20"
+              className="group flex items-center gap-3 bg-gradient-to-r from-purple-500/20 via-blue-500/20 to-teal-500/20 hover:from-purple-500/30 hover:via-blue-500/30 hover:to-teal-500/30 border-2 border-purple-500/40 hover:border-teal-400 text-white px-6 py-3 rounded-xl font-blackops transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-purple-500/30"
             >
-              <ArrowLeft className="w-5 h-5 group-hover:translate-x-[-2px] transition-transform" />
-              <span className="text-lg">Back to Hackathons</span>
+              <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+              <span className="text-lg">BACK</span>
             </Link>
             
-            {/* Action Buttons - Enhanced */}
             <div className="flex items-center gap-3">
-              {/* Bookmark Button */}
               <button 
                 onClick={() => setIsBookmarked(!isBookmarked)}
                 className={`group relative p-3 rounded-xl font-semibold border-2 transition-all duration-300 hover:scale-110 hover:shadow-lg ${
                   isBookmarked 
-                    ? 'bg-gradient-to-r from-blue-500/30 to-blue-600/30 border-blue-400 text-blue-300 shadow-blue-500/20' 
-                    : 'bg-gray-800/50 hover:bg-gradient-to-r hover:from-blue-500/20 hover:to-blue-600/20 border-gray-600 hover:border-blue-400 text-gray-300 hover:text-blue-300'
+                    ? 'bg-gradient-to-r from-yellow-500/30 to-orange-500/30 border-yellow-400 text-yellow-300 shadow-yellow-500/30' 
+                    : 'bg-gray-800/50 hover:bg-gradient-to-r hover:from-yellow-500/20 hover:to-orange-500/20 border-gray-600 hover:border-yellow-400 text-gray-300 hover:text-yellow-300'
                 }`}
               >
                 <Bookmark className={`w-6 h-6 transition-all ${isBookmarked ? 'fill-current scale-110' : 'group-hover:scale-110'}`} />
-                {/* Tooltip */}
-                <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-sm px-3 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-gray-700">
-                  {isBookmarked ? 'Remove Bookmark' : 'Add Bookmark'}
+                <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs font-mono px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-gray-700 shadow-xl">
+                  {isBookmarked ? 'Bookmarked ✓' : 'Bookmark Event'}
                 </div>
               </button>
               
-              {/* Share Button */}
-              <button className="group relative p-3 rounded-xl font-semibold bg-gray-800/50 hover:bg-gradient-to-r hover:from-green-500/20 hover:to-teal-500/20 border-2 border-gray-600 hover:border-green-400 text-gray-300 hover:text-green-300 transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-green-500/20">
-                <Share2 className="w-6 h-6 group-hover:scale-110 transition-transform" />
-                {/* Tooltip */}
-                <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-sm px-3 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-gray-700">
+              <button className="group relative p-3 rounded-xl font-semibold bg-gray-800/50 hover:bg-gradient-to-r hover:from-green-500/20 hover:to-teal-500/20 border-2 border-gray-600 hover:border-green-400 text-gray-300 hover:text-green-300 transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-green-500/30">
+                <Share2 className="w-6 h-6 group-hover:rotate-12 transition-transform" />
+                <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs font-mono px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-gray-700 shadow-xl">
                   Share Event
                 </div>
               </button>
@@ -301,128 +375,96 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
         </div>
       </div>
 
+      {/* Enhanced Banner Image with Gradient Overlay */}
       <div className="mt-4 max-w-7xl mx-auto px-6">
-        <div className=" max-h-full border border-gray-400 rounded-md flex mx-auto overflow-hidden">
+        <div className="relative max-h-full border-2 border-gray-700 rounded-2xl overflow-hidden group">
           {hackathon.image !== "/api/placeholder/400/200" && (
-            <Image
-              src={hackathon.image}
-              alt={hackathon.title}
-              width={1200}
-              height={500}
-              className="object-cover w-full object-top rounded-md"
-            />
+            <>
+              <Image
+                src={hackathon.image}
+                alt={hackathon.title}
+                width={1200}
+                height={500}
+                unoptimized 
+                className="object-cover w-full object-top rounded-2xl group-hover:scale-105 transition-transform duration-700"
+              />
+              {/* Gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-60"></div>
+            </>
           )}
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto py-4 px-6">
-        <div className="grid lg:grid-cols-[70%_28.8%] gap-4">
+      <div className="max-w-7xl mx-auto py-6 px-6">
+        <div className="grid lg:grid-cols-[70.2%_20%] gap-4">
           {/* Main Content */}
-          <div className=" space-y-4">
-            {/* Hero Section - More compact */}
-            <div className="relative rounded-md overflow-hidden bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 border border-gray-700">
-              {/* <div className="absolute inset-0 opacity-20">
-                {hackathon.image !== "/api/placeholder/400/200" && (
-                  <Image
-                    src={hackathon.image}
-                    alt={hackathon.title}
-                    fill
-                    className="object-cover"
-                  />
-                )}
-              </div> */}
+          <div className="space-y-6">
+            {/* Enhanced Hero Section */}
+            <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 border-2 border-gray-700 shadow-2xl">
+              {/* Animated gradient background */}
+              <div className={`absolute inset-0 bg-gradient-to-br ${theme.gradient} opacity-0 animate-puls`}></div>
               
-              {/* Decorative gradient overlay */}
-              <div className={`absolute inset-0 ${theme.gradient} opacity-75`}></div>
-              
-              <div className="relative z-10 p-6">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    {/* <div className="flex items-center gap-3 mb-4">
-                      {hackathon.featured && (
-                        <div className="flex items-center gap-1 bg-yellow-400 text-yellow-900 px-3 py-1.5 rounded-md text-sm font-bold">
-                          <Star className="h-4 w-4 fill-current" />
-                          Featured
-                        </div>
-                      )}
-                      <span className={`px-3 py-1.5 rounded-full text-sm font-bold ${getStatusBadge(hackathon.status)}`}>
-                        {hackathon.status}
-                      </span>
-                      <span className={`px-3 py-1.5 rounded-md text-sm font-bold ${getLevelColor(hackathon.level)}`}>
-                        {hackathon.level}
-                      </span>
-                    </div> */}
-                    <div className="grid grid-cols-[15%_80%] gap-3">
-                      <div className="rounded-md h-fit grid overflow-hidden">
-                        <Image
-                          src={hackathon.image}
-                          alt={hackathon.title}
-                          // width={100}
-                          // height={100}
-                          className="object-cover h-[100px]"
-                        />
-                      </div>
-
-                      <h1 className="text-4xl lg:text-5xl font-black font-blackops text-white">{hackathon.title}</h1>
-                    </div>
+              <div className="relative z-10 p-8">
+                <div className="grid grid-cols-[15%_83%] gap-4 mb-6">
+                  <div className="rounded-xl overflow-hidden border-2 border-gray-700 shadow-lg hover:scale-105 transition-transform">
+                    <Image
+                      src={hackathon.image}
+                      alt={hackathon.title}
+                      width={100}
+                      height={100}
+                      className="object-cover h-[110px] w-full"
+                    />
                   </div>
+                  <h1 className="text-5xl lg:text-6xl font-blackops text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-blue-400 to-teal-400 leading-tight">
+                    {hackathon.title}
+                  </h1>
                 </div>
 
-                {/* Organizer & Updated Date */}
-                <div className="my-4 flex flex-col gap-1 w-fit pr-4 font-mono">
-                  <div className="flex gap-1 items-center">
-                    <Building className="w-5 h-5" />
-                    <p className="text- text-gray-100 font-medium">Organized by {""}
-                      <span className="underline hover:italic font-blackops text-lg">{hackathon.organizer}</span>
+                {/* Enhanced Organizer Info */}
+                <div className="mb-6 space-y-3">
+                  <div className="flex gap-2 items-center text-gray-200 font-mono bg-gray-800/50 backdrop-blur rounded-xl px-4 py-3 border border-gray-700 hover:border-gray-600 transition-all w-full">
+                    <Building className="w-5 h-5 text-blue-400" />
+                    <p className="font-medium">Organized by{" "}
+                      <span className="underline hover:italic font-blackops text-lg text-blue-400">{hackathon.organizer}</span>
                     </p>
                   </div>
                   
-                  <div className="flex gap-1 items-center">
-                    <CalendarClock className="w-5 h-5" />
-                    <p className="text- text-gray-100 font-medium">Updated On: 16th Sept, 2025</p>
+                  <div className="flex gap-2 items-center text-gray-200 font-mono bg-gray-800/50 backdrop-blur rounded-xl px-4 py-3 border border-gray-700 hover:border-gray-600 transition-all w-full">
+                    <CalendarClock className="w-5 h-5 text-teal-400" />
+                    <p className="font-medium">Updated: {new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
                   </div>
                 </div>
 
-                {/* Key Stats Grid */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                  <div className="bg-gray-800 hover:scale-75 backdrop-blur border border-white/10 rounded-2xl p-3 text-center hover:bg-black/60 transition-all">
-                    <Users className="w-6 h-6 text-blue-400 mx-auto mb-2" />
-                    <div className="text-2xl font-bold text-white font-mono">{hackathon.participants}</div>
-                    <div className="text-sm text-gray-300 font-mono mt-1">Participants</div>
-                  </div>
-                  <div className="bg-gray-800 hover:scale-75 backdrop-blur border border-white/10 rounded-2xl p-3 text-center hover:bg-black/60 transition-all">
-                    <Trophy className="w-6 h-6 text-yellow-400 mx-auto mb-2" />
-                    <div className="text-2xl font-bold text-white font-mono">{hackathon.totalPrizePool.split(' ')[0]}</div>
-                    <div className="text-sm text-gray-300 font-mono mt-1">Prize Pool</div>
-                  </div>
-                  <div className="bg-gray-800 hover:scale-75 backdrop-blur border border-white/10 rounded-2xl p-3 text-center hover:bg-black/60 transition-all">
-                    <Clock className="w-6 h-6 text-green-400 mx-auto mb-2" />
-                    <div className="text-2xl font-bold text-white font-mono">{hackathon.timeLeft.split(' ')[0]}</div>
-                    <div className="text-sm text-gray-300 font-mono mt-1">Days Left</div>
-                  </div>
-                  <div className="bg-gray-800 hover:scale-75 backdrop-blur border border-white/10 rounded-2xl p-3 text-center hover:bg-black/60 transition-all">
-                    <MapPin className="w-6 h-6 text-purple-400 mx-auto mb-2" />
-                    <div className="text-2xl font-bold text-white font-mono">{hackathon.mode}</div>
-                    <div className="text-sm text-gray-300 font-mono mt-1">{hackathon.location.split(',')[0]}</div>
-                  </div>
+                {/* Enhanced Key Stats Grid */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                  {[
+                    { icon: Users, value: hackathon.participants, label: 'Participants', color: 'from-blue-500 to-blue-700', glow: 'shadow-blue-500/30' },
+                    { icon: Trophy, value: hackathon.totalPrizePool.split(' ')[0], label: 'Prize Pool', color: 'from-yellow-500 to-yellow-700', glow: 'shadow-yellow-500/30' },
+                    { icon: Clock, value: hackathon.timeLeft.split(' ')[0], label: 'Days Left', color: 'from-green-500 to-green-700', glow: 'shadow-green-500/30' },
+                    { icon: MapPin, value: hackathon.mode, label: hackathon.location.split(',')[0], color: 'from-purple-500 to-purple-700', glow: 'shadow-purple-500/30' }
+                  ].map((stat, idx) => (
+                    <div key={idx} className={`bg-gradient-to-br ${stat.color} backdrop-blur border-2 border-white/10 rounded-2xl p-5 text-center hover:scale-105 transition-all ${stat.glow} shadow-xl group`}>
+                      <stat.icon className="w-7 h-7 text-white mx-auto mb-3 group-hover:scale-110 transition-transform" />
+                      <div className="text-3xl font-blackops text-white drop-shadow-lg">{stat.value}</div>
+                      <div className="text-sm text-white/90 font-mono mt-1 font-bold">{stat.label}</div>
+                    </div>
+                  ))}
                 </div>
                 
-                {/* Eligibility */}
-                <div className="mt-3 bg-gray-800 hover:scale-75 backdrop-blur border border-white/10 rounded-2xl p-5 hover:bg-black/60 transition-all">
-                  <div className="flex w-fit gap-2 items-center">
-                    <Sparkles className="w-6 h-6 text-orange-400 ml-1" />
-                    <h1 className="font-geist text-2xl font-bold text-white">Eligibility</h1>
+                {/* Enhanced Eligibility */}
+                <div className="bg-gradient-to-br from-orange-500/10 to-red-500/10 backdrop-blur border-2 border-orange-500/30 rounded-2xl p-6 hover:scale-[1.01] transition-all shadow-lg hover:shadow-orange-500/20">
+                  <div className="flex w-fit gap-3 items-center mb-4">
+                    <Sparkles className="w-7 h-7 text-orange-400" />
+                    <h2 className="font-blackops text-3xl text-white">ELIGIBILITY</h2>
                   </div>
                   
-                  {/* Who are Eligible */}
-                  <div className="flex flex-wrap gap-2 mb- font-mono">
+                  <div className="flex flex-wrap gap-3 font-mono">
                     {hackathon.eligibility.map((tag, index) => (
                       <span 
                         key={index}
-                        className="mt-2 text-gray-300 flex text-sm items-center"
+                        className="px-4 py-2 bg-orange-500/20 border-2 border-orange-500/40 rounded-lg text-orange-300 font-bold text-sm hover:bg-orange-500/30 transition-all"
                       >
-                        <Dot />
-                        {tag}
+                        ✓ {tag}
                       </span>
                     ))}
                   </div>
@@ -430,39 +472,41 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
               </div>
             </div>
             
-            {/* Requirements */}
-            {hackathon.requirements && (
-              <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-md border border-gray-700 px-8 py-6">
-                <div className="text-white mb-6 flex items-center gap-3">
-                  <CheckCircle className={`w-9 h-9 ${theme.text}`} />
-                  <h1 className="text-3xl font-bold font-blackops mt-1">REQUIREMENTS</h1>
+            {/* Enhanced Requirements */}
+            {hackathon.requirements && hackathon.requirements.length > 0 && (
+              <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-8 shadow-2xl hover:shadow-green-500/10 transition-all">
+                <div className="flex items-center gap-3 mb-6">
+                  <CheckCircle className="w-9 h-9 text-green-400" />
+                  <h2 className="text-4xl font-blackops text-white">REQUIREMENTS</h2>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {hackathon.requirements.map((req, index) => (
-                    <div key={index} className="flex items-center font-geist gap-4 px-4 py-2.5 bg-gray-800/30 rounded-xl border border-gray-700/50">
-                      <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0 mt-0.5">
+                    <div key={index} className="flex items-start gap-4 px-5 py-4 bg-gradient-to-r from-gray-800/50 to-gray-700/30 rounded-xl border-2 border-gray-700/50 hover:border-green-500/30 transition-all group">
+                      <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-green-700 rounded-full flex items-center justify-center text-white text-sm font-blackops flex-shrink-0 shadow-lg group-hover:scale-110 transition-transform">
                         {index + 1}
                       </div>
-                      <span className="text-gray-300 leading-relaxed">{req}</span>
+                      <span className="text-gray-200 font-geist leading-relaxed text-lg">{req}</span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* About Section */}
-            <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-md border border-gray-700 px-8 py-6">
-              <div className=" mb-6 flex items-center gap-3">
-               <Info className={`h-9 w-9 ${theme.gradient} rounded-full`} />
-                <h2 className="text-3xl font-bold font-blackops text-white mt-1">ABOUT THIS HACKATHON</h2>
+            {/* Enhanced About Section */}
+            <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-8 shadow-2xl hover:shadow-blue-500/10 transition-all">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl">
+                  <Info className="h-7 w-7 text-white" />
+                </div>
+                <h2 className="text-4xl font-blackops text-white">ABOUT THIS HACKATHON</h2>
               </div>
               
-              {/* Tags */}
+              {/* Enhanced Tags */}
               <div className="flex flex-wrap gap-3 mb-6">
                 {hackathon.tags.map((tag, index) => (
                   <span 
                     key={index}
-                    className="px-4 py-2 rounded-full text-sm font-bold font-mono bg-gradient-to-r from-purple-400 to-pink-400 text-white  border-gray-300 hover:scale-90 transition-colors"
+                    className="px-5 py-2.5 rounded-xl text-sm font-blackops bg-gradient-to-r from-purple-500 via-blue-500 to-teal-500 text-white border-2 border-white/20 hover:scale-110 hover:shadow-lg hover:shadow-purple-500/50 transition-all cursor-pointer"
                   >
                     {tag}
                   </span>
@@ -470,96 +514,73 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
               </div>
               
               <div className="prose prose-lg max-w-none">
-                <p className="text-gray-300 font-geist  eading-relaxed text-lg whitespace-pre-line">
-                  {hackathon.detailedDescription || hackathon.description}
-                </p>
+                <div 
+                  className="text-gray-300 font-geist text-lg leading-relaxed bg-gray-800/30 rounded-xl p-6 border border-gray-700"
+                  dangerouslySetInnerHTML={{ __html: hackathon.detailedDescription || hackathon.description }}
+                />
               </div>
             </div>
 
-            {/* Timeline */}
-            {/* {hackathon.timeline && (
-              <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-md border border-gray-700 p-8">
-                <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
-                  <Calendar className="w-7 h-7 text-blue-400" />
-                  Timeline
-                </h2>
-                <div className="space-y-4">
-                  {hackathon.timeline.map((event, index) => (
-                    <div key={index} className="flex gap-4 p-4 bg-gray-800/30 rounded-xl border border-gray-700/50">
-                      <div className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-sm ${theme.gradient}`}>
-                        {event.date.split(' ')[1] || event.date.split(' ')[0]}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-white mb-1">{event.title}</h3>
-                        <p className="text-gray-400 text-sm leading-relaxed">{event.description}</p>
-                      </div>
-                    </div>
-                  ))}
+            {/* Enhanced Timeline - keep your existing timeline code but update styling */}
+            {hackathon.timeline && hackathon.timeline.length > 0 && (
+              <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-8 shadow-2xl hover:shadow-teal-500/10 transition-all">
+                <div className="flex items-center gap-3 mb-8">
+                  <CalendarClock className="w-9 h-9 text-teal-400" />
+                  <h2 className="text-4xl font-blackops text-white">STAGES & TIMELINE</h2>
                 </div>
-              </div>
-            )} */}
 
-            {/* Stages & Timeline - Second Design */}
-            <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-md border border-gray-700 px-8 py-6">
-              <div className="flex items-center gap-3 mb-8">
-                <CalendarClock className={`w-9 h-9 ${theme.text}`} />
-                <h2 className="text-3xl font-bold text-white font-blackops mt-1">STAGES & TIMELINE</h2>
-              </div>
+                <div className="relative">
+                  <div className="absolute left-8 top-0 bottom-[21%] w-1 bg-gradient-to-b from-purple-500 via-blue-500 to-teal-500 rounded-full"></div>
 
-              <div className="relative">
-                {/* Vertical line */}
-                <div className="absolute left-8 top-0 bottom-[21%] w-0.5 bg-gray-600"></div>
+                  <div className="space-y-8">
+                    {hackathon.timeline.map((stage, index) => (
+                      <div key={index} className="relative flex items-start gap-6">
+                        <div className="flex-shrink-0 font-mono w-16 h-16 bg-gradient-to-br from-gray-800 to-gray-900 border-2 border-teal-500 rounded-xl flex flex-col items-center justify-center relative z-10 shadow-lg hover:scale-110 transition-transform">
+                          <div className="text-xl font-blackops text-white">{new Date(stage.startDate).getDate()}</div>
+                          <div className="h-[1px] my-1 w-full bg-teal-400"></div>
+                          <div className="text-xs text-teal-400 font-bold">{new Date(stage.startDate).toLocaleString('default', { month: 'short' })}</div>
+                        </div>
 
-                <div className="space-y-8">
-                  {hackathon.timeline?.map((stage, index) => (
-                    <div key={index} className="relative flex items-start gap-6">
-                      {/* Date circle */}
-                      <div className="flex-shrink-0 font-mono w-16 h-16 bg-gray-800 border-2 border-gray-600 rounded-lg flex flex-col items-center justify-center relative z-10">
-                        <div className="text-xl font-bold text-white">{stage.date.split(" ")[0]}</div>
-                        <div className="h-[1px] my-[3px] w-full bg-gray-400"></div>
-                        <div className="text-sm text-gray-300">{`${stage.date.split(" ")[1]}`}</div>
-                      </div>
-
-                      {/* Content card */}
-                      <div className="flex-1 bg-gray-800/30 border border-gray-700/50 rounded-xl px-6 py-3 hover:bg-gray-700/30 transition-all">
-                        <div className="space-y-2">
-                          <div className="flex items-start justify-between font-mono">
-                            <h3 className="text-xl font-semibold text-white underline">{stage.title}</h3>
-                            {stage.isActive && (
-                              <div className="flex items-center gap-1 px-3 py-1 bg-gray-900 nimate-pulse font-bold font-geist text-red-400 text-sm rounded-full border border-blue-500/30">
-                                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
-                                <h1>Live</h1>
-                              </div>
-                            )}
-                          </div>
-
-                          <p className="text-gray-300 font-geist eading-relaxed">{stage.description}</p>
-
-                          {(stage.startDate || stage.endDate) && (
-                            <div className="flex flex-col sm:flex-row gap-10 pt-3 border-t border-gray-600/50">
-                              {stage.startDate && (
-                                <div className="font-mono flex items-center gap-2 text-sm">
-                                  <Calendar className="w-4 h-4 text-blue-400" />
-                                  <span className="text-gray-400">Start:</span>
-                                  <span className="text-white font-medium">{stage.startDate}</span>
-                                </div>
-                              )}
-                              {stage.endDate && (
-                                <div className="font-mono flex items-center gap-2 text-sm">
-                                  <Clock className="w-4 h-4 text-blue-400" />
-                                  <span className="text-gray-400">End:</span>
-                                  <span className="text-white font-medium">{stage.endDate}</span>
+                        <div className="flex-1 bg-gradient-to-r from-gray-800/50 to-gray-700/30 border-2 border-gray-700/50 rounded-2xl px-6 py-5 hover:border-teal-500/30 transition-all group hover:scale-[1.02]">
+                          <div className="space-y-3">
+                            <div className="flex items-start justify-between font-mono">
+                              <h3 className="text-2xl font-blackops text-white group-hover:text-teal-400 transition-colors">{stage.title}</h3>
+                              {stage.isActive && (
+                                <div className="flex items-center gap-2 px-4 py-2 bg-red-500/20 border-2 border-red-500 font-blackops text-red-400 text-sm rounded-xl animate-">
+                                  <div className="w-2 h-2 rounded-full bg-red-500 animate-ping"></div>
+                                  LIVE
                                 </div>
                               )}
                             </div>
-                          )}
+
+                            <p className="text-gray-300 font-geist text-lg leading-relaxed">{stage.description}</p>
+
+                            {(stage.startDate || stage.endDate) && (
+                              <div className="flex flex-wrap gap-6 pt-4 border-t-2 border-gray-600/50">
+                                {stage.startDate && (
+                                  <div className="font-mono flex items-center gap-2">
+                                    <Calendar className="w-5 h-5 text-blue-400" />
+                                    <span className="text-gray-400 font-bold">Start:</span>
+                                    <span className="text-white font-bold">{new Date(stage.startDate).toLocaleDateString()}</span>
+                                  </div>
+                                )}
+                                {stage.endDate && (
+                                  <div className="font-mono flex items-center gap-2">
+                                    <Clock className="w-5 h-5 text-teal-400" />
+                                    <span className="text-gray-400 font-bold">End:</span>
+                                    <span className="text-white font-bold">{new Date(stage.endDate).toLocaleDateString()}</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Important Dates & Deadlines */}
             <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-md border border-gray-700 px-8 py-6">
@@ -654,7 +675,7 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
                         <Award className="w-6 h-6 opacity-60" />
                       </div>
                       
-                      {/* Main content */}
+                      {/* Prize content */}
                       <div className="text-center relative">
                         <div className="mb-4">
                           <h3 className="text-xl font-semibold font-mono text-gray-300 mb-3 tracking-wide">
@@ -704,7 +725,7 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
                         <div className="flex-1 space-y-">
                           <div className="space-y-">
                             <h3 className="font-semibold text-white text-lg font-mono underline">
-                              {prize.category}: {prize.position}
+                              {prize.position}
                             </h3>
                             {prize.amount && <p className="text-2xl mt-1 font-bold font-mono text-yellow-400">{prize.amount}</p>}
                             <p className="mt-3 font-geist">{prize?.description}</p>
@@ -765,161 +786,160 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
               </div>
             )}
 
-            {/* FAQ Section */}
-            <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-md border border-gray-700 px-8 py-6">
-              <div className=" mb-8 flex items-center gap-2">
-                <MessageCircleQuestionIcon className={`w-9 h-9 ${theme.text}`} /> 
-                <h1 className="text-3xl font-bold text-white font-blackops mt-1">FREQUENTLY ASKED QUESTIONS</h1>
-              </div>
-              <div className="space-y-4">
-                {faqData.map((faq, index) => (
-                  <div key={index} className="border border-gray-700 rounded-2xl bg-gray-800/20 overflow-hidden">
-                    <button
-                      onClick={() => setExpandedFaq(expandedFaq === index ? null : index)}
-                      className="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-gray-700/20 transition-colors"
-                    >
-                      <span className="font-semibold font-mono text-white text-lg">{faq.question}</span>
-                      {expandedFaq === index ? (
-                        <ChevronUp className="w-5 h-5 text-gray-400 flex-shrink-0" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5 text-gray-400 flex-shrink-0" />
+            {/* Enhanced FAQ Section - Using DB Data */}
+            {hackathon.faq && hackathon.faq.length > 0 && (
+              <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-8 shadow-2xl hover:shadow-pink-500/10 transition-all">
+                <div className="flex items-center gap-3 mb-8">
+                  <MessageCircleQuestionIcon className="w-9 h-9 text-pink-400" /> 
+                  <h2 className="text-4xl font-blackops text-white">FREQUENTLY ASKED QUESTIONS</h2>
+                </div>
+                <div className="space-y-4">
+                {hackathon.faq.map((faq: { question: string; answer: string }, index: number) => (
+                    <div key={index} className="border-2 border-gray-700 rounded-2xl bg-gray-800/30 overflow-hidden hover:border-pink-500/30 transition-all group">
+                      <button
+                        onClick={() => setExpandedFaq(expandedFaq === index ? null : index)}
+                        className="w-full px-6 py-5 text-left flex items-center justify-between hover:bg-gray-700/30 transition-colors"
+                      >
+                        <span className="font-blackops text-white text-xl group-hover:text-pink-400 transition-colors pr-4">{faq.question}</span>
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-pink-500/20 flex items-center justify-center border-2 border-pink-500/30 group-hover:bg-pink-500/30 transition-all">
+                          {expandedFaq === index ? (
+                            <ChevronUp className="w-5 h-5 text-pink-400" />
+                          ) : (
+                            <ChevronDown className="w-5 h-5 text-pink-400" />
+                          )}
+                        </div>
+                      </button>
+                      {expandedFaq === index && (
+                        <div className="px-6 pb-5 border-t-2 border-gray-700/50 bg-gray-800/50">
+                          <p className="text-gray-300 font-geist text-lg leading-relaxed pt-5">{faq.answer}</p>
+                        </div>
                       )}
-                    </button>
-                    {expandedFaq === index && (
-                      <div className="px-6 pb-4 border-t border-gray-700/50">
-                        <p className="text-gray-300 font-geist leading-relaxed pt-4">{faq.answer}</p>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Organizers */}
-            <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-md border border-gray-700 px-8 py-6">
-              <div className="flex items-center gap-3 mb-5">
-                <IconUserStar className={`w-9 h-9 ${theme.text}`} /> 
-                <h2 className="text-3xl font-bold font-blackops text-white mt-1">THE ORGANIZERS</h2>
-              </div>
+            {/* Enhanced Organizers */}
+            {hackathon.organizers && hackathon.organizers.length > 0 && (
+              <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-8 shadow-2xl hover:shadow-cyan-500/10 transition-all">
+                <div className="flex items-center gap-3 mb-6">
+                  <IconUserStar className="w-9 h-9 text-cyan-400" /> 
+                  <h2 className="text-4xl font-blackops text-white">THE ORGANIZERS</h2>
+                </div>
 
-              <div className="grid gap-6 md:grid-cols-2">
-                {hackathon.organizers?.map((organizer, index) => (
-                  <div key={index} className="px-6 py-4 bg-gray-800/30 border border-gray-700/50 rounded-xl hover:bg-gray-700/30 transition-all">
-                    <div className="flex items-start gap-3">
-                      <div className="w-12 h-12 bg-blue-500/20 text-blue-400 rounded-lg flex items-center justify-center font-semibold border border-blue-500/30">
-                        {organizer.image ? (
+                <div className="grid gap-6 md:grid-cols-2">
+                  {hackathon.organizers.map((organizer, index) => (
+                    <div key={index} className="px-6 py-5 bg-gradient-to-r from-gray-800/50 to-gray-700/30 border-2 border-gray-700/50 rounded-2xl hover:border-cyan-500/30 transition-all group hover:scale-[1.02]">
+                      <div className="flex items-start gap-4 mb-4">
+                        <div className="w-16 h-16 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 text-cyan-400 rounded-xl flex items-center justify-center font-blackops text-xl border-2 border-cyan-500/30 group-hover:scale-110 transition-transform">
+                        {organizer.photo ? (
                           <Image
-                            src={organizer.image || "/placeholder.svg"}
+                            src={organizer.photo}
                             alt={organizer.name}
-                            width={48}
-                            height={48}
-                            className="w-full h-full rounded-lg object-cover"
+                            width={64}
+                            height={64}
+                            className="w-full h-full rounded-xl object-cover"
                           />
                         ) : (
                           getInitials(organizer.name)
                         )}
-                      </div>
-
-                      <div className="flex-1 space-y-3">
-                        <div className="font-mono">
-                          <h3 className="text-lg font-semibold text-white">{organizer.name}</h3>
-                          <p className="text-sm text-blue-400 font-medium">{organizer.role}</p>
                         </div>
-                      </div>  
-                    </div>
 
-                    <div className="space-y-2 px-1 mt-3 font-mono">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Mail className="w-4 h-4 text-blue-400" />
-                        <a
-                          href={`mailto:${organizer.email}`}
-                          className="text-gray-300 hover:text-blue-400 transition-colors"
-                        >
-                          {organizer.email}
-                        </a>
+                        <div className="flex-1 font-mono">
+                          <h3 className="text-xl font-blackops text-white group-hover:text-cyan-400 transition-colors">{organizer.name}</h3>
+                          <p className="text-sm text-cyan-400 font-bold">{organizer.role}</p>
+                        </div>
                       </div>
 
-                      {organizer.phone && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Phone className="w-4 h-4 text-blue-400" />
+                      <div className="space-y-3 font-mono">
+                        <div className="flex items-center gap-3 px-4 py-2 bg-gray-800/50 rounded-lg border border-gray-700 hover:border-cyan-500/30 transition-all">
+                          <Mail className="w-5 h-5 text-cyan-400 flex-shrink-0" />
                           <a
-                            href={`tel:${organizer.phone}`}
-                            className="text-gray-300 hover:text-blue-400 transition-colors"
+                            href={`mailto:${organizer.email}`}
+                            className="text-gray-300 hover:text-cyan-400 transition-colors text-sm truncate"
                           >
-                            {organizer.phone}
+                            {organizer.email}
                           </a>
                         </div>
-                      )}
 
-                      {/* {organizer.websiteLink && (
-                        <button className="w-full bg-gray-700/50 hover:bg-gray-600/50 border border-gray-600 text-white px-4 py-2 rounded-lg transition-colors text-sm">
-                          <a href={organizer.websiteLink} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2">
-                            <ExternalLink className="w-4 h-4 text-blue-400" />
-                            Visit Website
-                          </a>
-                        </button>
-                      )} */}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Sponsors */}
-            <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-md border border-gray-700 px-8 py-6">
-              <div className="flex items-center gap-3 mb-5">
-                <HandCoins className={`w-9 h-9 ${theme.text}`} /> 
-                <h2 className="text-3xl font-bold text-white font-blackops mt-1">OUR SPONSORS</h2>
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
-                {hackathon.sponsors?.map((sponsor, index) => (
-                  <div
-                    key={index}
-                    className="py-3 px-2 bg-gray-800/30 border border-gray-700/50 rounded-xl transition-all hover:bg-gray-700/30 hover:scale-105 group"
-                  >
-                    <div className="space-y-">
-                      <div className="text-center space-y-">
-                        {sponsor.logo ? (
-                          <div className="w-16 h-16 mx-auto bg-gray-700/50 rounded-lg flex items-center justify-center border border-gray-600 group-hover:border-blue-400/30 transition-colors">
-                            <Image
-                              src={sponsor.logo || "/placeholder.svg"}
-                              alt={sponsor.name}
-                              width={48}
-                              height={48}
-                              className="max-w-12 max-h-12 object-contain"
-                            />
+                        {organizer.phone && (
+                          <div className="flex items-center gap-3 px-4 py-2 bg-gray-800/50 rounded-lg border border-gray-700 hover:border-cyan-500/30 transition-all">
+                            <Phone className="w-5 h-5 text-cyan-400 flex-shrink-0" />
+                            <a
+                              href={`tel:${organizer.phone}`}
+                              className="text-gray-300 hover:text-cyan-400 transition-colors text-sm"
+                            >
+                              {organizer.phone}
+                            </a>
                           </div>
-                        ) : (
-                          <div className="w-16 h-16 mx-auto bg-blue-500/20 text-blue-400 rounded-lg flex items-center justify-center font-bold text-lg border border-blue-500/30">
-                            {sponsor.name.charAt(0)}
-                          </div>
-                        )}
-
-                        <h4 className="font-semibold font-mono text-white text-lg mt-1">{sponsor.name}</h4>
-
-                        {sponsor.description && (
-                          <p className="text-sm text-gray-300 line-clamp-4 font-geist mt-3">{sponsor.description}</p>
                         )}
                       </div>
-
-                      {sponsor.websiteLink && (
-                        <button className="w-full bg-gray-700/50 hover:bg-gray-600/50 border border-gray-600 text-white px-3 py-2 rounded-lg transition-colors text-xs">
-                          <a href={sponsor.websiteLink} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1">
-                            <ExternalLink className="w-3 h-3" />
-                            Visit
-                          </a>
-                        </button>
-                      )}
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          </div>
+            )}
 
-          {/* Sidebar - Streamlined and Sticky */}
-          <div className="lg:sticky lg:top-28 lg:self-start">
+            {/* Enhanced Sponsors */}
+            {hackathon.sponsors && hackathon.sponsors.length > 0 && (
+              <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-8 shadow-2xl hover:shadow-lime-500/10 transition-all">
+                <div className="flex items-center gap-3 mb-6">
+                  <HandCoins className="w-9 h-9 text-lime-400" /> 
+                  <h2 className="text-4xl font-blackops text-white">OUR SPONSORS</h2>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                  {hackathon.sponsors.map((sponsor, index) => (
+                    <div
+                      key={index}
+                      className="py-5 px-4 bg-gradient-to-br from-gray-800/50 to-gray-700/30 border-2 border-gray-700/50 rounded-2xl transition-all hover:border-lime-500/30 hover:scale-105 group"
+                    >
+                      <div className="space-y-4">
+                        <div className="text-center space-y-3">
+                          {sponsor.logo ? (
+                            <div className="w-24 h-24 mx-auto rounded-xl overflow-hidden border-2 border-gray-700 group-hover:border-lime-500/30 transition-all">
+                              <Image
+                                src={sponsor.logo}
+                                alt={sponsor.name}
+                                width={96}
+                                height={96}
+                                className="w-full h-full object-contain bg-white p-2"
+                              />
+                            </div>
+                          ) : (
+                            <div className="w-24 h-24 mx-auto bg-gradient-to-br from-lime-500/20 to-green-500/20 text-lime-400 rounded-xl flex items-center justify-center font-blackops text-2xl border-2 border-lime-500/30 group-hover:scale-110 transition-transform">
+                              {getInitials(sponsor.name)}
+                            </div>
+                          )}
+                          
+                          <h3 className="font-blackops text-lg text-white group-hover:text-lime-400 transition-colors">
+                            {sponsor.name}
+                          </h3>
+
+                        </div>
+
+                        {sponsor.website && (
+                          <a
+                            href={sponsor.website}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-800/50 rounded-lg border border-gray-700 hover:border-lime-500/30 text-gray-300 hover:text-lime-400 transition-all font-mono text-sm group-hover:scale-105"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                            <span>Visit Site</span>
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+        </div>
+
+        {/* Sidebar - Streamlined and Sticky */}
+        <div className="order-2 lg:order-2 lg:sticky lg:top-28 lg:self-start lg:w-[350px]">
             <div className="relative overflow-hidden">
               {/* Animated background gradient */}
               <div className="absolute inset-0 bg-gradient-to-br from-purple-600/20 via-blue-500/20 to-teal-500/20 animate-pulse"></div>
@@ -1045,7 +1065,7 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
               </div>
             </div>
           </div>
-        </div>
       </div>
+    </div>
     </div>
   );}

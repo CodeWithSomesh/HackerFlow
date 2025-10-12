@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Upload, Globe, Lock, CalendarClock, Building } from 'lucide-react'
+import { Upload, Globe, Lock, CalendarClock, Building, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -60,6 +60,7 @@ export default function OrganizeStep1Page() {
       mode: 'online',
       categories: [],
       about: '',
+      location: '',
     },
   })
 
@@ -72,26 +73,24 @@ export default function OrganizeStep1Page() {
       if (storedId) {
         const result = await getHackathonById(storedId)
         if (result.success && result.data) {
-          // Preload form data
           setValue('title', result.data.title)
           setValue('organization', result.data.organization)
           setValue('websiteUrl', result.data.website_url || '')
           setValue('visibility', result.data.visibility)
           setValue('mode', result.data.mode)
           setValue('logo', result.data.logo_url)
+          setValue('location', result.data.location || '')
           setLogoPreview(result.data.logo_url)
           
-          // Fix: Set categories and trigger MultiSelect update
           const cats = result.data.categories || []
           setValue('categories', cats)
           setSelectedCategories(cats)
           
-          // Fix: Set content and trigger MinimalTiptap update
           const aboutContent = result.data.about || ''
           setValue('about', aboutContent)
           setContent(aboutContent)
           
-          showCustomToast('info', 'Previous hackathon data loaded successfully.')
+          showCustomToast('info', 'Hackathon data loaded successfully.')
         }
       }
       setIsLoading(false)
@@ -99,8 +98,6 @@ export default function OrganizeStep1Page() {
   
     loadHackathonData()
   }, [])
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -131,6 +128,7 @@ export default function OrganizeStep1Page() {
   }
 
   const onSubmit = async (data: CreateHackathonStep1FormData) => {
+  
     setIsSubmitting(true)
     
     try {
@@ -144,7 +142,6 @@ export default function OrganizeStep1Page() {
         
         showCustomToast('success', message)
         
-        // Store hackathon ID for step 2
         if (result.data?.id) {
           localStorage.setItem('current_hackathon_id', result.data.id)
         }
@@ -161,6 +158,12 @@ export default function OrganizeStep1Page() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const showLocationField = mode === 'offline' || mode === 'hybrid'
+
+  const onError = () => {
+    showCustomToast('error', 'Please fill up all the necessary fields')
   }
 
   return (
@@ -180,7 +183,7 @@ export default function OrganizeStep1Page() {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit(onSubmit)}>
+        <form onSubmit={handleSubmit(onSubmit, onError)}>
           <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-md p-6">
             <h2 className="font-blackops text-3xl text-white mb-6 flex items-center gap-2">
               <CalendarClock className="w-7 h-7 text-teal-400" />
@@ -212,6 +215,7 @@ export default function OrganizeStep1Page() {
                     </button>
                   </div>
                 ) : (
+                  <div >
                   <label className="text-center cursor-pointer w-full h-full flex items-center justify-center flex-col">
                     <input
                       ref={fileInputRef}
@@ -230,11 +234,14 @@ export default function OrganizeStep1Page() {
                     <p className="text-xs text-gray-400">Max size 1MB. PNG/JPG</p>
                     <p className="text-xs text-teal-400 mt-2">Click to upload</p>
                   </label>
+                  {errors.logo && (
+                    <p className="text-red-400 text-sm mx-8 mt-8 text-center">{errors.logo.message}</p>
+                  )}
+                  </div>
                 )}
+                
               </div>
-              {errors.logo && (
-                <p className="text-red-400 text-sm col-span-full">{errors.logo.message}</p>
-              )}
+              
 
               <div className="space-y-5">
                 {/* Title */}
@@ -320,33 +327,60 @@ export default function OrganizeStep1Page() {
             {/* Mode of event */}
             <div className="mt-6 grid gap-2">
               <Label className="text-gray-200 font-mono">Mode of Event *</Label>
-              <div className="grid sm:grid-cols-2 gap-3">
+              <div className="grid sm:grid-cols-3 gap-3">
                 <button
                   type="button"
                   onClick={() => setValue('mode', 'online')}
-                  className={`flex items-center gap-3 p-4 rounded-md border ${
+                  className={`flex items-center gap-3 p-4 rounded-md border transition-colors ${
                     mode === 'online' ? 'border-teal-400 bg-teal-500/10' : 'border-gray-700 bg-gray-900/40 hover:bg-gray-800/40'
                   }`}
                 >
                   <div className="w-9 h-9 rounded-md bg-teal-500/20 text-teal-400 flex items-center justify-center">
                     <Globe className="w-5 h-5" />
                   </div>
-                  <span className="font-mono text-white">Online Mode</span>
+                  <span className="font-mono text-white">Online</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setValue('mode', 'offline')}
-                  className={`flex items-center gap-3 p-4 rounded-md border ${
+                  className={`flex items-center gap-3 p-4 rounded-md border transition-colors ${
                     mode === 'offline' ? 'border-teal-400 bg-teal-500/10' : 'border-gray-700 bg-gray-900/40 hover:bg-gray-800/40'
                   }`}
                 >
                   <div className="w-9 h-9 rounded-md bg-blue-500/20 text-blue-400 flex items-center justify-center">
                     <Building className="w-5 h-5" />
                   </div>
-                  <span className="font-mono text-white">Offline Mode</span>
+                  <span className="font-mono text-white">Offline</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setValue('mode', 'hybrid')}
+                  className={`flex items-center gap-3 p-4 rounded-md border transition-colors ${
+                    mode === 'hybrid' ? 'border-teal-400 bg-teal-500/10' : 'border-gray-700 bg-gray-900/40 hover:bg-gray-800/40'
+                  }`}
+                >
+                  <div className="w-9 h-9 rounded-md bg-purple-500/20 text-purple-400 flex items-center justify-center">
+                    <MapPin className="w-5 h-5" />
+                  </div>
+                  <span className="font-mono text-white">Hybrid</span>
                 </button>
               </div>
             </div>
+
+            {/* Location field - shown for offline and hybrid modes */}
+            {showLocationField && (
+              <div className="mt-6 grid gap-2">
+                <Label className="text-gray-200 font-mono">Event Location *</Label>
+                <Input 
+                  {...register('location')}
+                  placeholder="Enter venue address or location details" 
+                  className="bg-black border-gray-700 text-gray-100" 
+                />
+                {errors.location && (
+                  <p className="text-red-400 text-sm">{errors.location.message}</p>
+                )}
+              </div>
+            )}
 
             {/* Categories */}
             <div className="mt-6">

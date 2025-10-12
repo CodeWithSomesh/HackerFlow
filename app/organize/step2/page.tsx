@@ -102,7 +102,9 @@ export default function OrganizeRegistrationDetailsPage() {
     }
   }
 
-  
+  const onError = () => {
+    showCustomToast('error', 'Please fill up all the necessary fields')
+  }
 
   return (
     <div className="min-h-screen bg-black">
@@ -120,7 +122,7 @@ export default function OrganizeRegistrationDetailsPage() {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)}>
+        <form onSubmit={handleSubmit(onSubmit, onError)}>
           <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-md p-6">
             <h2 className="font-blackops text-3xl text-white mb-6">Registrations Details</h2>
 

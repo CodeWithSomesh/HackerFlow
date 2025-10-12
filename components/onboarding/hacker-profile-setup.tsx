@@ -34,6 +34,7 @@ import { triggerSideCannons,
 } from "@/lib/confetti"
 import type { User } from "@supabase/supabase-js";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { ProfileSetupToastHandler } from "../toasts/profileSetup-toastHandler"
 
 
 export function HackerProfileSetup() {
@@ -531,6 +532,7 @@ export function HackerProfileSetup() {
 
   return (
     <div className="min-h-screen">
+      <ProfileSetupToastHandler />
       {/* Background Effects */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10">
         <div className="absolute top-96 left-2 w-96 h-96 bg-pink-500 rounded-full blur-3xl animate-pulse"></div>

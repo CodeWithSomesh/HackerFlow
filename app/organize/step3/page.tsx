@@ -33,7 +33,10 @@ import {
   MessageCircle,
   Heart,
   Upload,
-  Edit
+  Edit,
+  User,
+  Lock,
+  PersonStanding
 } from 'lucide-react'
 import { uploadHackathonBanner, uploadHackathonLogo, getHackathonById, updateHackathonStep3 } from '@/lib/actions/createHackathon-actions'
 import { createHackathonStep3Schema, type CreateHackathonStep3FormData } from '@/lib/validations/createHackathons'
@@ -49,6 +52,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { createClient } from '@/lib/supabase/client'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { MinimalTiptap } from '@/components/ui/shadcn-io/minimal-tiptap'
+import { MultiSelect } from '@/components/multi-select'
+import { triggerFireworks, triggerSideCannons, triggerStars } from '@/lib/confetti'
 
 
 type SectionKey = 'banner' | 'basic' | 'timeline' | 'about' | 'prizes' | 'dates' | 'faq' | 'organizers' | 'sponsors' | 'requirements' | 'eligibility'
@@ -65,28 +72,64 @@ export default function OrganizeStep3Page() {
   const [isSavingDraft, setIsSavingDraft] = useState(false)
 
   // Form state
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    title: string
+    organizer: string
+    websiteUrl: string
+    visibility: 'public' | 'invite'
+    mode: 'online' | 'offline' | 'hybrid'
+    location: string
+    participationType: 'individual' | 'team'
+    teamSizeMin: number
+    teamSizeMax: number
+    registrationStartDate: string
+    registrationEndDate: string
+    participants: number
+    maxParticipants: number
+    totalPrizePool: string
+    banner: string
+    logo: string
+    about: string
+    duration: string
+    registrationDeadline: string
+    eligibility: string[]
+    requirements: string[]
+    categories: string[]
+    prizes: Array<{ position: string; amount: string; description: string; type: string }>
+    timeline: Array<{ title: string; startDate: string; endDate: string; description: string }>
+    importantDates: Array<{ title: string; date: string; time: string; description: string }>
+    faq: Array<{ question: string; answer: string }>
+    organizers: Array<{ name: string; role: string; email: string; phone: string; profileUrl: string; photo: string }>
+    sponsors: Array<{ name: string; tier: string; website: string; logo: string; description: string }>
+  }>({
     title: 'Your Awesome Hackathon',
     organizer: 'Your Organization',
-    mode: 'Online',
-    location: 'Global',
-    participants: 120,
+    websiteUrl: '',
+    visibility: 'public',
+    mode: 'online',
+    location: '',
+    participationType: 'individual',
+    teamSizeMin: 1,
+    teamSizeMax: 5,
+    registrationStartDate: '',
+    registrationEndDate: '',
+    participants: 0,
     maxParticipants: 500,
     totalPrizePool: '$5,000',
     banner: '/api/placeholder/1200/400',
     logo: '',
-    about: 'Add an engaging description about your hackathon. Include the theme, goals, what participants will build, and what makes your event unique...',
+    about: 'Add an engaging description about your hackathon...',
     duration: '48H',
-    registrationDeadline: 'Oct 07',
-    eligibility: ['Students', 'Professionals'],
+    registrationDeadline: '',
+    eligibility: ['Professionals'],
     requirements: ['Valid ID proof', 'Laptop with required software'],
-    categories: [] as string[],
-    prizes: [] as Array<{ position: string; amount: string; description: string; type: string }>,
-    timeline: [] as Array<{ title: string; startDate: string; endDate: string; description: string }>,
-    importantDates: [] as Array<{ title: string; date: string; time: string; description: string }>,
-    faq: [] as Array<{ question: string; answer: string }>,
-    organizers: [] as Array<{ name: string; role: string; email: string; phone: string; profileUrl: string; photo: string }>,
-    sponsors: [] as Array<{ name: string; tier: string; website: string; logo: string; description: string }>
+    categories: [],
+    prizes: [],
+    timeline: [],
+    importantDates: [],
+    faq: [],
+    organizers: [],
+    sponsors: []
   })
 
   const [newRequirement, setNewRequirement] = useState('')
@@ -114,6 +157,8 @@ export default function OrganizeStep3Page() {
   const [isUploadingOrganizerPhoto, setIsUploadingOrganizerPhoto] = useState(false)
   const [isUploadingSponsorLogo, setIsUploadingSponsorLogo] = useState(false)
   const [originalFormData, setOriginalFormData] = useState(formData)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [tempFormData, setTempFormData] = useState(formData)
 
   // Form setup
   const {
@@ -128,17 +173,24 @@ export default function OrganizeStep3Page() {
     defaultValues: {
       title: 'Your Awesome Hackathon',
       organizer: 'Your Organization',
-      mode: 'Online',
-      location: 'Global',
-      participants: 120,
+      websiteUrl: '',
+      visibility: 'public',
+      mode: 'online',
+      location: '',
+      participationType: 'individual',
+      teamSizeMin: 1,
+      teamSizeMax: 5,
+      registrationStartDate: '',
+      registrationEndDate: '',
+      participants: 0,
       maxParticipants: 500,
       totalPrizePool: '$5,000',
       bannerUrl: '/api/placeholder/1200/400',
       logoUrl: '',
-      about: 'Add an engaging description about your hackathon. Include the theme, goals, what participants will build, and what makes your event unique...',
+      about: 'Add an engaging description...',
       duration: '48H',
-      registrationDeadline: 'Oct 07',
-      eligibility: ['Students', 'Professionals'],
+      registrationDeadline: '',
+      eligibility: ['Professionals'],
       requirements: ['Valid ID proof', 'Laptop with required software'],
       categories: [],
       prizes: [],
@@ -148,7 +200,7 @@ export default function OrganizeStep3Page() {
       organizers: [],
       sponsors: []
     }
-  })
+  })  
 
   // Preload data from database
   useEffect(() => {
@@ -168,17 +220,24 @@ export default function OrganizeStep3Page() {
         const formValues = {
           title: data.title || 'Your Awesome Hackathon',
           organizer: data.organization || 'Your Organization',
-          mode: data.mode || 'Online',
-          location: data.location || 'Global',
-          participants: data.participants || 120,
-          maxParticipants: data.max_participants || 500,
+          websiteUrl: data.website_url || '',
+          visibility: data.visibility || 'public',
+          mode: data.mode || 'online',
+          location: data.location || '',
+          participationType: data.participation_type || 'individual',
+          teamSizeMin: data.team_size_min || 1,
+          teamSizeMax: data.team_size_max || 5,
+          registrationStartDate: data.registration_start_date?.slice(0, 16) || '',
+          registrationEndDate: data.registration_end_date?.slice(0, 16) || '',
+          participants: data.participants || 0,
+          maxParticipants: data.max_registrations || 500,
           totalPrizePool: data.total_prize_pool || '$5,000',
           banner: data.banner_url || '/api/placeholder/1200/400',
           logo: data.logo_url || '',
-          about: data.about || 'Add an engaging description about your hackathon...',
+          about: data.about || 'Add an engaging description...',
           duration: data.duration || '48H',
-          registrationDeadline: data.registration_deadline || 'Oct 07',
-          eligibility: data.eligibility || ['Students', 'Professionals'],
+          registrationDeadline: data.registration_deadline || '',
+          eligibility: data.eligibility || ['Professionals'],
           requirements: data.requirements || ['Valid ID proof', 'Laptop with required software'],
           categories: data.categories || [],
           prizes: data.prizes || [],
@@ -189,13 +248,11 @@ export default function OrganizeStep3Page() {
           sponsors: data.sponsors || []
         }
         
-        // Update form data state
         setFormData(formValues)
-        setOriginalFormData(formValues) // Store original data
-        // Reset form with loaded values
+        setOriginalFormData(formValues)
         reset(formValues)
         
-        showCustomToast('info', 'Previous hackathon data loaded successfully.')
+        showCustomToast('info', 'Hackathon data loaded successfully.')
       }
       setIsLoading(false)
     }
@@ -205,36 +262,42 @@ export default function OrganizeStep3Page() {
 
   const openEditor = (key: SectionKey) => {
     setActiveSection(key)
+    setTempFormData(formData)
+    // Sync all form values when opening editor
+    reset(formData)
+    setHasUnsavedChanges(false)
     setOpen(true)
   }
 
   const addRequirement = () => {
     if (newRequirement.trim()) {
-      setFormData({...formData, requirements: [...formData.requirements, newRequirement]})
+      setTempFormData({...tempFormData, requirements: [...tempFormData.requirements, newRequirement]})
       setNewRequirement('')
+      setHasUnsavedChanges(true)
     }
   }
 
   const removeRequirement = (index: number) => {
-    setFormData({
-      ...formData, 
-      requirements: formData.requirements.filter((_, i) => i !== index)
+    const newRequirements = tempFormData.requirements.filter((_, i) => i !== index)
+    setTempFormData({
+      ...tempFormData, 
+      requirements: newRequirements
     })
+    setHasUnsavedChanges(true)
   }
 
   const addTimelineItem = () => {
     if (newTimelineItem.title.trim()) {
       if (editingTimelineIndex !== null) {
-        // Update existing item
-        const updatedTimeline = [...formData.timeline]
+        const updatedTimeline = [...tempFormData.timeline]
         updatedTimeline[editingTimelineIndex] = newTimelineItem
-        setFormData({...formData, timeline: updatedTimeline})
+        setTempFormData({...tempFormData, timeline: updatedTimeline})
         setEditingTimelineIndex(null)
       } else {
-        // Add new item
-        setFormData({...formData, timeline: [...formData.timeline, newTimelineItem]})
+        setTempFormData({...tempFormData, timeline: [...tempFormData.timeline, newTimelineItem]})
       }
       setNewTimelineItem({ title: '', startDate: '', endDate: '', description: '' })
+      setHasUnsavedChanges(true)
     }
   }
 
@@ -251,8 +314,9 @@ export default function OrganizeStep3Page() {
 
   const addDateItem = () => {
     if (newDateItem.title.trim()) {
-      setFormData({...formData, importantDates: [...formData.importantDates, newDateItem]})
+      setTempFormData({...tempFormData, importantDates: [...tempFormData.importantDates, newDateItem]})
       setNewDateItem({ title: '', date: '', time: '', description: '' })
+      setHasUnsavedChanges(true)
     }
   }
 
@@ -277,14 +341,15 @@ export default function OrganizeStep3Page() {
   const updateAddPrize = () => {
     if (newPrize.position.trim() && newPrize.amount.trim()) {
       if (editingPrizeIndex !== null) {
-        const updatedPrizes = [...formData.prizes]
+        const updatedPrizes = [...tempFormData.prizes]
         updatedPrizes[editingPrizeIndex] = newPrize
-        setFormData({...formData, prizes: updatedPrizes})
+        setTempFormData({...tempFormData, prizes: updatedPrizes})
         setEditingPrizeIndex(null)
       } else {
-        setFormData({...formData, prizes: [...formData.prizes, newPrize]})
+        setTempFormData({...tempFormData, prizes: [...tempFormData.prizes, newPrize]})
       }
       setNewPrize({ position: '', amount: '', description: '', type: 'Cash' })
+      setHasUnsavedChanges(true)
     }
   }
 
@@ -309,14 +374,15 @@ export default function OrganizeStep3Page() {
   const updateAddFaq = () => {
     if (newFaq.question.trim() && newFaq.answer.trim()) {
       if (editingFaqIndex !== null) {
-        const updatedFaq = [...formData.faq]
+        const updatedFaq = [...tempFormData.faq]
         updatedFaq[editingFaqIndex] = newFaq
-        setFormData({...formData, faq: updatedFaq})
+        setTempFormData({...tempFormData, faq: updatedFaq})
         setEditingFaqIndex(null)
       } else {
-        setFormData({...formData, faq: [...formData.faq, newFaq]})
+        setTempFormData({...tempFormData, faq: [...tempFormData.faq, newFaq]})
       }
       setNewFaq({ question: '', answer: '' })
+      setHasUnsavedChanges(true)
     }
   }
 
@@ -341,14 +407,15 @@ export default function OrganizeStep3Page() {
   const updateAddOrganizer = () => {
     if (newOrganizer.name.trim() && newOrganizer.role.trim()) {
       if (editingOrganizerIndex !== null) {
-        const updatedOrganizers = [...formData.organizers]
+        const updatedOrganizers = [...tempFormData.organizers]
         updatedOrganizers[editingOrganizerIndex] = newOrganizer
-        setFormData({...formData, organizers: updatedOrganizers})
+        setTempFormData({...tempFormData, organizers: updatedOrganizers})
         setEditingOrganizerIndex(null)
       } else {
-        setFormData({...formData, organizers: [...formData.organizers, newOrganizer]})
+        setTempFormData({...tempFormData, organizers: [...tempFormData.organizers, newOrganizer]})
       }
       setNewOrganizer({ name: '', role: '', email: '', phone: '', profileUrl: '', photo: '' })
+      setHasUnsavedChanges(true)
     }
   }
 
@@ -373,15 +440,82 @@ export default function OrganizeStep3Page() {
   const updateAddSponsor = () => {
     if (newSponsor.name.trim()) {
       if (editingSponsorIndex !== null) {
-        const updatedSponsors = [...formData.sponsors]
+        const updatedSponsors = [...tempFormData.sponsors]
         updatedSponsors[editingSponsorIndex] = newSponsor
-        setFormData({...formData, sponsors: updatedSponsors})
+        setTempFormData({...tempFormData, sponsors: updatedSponsors})
         setEditingSponsorIndex(null)
       } else {
-        setFormData({...formData, sponsors: [...formData.sponsors, newSponsor]})
+        setTempFormData({...tempFormData, sponsors: [...tempFormData.sponsors, newSponsor]})
       }
       setNewSponsor({ name: '', tier: 'Sponsor Tier', website: '', logo: '', description: '' })
+      setHasUnsavedChanges(true)
     }
+  }
+
+  //Check Validations Function
+  const validateCurrentSection = (): string | null => {
+    switch(activeSection) {
+      case 'basic':
+        if (!tempFormData.title || tempFormData.title.length < 5) return 'Title must be at least 5 characters'
+        if (!tempFormData.organizer || tempFormData.organizer.length < 2) return 'Organization name is required'
+        if ((tempFormData.mode === 'offline' || tempFormData.mode === 'hybrid') && !tempFormData.location) return 'Location is required for offline/hybrid events'
+        if (tempFormData.participationType === 'team' && (!tempFormData.teamSizeMin || !tempFormData.teamSizeMax)) return 'Team size limits are required'
+        if (tempFormData.participationType === 'team' && tempFormData.teamSizeMin > tempFormData.teamSizeMax) return 'Team size minimum cannot exceed maximum'
+        if (!tempFormData.registrationStartDate) return 'Registration start date is required'
+        if (!tempFormData.registrationEndDate) return 'Registration end date is required'
+        break
+  
+      case 'banner':
+        if (!tempFormData.banner || tempFormData.banner === '/api/placeholder/1200/400') return 'Banner image is required'
+        if (!tempFormData.logo || tempFormData.logo === '') return 'Logo is required'
+        break
+  
+      case 'about':
+        if (!tempFormData.about || tempFormData.about.length < 100) return 'About section must be at least 100 characters'
+        if (!tempFormData.categories || tempFormData.categories.length === 0) return 'Please select at least one category'
+        break
+  
+      case 'eligibility':
+        if (!tempFormData.eligibility || tempFormData.eligibility.length === 0) return 'Please select at least one eligibility criteria'
+        break
+  
+      case 'timeline':
+        if (tempFormData.timeline?.find(item => !item.title || !item.startDate || !item.endDate)) {
+          return 'All timeline items must have title, start date, and end date'
+        }
+        break
+  
+      case 'prizes':
+        if (tempFormData.prizes?.find(prize => !prize.position || !prize.amount || !prize.type)) {
+          return 'All prizes must have position, amount, and type'
+        }
+        break
+  
+      case 'dates':
+        if (tempFormData.importantDates?.find(date => !date.title || !date.date || !date.time)) {
+          return 'All important dates must have title, date, and time'
+        }
+        break
+  
+      case 'faq':
+        if (tempFormData.faq?.find(faq => !faq.question || !faq.answer)) {
+          return 'All FAQ items must have both question and answer'
+        }
+        break
+  
+      case 'organizers':
+        if (tempFormData.organizers?.find(org => !org.name || !org.role || !org.email)) {
+          return 'All organizers must have name, role, and email'
+        }
+        break
+  
+      case 'sponsors':
+        if (tempFormData.sponsors?.find(sponsor => !sponsor.name || !sponsor.tier)) {
+          return 'All sponsors must have name and tier'
+        }
+        break
+    }
+    return null
   }
 
   // Save functionality
@@ -390,30 +524,57 @@ export default function OrganizeStep3Page() {
       showCustomToast('error', 'Hackathon ID not found. Please start from Step 1.')
       return
     }
-
+  
     setIsSaving(true)
     
     try {
-      // Merge formData with form values to ensure all data is included
-      const saveData = {
-        ...data,
-        bannerUrl: formData.banner,
-        logoUrl: formData.logo,
-        eligibility: formData.eligibility,
-        requirements: formData.requirements,
-        prizes: formData.prizes,
-        timeline: formData.timeline,
-        importantDates: formData.importantDates,
-        faq: formData.faq,
-        organizers: formData.organizers,
-        sponsors: formData.sponsors
+      // Use tempFormData directly since it has all the latest changes
+      const saveData: CreateHackathonStep3FormData = {
+        title: tempFormData.title,
+        organizer: tempFormData.organizer,
+        websiteUrl: tempFormData.websiteUrl,
+        visibility: tempFormData.visibility,
+        mode: tempFormData.mode,
+        location: tempFormData.location,
+        participationType: tempFormData.participationType,
+        teamSizeMin: tempFormData.teamSizeMin,
+        teamSizeMax: tempFormData.teamSizeMax,
+        registrationStartDate: tempFormData.registrationStartDate,
+        registrationEndDate: tempFormData.registrationEndDate,
+        participants: tempFormData.participants,
+        maxParticipants: tempFormData.maxParticipants,
+        totalPrizePool: tempFormData.totalPrizePool,
+        bannerUrl: tempFormData.banner,
+        logoUrl: tempFormData.logo,
+        about: tempFormData.about,
+        duration: tempFormData.duration,
+        registrationDeadline: tempFormData.registrationDeadline,
+        eligibility: tempFormData.eligibility,
+        requirements: tempFormData.requirements,
+        categories: tempFormData.categories,
+        prizes: tempFormData.prizes,
+        timeline: tempFormData.timeline,
+        importantDates: tempFormData.importantDates,
+        faq: tempFormData.faq,
+        organizers: tempFormData.organizers,
+        sponsors: tempFormData.sponsors
       }
-      const result = await updateHackathonStep3(hackathonId, saveData as CreateHackathonStep3FormData)
+      
+      const result = await updateHackathonStep3(hackathonId, saveData)
       
       if (result.success) {
-        showCustomToast('success', 'Hackathon details saved successfully!')
-        setOriginalFormData(formData) // Update original data after successful save
+        // Apply temp changes to actual form data
+        setFormData(tempFormData)
+        setOriginalFormData(tempFormData)
+        setHasUnsavedChanges(false)
+        
+        // Close sheet immediately
         setOpen(false)
+        
+        // Show success notification after 1 second delay
+        setTimeout(() => {
+          showCustomToast('success', 'Hackathon details saved successfully!')
+        }, 1000)
       } else {
         showCustomToast('error', result.error || 'Failed to save hackathon details. Please try again.')
       }
@@ -430,15 +591,22 @@ export default function OrganizeStep3Page() {
       showCustomToast('error', 'Hackathon ID not found. Please start from Step 1.')
       return
     }
-
+  
     setIsSavingDraft(true)
     
     try {
       const saveData = {
         title: formData.title,
         organizer: formData.organizer,
+        websiteUrl: formData.websiteUrl,
+        visibility: formData.visibility,
         mode: formData.mode,
         location: formData.location,
+        participationType: formData.participationType,
+        teamSizeMin: formData.teamSizeMin,
+        teamSizeMax: formData.teamSizeMax,
+        registrationStartDate: formData.registrationStartDate,
+        registrationEndDate: formData.registrationEndDate,
         participants: formData.participants,
         maxParticipants: formData.maxParticipants,
         totalPrizePool: formData.totalPrizePool,
@@ -479,18 +647,25 @@ export default function OrganizeStep3Page() {
       showCustomToast('error', 'Hackathon ID not found. Please start from Step 1.')
       return
     }
-
+  
     setIsPublishing(true)
     
     try {
       const supabase = await createClient()
       
-      // First save all current data
-      const saveData = {
+      // Prepare data for final save before publishing
+      const saveData: CreateHackathonStep3FormData = {
         title: formData.title,
         organizer: formData.organizer,
+        websiteUrl: formData.websiteUrl,
+        visibility: formData.visibility,
         mode: formData.mode,
         location: formData.location,
+        participationType: formData.participationType,
+        teamSizeMin: formData.teamSizeMin,
+        teamSizeMax: formData.teamSizeMax,
+        registrationStartDate: formData.registrationStartDate,
+        registrationEndDate: formData.registrationEndDate,
         participants: formData.participants,
         maxParticipants: formData.maxParticipants,
         totalPrizePool: formData.totalPrizePool,
@@ -510,15 +685,16 @@ export default function OrganizeStep3Page() {
         sponsors: formData.sponsors
       }
       
-      const saveResult = await updateHackathonStep3(hackathonId, saveData as CreateHackathonStep3FormData)
+      // Save all data before publishing
+      const saveResult = await updateHackathonStep3(hackathonId, saveData)
       
       if (!saveResult.success) {
         showCustomToast('error', 'Failed to save changes before publishing. Please try again.')
         setIsPublishing(false)
         return
       }
-
-      // Then update status to published
+  
+      // Get authenticated user
       const { data: { user } } = await supabase.auth.getUser()
       
       if (!user) {
@@ -526,7 +702,8 @@ export default function OrganizeStep3Page() {
         setIsPublishing(false)
         return
       }
-
+  
+      // Update status to published
       const { error: publishError } = await supabase
         .from('hackathons')
         .update({
@@ -536,7 +713,7 @@ export default function OrganizeStep3Page() {
         })
         .eq('id', hackathonId)
         .eq('created_by', user.id)
-
+  
       if (publishError) {
         console.error('Publish error:', publishError)
         showCustomToast('error', 'Failed to publish hackathon. Please try again.')
@@ -547,6 +724,9 @@ export default function OrganizeStep3Page() {
         localStorage.removeItem('current_hackathon_id')
         
         // Redirect to hackathons page after a short delay
+        triggerSideCannons()
+        triggerStars()
+        triggerFireworks()
         setTimeout(() => {
           router.push('/hackathons')
         }, 1500)
@@ -560,8 +740,20 @@ export default function OrganizeStep3Page() {
     }
   }
 
+  // Helper function to strip HTML tags and decode entities for preview
+  const stripHtmlAndDecode = (html: string) => {
+    // Create a temporary div to decode HTML entities
+    const txt = document.createElement('textarea')
+    txt.innerHTML = html
+    const decoded = txt.value
+    
+    // Strip HTML tags
+    return decoded.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+  }
+
+
   const navigationSections = [
-    { key: 'banner', label: 'Banners & Logo', icon: Image, color: 'purple' },
+    { key: 'banner', label: 'Banners & Logo', icon: ImageIcon, color: 'purple' },
     { key: 'basic', label: 'Basic Details', icon: Settings, color: 'blue' },
     { key: 'eligibility', label: 'Eligibility', icon: Sparkles, color: 'orange' },
     { key: 'requirements', label: 'Requirements', icon: CheckCircle, color: 'green' },
@@ -613,7 +805,87 @@ export default function OrganizeStep3Page() {
             </Button>
             <Button 
               className="bg-gradient-to-r from-purple-500 via-blue-500 to-teal-500 hover:from-purple-600 hover:via-blue-600 hover:to-teal-600 text-white px-8 py-6 font-mono font-bold transition-all hover:scale-105 shadow-lg hover:shadow-xl disabled:opacity-50"
-              onClick={() => setShowPublishDialog(true)}
+              onClick={() => {
+                // Just run validation and show dialog if passes
+                if (!hackathonId) {
+                  showCustomToast('error', 'Hackathon ID not found. Please start from Step 1.')
+                  return
+                }
+
+                const validationErrors: string[] = []
+
+                // All validation checks
+                if (!formData.title || formData.title.length < 5) {
+                  validationErrors.push('Valid hackathon title is required (min 5 characters)')
+                }
+                if (!formData.organizer || formData.organizer.length < 2) {
+                  validationErrors.push('Organization name is required (min 2 characters)')
+                }
+                if (!formData.about || formData.about.length < 100) {
+                  validationErrors.push('About section must be at least 100 characters')
+                }
+                if (!formData.categories || formData.categories.length === 0) {
+                  validationErrors.push('At least one category is required')
+                }
+                if (!formData.eligibility || formData.eligibility.length === 0) {
+                  validationErrors.push('At least one eligibility criteria is required')
+                }
+                if (!formData.banner || formData.banner === '/api/placeholder/1200/400' || formData.banner === '') {
+                  validationErrors.push('Banner image is required')
+                }
+                if (!formData.logo || formData.logo === '') {
+                  validationErrors.push('Logo is required')
+                }
+                if (!formData.registrationStartDate) {
+                  validationErrors.push('Registration start date is required')
+                }
+                if (!formData.registrationEndDate) {
+                  validationErrors.push('Registration end date is required')
+                }
+                if (!formData.duration || formData.duration === '') {
+                  validationErrors.push('Hackathon duration is required')
+                }
+                if (!formData.totalPrizePool || formData.totalPrizePool === '') {
+                  validationErrors.push('Total prize pool is required')
+                }
+                if (!formData.maxParticipants || formData.maxParticipants < 1) {
+                  validationErrors.push('Max participants must be at least 1')
+                }
+                if ((formData.mode === 'offline' || formData.mode === 'hybrid') && !formData.location) {
+                  validationErrors.push('Location is required for offline/hybrid events')
+                }
+                if (formData.participationType === 'team') {
+                  if (!formData.teamSizeMin || !formData.teamSizeMax) {
+                    validationErrors.push('Team size limits are required for team participation')
+                  }
+                  if (formData.teamSizeMin > formData.teamSizeMax) {
+                    validationErrors.push('Team size minimum cannot exceed maximum')
+                  }
+                }
+                if (formData.websiteUrl && formData.websiteUrl !== '') {
+                  try {
+                    new URL(formData.websiteUrl)
+                  } catch {
+                    validationErrors.push('Website URL must be a valid URL')
+                  }
+                }
+                if (formData.registrationStartDate && formData.registrationEndDate) {
+                  const startDate = new Date(formData.registrationStartDate)
+                  const endDate = new Date(formData.registrationEndDate)
+                  if (startDate >= endDate) {
+                    validationErrors.push('Registration end date must be after start date')
+                  }
+                }
+
+                // Show errors if any
+                if (validationErrors.length > 0) {
+                  showCustomToast('error', `Please complete: ${validationErrors.slice(0, 3).join(', ')}${validationErrors.length > 3 ? ` and ${validationErrors.length - 3} more` : ''}`)
+                  return
+                }
+
+                // Only show dialog if validation passes
+                setShowPublishDialog(true)
+              }}
               disabled={isSavingDraft || isPublishing || isLoading}
             >
               {isPublishing ? 'Publishing...' : 'Publish'}
@@ -662,8 +934,8 @@ export default function OrganizeStep3Page() {
             <div className="bg-gradient-to-br from-gray-900 to-gray-800 border-2 border-gray-700 rounded-xl overflow-hidden shadow-2xl">
               {/* Banner */}
               {formData.banner && formData.banner !== '/api/placeholder/1200/400' && formData.banner !== '' && (
-                <div className="relative h-[280px] border-b-2 border-gray-700 overflow-hidden group">
-                  <Image 
+                <div className="relative h-[300px] border-b-2 border-gray-700 overflow-hidden group">
+                  <img 
                     src={formData.banner} 
                     alt="Banner" 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
@@ -678,12 +950,12 @@ export default function OrganizeStep3Page() {
                 </div>
               )}
               
-              <div className="p-5">
+              <div className="px-5 pt-5">
                 {/* Header with Logo */}
-                <div className="grid grid-cols-[100px_1fr] gap-6 items-start mb-8">
+                <div className="grid grid-cols-[100px_1fr] gap-6 items-start mb-4">
                   <div 
                     onClick={() => openEditor('banner')}
-                    className="rounded-xl overflow-hidden h-[100px] w-[100px] bg-gray-800 border-2 border-gray-700 flex items-center justify-center cursor-pointer hover:border-teal-400 transition-all group"
+                    className="rounded-xl overflow-hidden h-[105px] w-[105px] bg-gray-800 border-2 border-gray-700 flex items-center justify-center cursor-pointer hover:border-teal-400 transition-all group"
                   >
                     {formData.logo && formData.logo !== '' ? (
                       <img 
@@ -692,18 +964,21 @@ export default function OrganizeStep3Page() {
                         className="w-full h-full object-cover" 
                       />
                     ) : (
-                      <Image className="w-8 h-8 text-gray-500 group-hover:text-teal-400 transition-colors" />
+                      <img className="w-8 h-8 text-gray-500 group-hover:text-teal-400 transition-colors" />
                     )}
                   </div>
                   <div className="space-y-3">
                     <h2 className="text-5xl font-black font-blackops text-white leading-tight">{formData.title}</h2>
                     <div className="flex flex-wrap gap-4 text-sm font-mono text-gray-300">
                       <span className="flex items-center gap-2 bg-blue-500/10 border border-blue-500/30 px-3 py-1.5 rounded-lg">
-                        <Globe className="w-4 h-4 text-blue-400" /> {formData.mode}
+                        <Globe className="w-4 h-4 text-blue-400" /> {formData.mode.charAt(0).toUpperCase() + formData.mode.slice(1)}
                       </span>
-                      <span className="flex items-center gap-2 bg-purple-500/10 border border-purple-500/30 px-3 py-1.5 rounded-lg">
+                      {formData.location && formData.mode !== "online" && (
+                        <span className="flex items-center gap-2 bg-purple-500/10 border border-purple-500/30 px-3 py-1.5 rounded-lg">
                         <MapPin className="w-4 h-4 text-purple-400" /> {formData.location}
-                      </span>
+                        </span>
+                      )}
+                      
                       <span className="flex items-center gap-2 bg-teal-500/10 border border-teal-500/30 px-3 py-1.5 rounded-lg">
                         <Users className="w-4 h-4 text-teal-400" /> {formData.participants} participants
                       </span>
@@ -712,7 +987,7 @@ export default function OrganizeStep3Page() {
                 </div>
 
                 {/* Organizer Info */}
-                <div className="mb-8 p-4 bg-gray-800/30 border border-gray-700 rounded-xl">
+                <div className="mb-4 p-4 bg-gray-800/30 border border-gray-700 rounded-xl">
                   <div className="flex gap-4 font-mono text-sm">
                     <div className="flex items-center gap-2 text-gray-300">
                       <Building className="w-5 h-5 text-blue-400" />
@@ -726,20 +1001,28 @@ export default function OrganizeStep3Page() {
                 </div>
 
                 {/* Key Stats Grid */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                   <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/10 backdrop-blur border-2 border-blue-500/30 rounded-2xl p-5 text-center hover:scale-105 transition-all shadow-lg hover:shadow-blue-500/20">
-                    <Users className="w-7 h-7 text-blue-400 mx-auto mb-3" />
-                    <div className="text-3xl font-bold text-white font-mono">{Math.ceil(formData.participants / 4)}</div>
-                    <div className="text-sm text-gray-300 font-mono mt-1 font-medium">Teams</div>
+                    <PersonStanding className="w-7 h-7 text-blue-400 mx-auto mb-3" />
+                    <div className="text-3xl font-bold text-white font-mono">{Math.ceil(formData.participants)}</div>
+                    <div className="text-sm text-gray-300 font-mono mt-1 font-medium">Participants</div>
                   </div>
                   <div className="bg-gradient-to-br from-green-500/10 to-green-600/10 backdrop-blur border-2 border-green-500/30 rounded-2xl p-5 text-center hover:scale-105 transition-all shadow-lg hover:shadow-green-500/20">
-                    <Clock className="w-7 h-7 text-green-400 mx-auto mb-3" />
-                    <div className="text-3xl font-bold text-white font-mono">{formData.duration}</div>
-                    <div className="text-sm text-gray-300 font-mono mt-1 font-medium">Duration</div>
+                    <Users className="w-7 h-7 text-green-400 mx-auto mb-3" />
+                    {/* Need to change to registered teams  */}
+                    <div className="text-3xl font-bold text-white font-mono">{formData.participants}</div>
+                    <div className="text-sm text-gray-300 font-mono mt-1 font-medium">Teams</div>
                   </div>
                   <div className="bg-gradient-to-br from-yellow-500/10 to-yellow-600/10 backdrop-blur border-2 border-yellow-500/30 rounded-2xl p-5 text-center hover:scale-105 transition-all shadow-lg hover:shadow-yellow-500/20">
                     <Calendar className="w-7 h-7 text-yellow-400 mx-auto mb-3" />
-                    <div className="text-3xl font-bold text-white font-mono">{formData.registrationDeadline}</div>
+                    <div className="text-3xl font-bold text-white font-mono">
+                      {formData.registrationEndDate
+                      ? new Date(formData.registrationEndDate).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "2-digit",
+                        })
+                      : "N/A"}
+                    </div>
                     <div className="text-sm text-gray-300 font-mono mt-1 font-medium">Deadline</div>
                   </div>
                   <div className="bg-gradient-to-br from-pink-500/10 to-pink-600/10 backdrop-blur border-2 border-pink-500/30 rounded-2xl p-5 text-center hover:scale-105 transition-all shadow-lg hover:shadow-pink-500/20">
@@ -750,7 +1033,7 @@ export default function OrganizeStep3Page() {
                 </div>
 
                 {/* Eligibility Preview */}
-                <div className="mb-8 p-6 rounded-xl border-2 border-orange-500/30 bg-gradient-to-br from-orange-500/10 to-orange-600/10 hover:scale-[1.01] transition-all cursor-pointer" onClick={() => openEditor('eligibility')}>
+                <div className="mb-4 p-6 rounded-xl border-2 border-orange-500/30 bg-gradient-to-br from-orange-500/10 to-orange-600/10 hover:scale-[1.01] transition-all cursor-pointer" onClick={() => openEditor('eligibility')}>
                   <div className="flex items-center gap-3 mb-4">
                     <Sparkles className="w-7 h-7 text-orange-400" />
                     <h3 className="font-blackops text-2xl text-white">Eligibility</h3>
@@ -770,7 +1053,7 @@ export default function OrganizeStep3Page() {
 
                 {/* Requirements Preview */}
                 {formData.requirements.length > 0 && (
-                  <div className="mb-8 p-6 rounded-xl border-2 border-green-500/30 bg-gradient-to-br from-green-500/10 to-green-600/10 hover:scale-[1.01] transition-all cursor-pointer" onClick={() => openEditor('requirements')}>
+                  <div className="mb-4 p-6 rounded-xl border-2 border-green-500/30 bg-gradient-to-br from-green-500/10 to-green-600/10 hover:scale-[1.01] transition-all cursor-pointer" onClick={() => openEditor('requirements')}>
                     <div className="flex items-center gap-3 mb-4">
                       <CheckCircle className="w-7 h-7 text-green-400" />
                       <h3 className="font-blackops text-2xl text-white">Requirements</h3>
@@ -788,9 +1071,53 @@ export default function OrganizeStep3Page() {
                   </div>
                 )}
 
+                {/* About Section Preview */}
+                <div className="mb-4 p-6 rounded-xl border-2 border-gray-700 bg-gray-900/60 hover:border-gray-600 transition-all cursor-pointer" onClick={() => openEditor('about')}>
+                  <div className="flex items-center gap-3 mb-4">
+                    <Info className="w-7 h-7 text-indigo-400" />
+                    <h3 className="font-blackops text-2xl text-white">About This Hackathon</h3>
+                  </div>
+                  <div 
+                    className="text-gray-300 font-geist leading-relaxed prose prose-invert max-w-none
+                    [&_p]:mb-3 [&_ul]:list-disc [&_ul]:ml-6 [&_ul]:mb-3 
+                    [&_ol]:list-decimal [&_ol]:ml-6 [&_ol]:mb-3
+                    [&_li]:mb-1 [&_strong]:text-white [&_strong]:font-semibold
+                    [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mb-3 [&_h1]:text-white
+                    [&_h2]:text-xl [&_h2]:font-bold [&_h2]:mb-2 [&_h2]:text-white
+                    [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:mb-2 [&_h3]:text-white"
+                    dangerouslySetInnerHTML={{ __html: formData.about }}
+                  />
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      openEditor('about')
+                    }}
+                    className="mt-4 text-sm font-mono text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-2"
+                  >
+                    Edit content <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Categories Tags */}
+                {formData.categories && formData.categories.length > 0 && (
+                  <div className="mb-4 p-6 rounded-xl border-2 border-purple-500/30 bg-gradient-to-br from-purple-500/10 to-purple-600/10">
+                    <div className="flex items-center gap-3 mb-4">
+                      <Sparkles className="w-7 h-7 text-purple-400" />
+                      <h3 className="font-blackops text-2xl text-white">Categories</h3>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {formData.categories.map((category, index) => (
+                        <span key={index} className="px-4 py-2 bg-purple-500/20 border border-purple-500/40 rounded-lg text-purple-300 font-mono text-sm">
+                          {category.toLocaleUpperCase()}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Timeline Preview */}
                 {formData.timeline.length > 0 && (
-                  <div className="mb-8 p-6 rounded-xl border-2 border-teal-500/30 bg-gradient-to-br from-teal-500/10 to-teal-600/10 hover:scale-[1.01] transition-all cursor-pointer" onClick={() => openEditor('timeline')}>
+                  <div className="mb-4 p-6 rounded-xl border-2 border-teal-500/30 bg-gradient-to-br from-teal-500/10 to-teal-600/10 hover:scale-[1.01] transition-all cursor-pointer" onClick={() => openEditor('timeline')}>
                     <div className="flex items-center gap-3 mb-4">
                       <Calendar className="w-7 h-7 text-teal-400" />
                       <h3 className="font-blackops text-2xl text-white">Timeline & Stages</h3>
@@ -816,7 +1143,7 @@ export default function OrganizeStep3Page() {
 
                 {/* Important Dates Preview */}
                 {formData.importantDates.length > 0 && (
-                  <div className="mb-8 p-6 rounded-xl border-2 border-red-500/30 bg-gradient-to-br from-red-500/10 to-red-600/10 hover:scale-[1.01] transition-all cursor-pointer" onClick={() => openEditor('dates')}>
+                  <div className="mb-4 p-6 rounded-xl border-2 border-red-500/30 bg-gradient-to-br from-red-500/10 to-red-600/10 hover:scale-[1.01] transition-all cursor-pointer" onClick={() => openEditor('dates')}>
                     <div className="flex items-center gap-3 mb-4">
                       <AlertCircle className="w-7 h-7 text-red-400" />
                       <h3 className="font-blackops text-2xl text-white">Important Dates</h3>
@@ -834,7 +1161,7 @@ export default function OrganizeStep3Page() {
 
                 {/* Prizes Preview */}
                 {formData.prizes.length > 0 && (
-                  <div className="mb-8 p-6 rounded-xl border-2 border-yellow-500/30 bg-gradient-to-br from-yellow-500/10 to-yellow-600/10 hover:scale-[1.01] transition-all cursor-pointer" onClick={() => openEditor('prizes')}>
+                  <div className="mb-4 p-6 rounded-xl border-2 border-yellow-500/30 bg-gradient-to-br from-yellow-500/10 to-yellow-600/10 hover:scale-[1.01] transition-all cursor-pointer" onClick={() => openEditor('prizes')}>
                     <div className="flex items-center gap-3 mb-4">
                       <Trophy className="w-7 h-7 text-yellow-400" />
                       <h3 className="font-blackops text-2xl text-white">Prizes & Rewards</h3>
@@ -853,7 +1180,7 @@ export default function OrganizeStep3Page() {
 
                 {/* FAQ Preview */}
                 {formData.faq.length > 0 && (
-                  <div className="mb-8 p-6 rounded-xl border-2 border-pink-500/30 bg-gradient-to-br from-pink-500/10 to-pink-600/10 hover:scale-[1.01] transition-all cursor-pointer" onClick={() => openEditor('faq')}>
+                  <div className="mb-4 p-6 rounded-xl border-2 border-pink-500/30 bg-gradient-to-br from-pink-500/10 to-pink-600/10 hover:scale-[1.01] transition-all cursor-pointer" onClick={() => openEditor('faq')}>
                     <div className="flex items-center gap-3 mb-4">
                       <MessageCircle className="w-7 h-7 text-pink-400" />
                       <h3 className="font-blackops text-2xl text-white">Frequently Asked Questions</h3>
@@ -874,7 +1201,7 @@ export default function OrganizeStep3Page() {
 
                 {/* Organizers Preview */}
                 {formData.organizers.length > 0 && (
-                <div className="mb-8 p-6 rounded-xl border-2 border-cyan-500/30 bg-gradient-to-br from-cyan-500/10 to-cyan-600/10 hover:scale-[1.01] transition-all cursor-pointer" onClick={() => openEditor('organizers')}>
+                <div className="mb-4 p-6 rounded-xl border-2 border-cyan-500/30 bg-gradient-to-br from-cyan-500/10 to-cyan-600/10 hover:scale-[1.01] transition-all cursor-pointer" onClick={() => openEditor('organizers')}>
                   <div className="flex items-center gap-3 mb-4">
                     <Users className="w-7 h-7 text-cyan-400" />
                     <h3 className="font-blackops text-2xl text-white">Organizers</h3>
@@ -906,7 +1233,7 @@ export default function OrganizeStep3Page() {
 
                 {/* Sponsors Preview */}
                 {formData.sponsors.length > 0 && (
-                  <div className="mb-8 p-6 rounded-xl border-2 border-lime-500/30 bg-gradient-to-br from-lime-500/10 to-lime-600/10 hover:scale-[1.01] transition-all cursor-pointer" onClick={() => openEditor('sponsors')}>
+                  <div className="mb-4 p-6 rounded-xl border-2 border-lime-500/30 bg-gradient-to-br from-lime-500/10 to-lime-600/10 hover:scale-[1.01] transition-all cursor-pointer" onClick={() => openEditor('sponsors')}>
                     <div className="flex items-center gap-3 mb-4">
                       <Heart className="w-7 h-7 text-lime-400" />
                       <h3 className="font-blackops text-2xl text-white">Sponsors & Partners</h3>
@@ -936,49 +1263,24 @@ export default function OrganizeStep3Page() {
                     </div>
                   </div>
                 )}
-
-                {/* About Section Preview */}
-                <div className="p-6 rounded-xl border-2 border-gray-700 bg-gray-900/60 hover:border-gray-600 transition-all cursor-pointer" onClick={() => openEditor('about')}>
-                  <div className="flex items-center gap-3 mb-4">
-                    <Info className="w-7 h-7 text-indigo-400" />
-                    <h3 className="font-blackops text-2xl text-white">About This Hackathon</h3>
-                  </div>
-                  <p className="text-gray-300 font-geist leading-relaxed whitespace-pre-line">{formData.about}</p>
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      openEditor('about')
-                    }}
-                    className="mt-4 text-sm font-mono text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-2"
-                  >
-                    Edit content <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-
-                {/* Categories Tags */}
-                {formData.categories && formData.categories.length > 0 && (
-                  <div className="mt-6 p-6 rounded-xl border-2 border-purple-500/30 bg-gradient-to-br from-purple-500/10 to-purple-600/10">
-                    <div className="flex items-center gap-3 mb-4">
-                      <Sparkles className="w-7 h-7 text-purple-400" />
-                      <h3 className="font-blackops text-2xl text-white">Categories</h3>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {formData.categories.map((category, index) => (
-                        <span key={index} className="px-4 py-2 bg-purple-500/20 border border-purple-500/40 rounded-lg text-purple-300 font-mono text-sm">
-                          {category}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </main>
         </div>
 
         {/* Editor Sheet */}
-        <Sheet open={open} onOpenChange={setOpen}>
-          <SheetContent side="right" className="bg-gradient-to-br from-gray-900 to-gray-800 border-gray-700 w-[96vw] sm:w-[720px] lg:w-[960px] xl:w-[1100px] 2xl:w-[1280px] overflow-y-auto p-0">
+        <Sheet open={open} 
+          onOpenChange={(isOpen) => {
+            if (!isOpen && hasUnsavedChanges) {
+              // Reset to original data if closing without saving
+              setFormData(originalFormData)
+              setTempFormData(originalFormData)
+              reset(originalFormData)
+              setHasUnsavedChanges(false)
+            }
+            setOpen(isOpen)
+          }}>
+          <SheetContent side="right" className="bg-gradient-to-br from-gray-900 to-gray-800 border-gray-700 overflow-y-auto p-0">
             <SheetHeader className="border-b border-gray-700 px-6 py-5 bg-gray-900/50 sticky top-0 z-10">
               <SheetTitle className="font-blackops text-2xl text-white flex items-center gap-3">
                 {navigationSections.find(s => s.key === activeSection)?.icon && (
@@ -993,120 +1295,331 @@ export default function OrganizeStep3Page() {
               </SheetTitle>
             </SheetHeader>
 
-            <div className="px-6 py-6 space-y-6">
+            <div className="px-5 py-5 space-y-6"> 
               {/* Basic Details */}
               {activeSection === 'basic' && (
                 <div className="space-y-6">
+                  {/* Title */}
                   <div className="space-y-2">
                     <Label className="text-gray-200 font-mono text-sm flex items-center gap-2">
                       Hackathon Title <span className="text-red-400 text-xs">*</span>
                     </Label>
                     <Input 
-                      className="bg-black/60 border-gray-700 text-gray-100 focus:border-blue-500 transition-colors h-11 font-mono" 
+                      className="bg-black border-gray-700 text-gray-100 focus:border-teal-400 transition-colors h-11 font-mono" 
                       placeholder="e.g., AI Innovation Hackathon 2025" 
-                      value={formData.title}
-                      onChange={(e) => setFormData({...formData, title: e.target.value})}
+                      value={tempFormData.title}
+                      onChange={(e) => {
+                        setTempFormData({...tempFormData, title: e.target.value})
+                        
+                        setHasUnsavedChanges(true)
+                      }}
                     />
                   </div>
                   
+                  {/* Organizer */}
                   <div className="space-y-2">
                     <Label className="text-gray-200 font-mono text-sm flex items-center gap-2">
-                      Organizer Name <span className="text-red-400 text-xs">*</span>
+                      Organization Name <span className="text-red-400 text-xs">*</span>
                     </Label>
                     <Input 
-                      className="bg-black/60 border-gray-700 text-gray-100 focus:border-blue-500 transition-colors h-11 font-mono" 
+                      className="bg-black border-gray-700 text-gray-100 focus:border-teal-400 transition-colors h-11 font-mono" 
                       placeholder="Your organization name" 
-                      value={formData.organizer}
-                      onChange={(e) => setFormData({...formData, organizer: e.target.value})}
+                      value={tempFormData.organizer}
+                      onChange={(e) => {
+                        setTempFormData({...tempFormData, organizer: e.target.value})
+                        setHasUnsavedChanges(true)
+                      }}
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-gray-200 font-mono text-sm">Mode</Label>
-                      <select 
-                        className="w-full bg-black/60 border border-gray-700 text-gray-100 rounded-md px-3 h-11 focus:border-blue-500 transition-colors font-mono"
-                        value={formData.mode}
-                        onChange={(e) => setFormData({...formData, mode: e.target.value})}
+                  {/* Website URL */}
+                  <div className="space-y-2">
+                    <Label className="text-gray-200 font-mono text-sm">Website URL</Label>
+                    <Input 
+                      className="bg-black border-gray-700 text-gray-100 focus:border-teal-400 transition-colors h-11 font-mono" 
+                      placeholder="https://your-website.com" 
+                      value={tempFormData.websiteUrl}
+                      onChange={(e) => {
+                        setTempFormData({...tempFormData, websiteUrl: e.target.value})
+                        setHasUnsavedChanges(true)
+                      }}
+                    />
+                  </div>
+
+                  {/* Visibility */}
+                  <div className="space-y-2">
+                    <Label className="text-gray-200 font-mono text-sm">Visibility</Label>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTempFormData({...tempFormData, visibility: 'public'})
+                          setHasUnsavedChanges(true)
+                        }}
+                        className={`flex items-start gap-3 p-4 rounded-md border transition-colors ${
+                          tempFormData.visibility === 'public'
+                            ? 'border-teal-400 bg-teal-500/10'
+                            : 'border-gray-700 bg-gray-900/40 hover:bg-gray-800/40'
+                        }`}
                       >
-                        <option>Online</option>
-                        <option>Offline</option>
-                        <option>Hybrid</option>
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-gray-200 font-mono text-sm">Location</Label>
-                      <Input 
-                        className="bg-black/60 border-gray-700 text-gray-100 h-11 font-mono" 
-                        placeholder="City, Country"
-                        value={formData.location}
-                        onChange={(e) => setFormData({...formData, location: e.target.value})}
-                      />
+                        <div className="w-9 h-9 rounded-md bg-teal-500/20 text-teal-400 flex items-center justify-center">
+                          <Globe className="w-5 h-5" />
+                        </div>
+                        <div className="text-left">
+                          <div className="font-mono text-white text-sm">Open publicly</div>
+                          <div className="text-xs text-gray-400">Visible to all users</div>
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTempFormData({...tempFormData, visibility: 'invite'})
+                          setHasUnsavedChanges(true)
+                        }}
+                        className={`flex items-start gap-3 p-4 rounded-md border transition-colors ${
+                          tempFormData.visibility === 'invite'
+                            ? 'border-teal-400 bg-teal-500/10'
+                            : 'border-gray-700 bg-gray-900/40 hover:bg-gray-800/40'
+                        }`}
+                      >
+                        <div className="w-9 h-9 rounded-md bg-blue-500/20 text-blue-400 flex items-center justify-center">
+                          <Lock className="w-5 h-5" />
+                        </div>
+                        <div className="text-left">
+                          <div className="font-mono text-white text-sm">Invite Only</div>
+                          <div className="text-xs text-gray-400">Accessible via link</div>
+                        </div>
+                      </button>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  {/* Mode of Event */}
+                  <div className="space-y-2">
+                    <Label className="text-gray-200 font-mono text-sm">Mode of Event</Label>
+                    <div className="grid sm:grid-cols-3 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTempFormData({...tempFormData, mode: 'online'})
+                          setHasUnsavedChanges(true)
+                        }}
+                        className={`flex items-center gap-3 p-4 rounded-md border transition-colors ${
+                          tempFormData.mode === 'online' 
+                            ? 'border-teal-400 bg-teal-500/10' 
+                            : 'border-gray-700 bg-gray-900/40 hover:bg-gray-800/40'
+                        }`}
+                      >
+                        <div className="w-9 h-9 rounded-md bg-teal-500/20 text-teal-400 flex items-center justify-center">
+                          <Globe className="w-5 h-5" />
+                        </div>
+                        <span className="font-mono text-white text-sm">Online</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTempFormData({...tempFormData, mode: 'offline'})
+                          setHasUnsavedChanges(true)
+                        }}
+                        className={`flex items-center gap-3 p-4 rounded-md border transition-colors ${
+                          tempFormData.mode === 'offline' 
+                            ? 'border-teal-400 bg-teal-500/10' 
+                            : 'border-gray-700 bg-gray-900/40 hover:bg-gray-800/40'
+                        }`}
+                      >
+                        <div className="w-9 h-9 rounded-md bg-blue-500/20 text-blue-400 flex items-center justify-center">
+                          <Building className="w-5 h-5" />
+                        </div>
+                        <span className="font-mono text-white text-sm">Offline</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTempFormData({...tempFormData, mode: 'hybrid'})
+                          setHasUnsavedChanges(true)
+                        }}
+                        className={`flex items-center gap-3 p-4 rounded-md border transition-colors ${
+                          tempFormData.mode === 'hybrid' 
+                            ? 'border-teal-400 bg-teal-500/10' 
+                            : 'border-gray-700 bg-gray-900/40 hover:bg-gray-800/40'
+                        }`}
+                      >
+                        <div className="w-9 h-9 rounded-md bg-purple-500/20 text-purple-400 flex items-center justify-center">
+                          <MapPin className="w-5 h-5" />
+                        </div>
+                        <span className="font-mono text-white text-sm">Hybrid</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Location - shown for offline and hybrid */}
+                  {(tempFormData.mode === 'offline' || tempFormData.mode === 'hybrid') && (
                     <div className="space-y-2">
-                      <Label className="text-gray-200 font-mono text-sm">Current Participants</Label>
+                      <Label className="text-gray-200 font-mono text-sm flex items-center gap-2">
+                        Event Location <span className="text-red-400 text-xs">*</span>
+                      </Label>
                       <Input 
-                        type="number" 
-                        className="bg-black/60 border-gray-700 text-gray-100 h-11 font-mono" 
-                        placeholder="0"
-                        value={formData.participants}
-                        onChange={(e) => setFormData({...formData, participants: parseInt(e.target.value) || 0})}
+                        className="bg-black border-gray-700 text-gray-100 focus:border-teal-400 transition-colors h-11 font-mono" 
+                        placeholder="City, Country or Venue Address"
+                        value={tempFormData.location}
+                        onChange={(e) => {
+                          setTempFormData({...tempFormData, location: e.target.value})
+                          setHasUnsavedChanges(true)
+                        }}
                       />
                     </div>
+                  )}
+
+                  {/* Participation Type */}
+                  <div className="space-y-2">
+                    <Label className="text-gray-200 font-mono text-sm">Participation Type</Label>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          setTempFormData({...tempFormData, participationType: 'individual'})
+                          setHasUnsavedChanges(true)
+                        }}
+                        className={`flex items-start gap-3 p-4 rounded-md border transition-colors ${
+                          tempFormData.participationType === 'individual'
+                            ? 'border-teal-400 bg-teal-500/10'
+                            : 'border-gray-700 bg-gray-900/40 hover:bg-gray-800/40'
+                        }`}
+                      >
+                        <div className="w-9 h-9 rounded-md bg-teal-500/20 text-teal-400 flex items-center justify-center">
+                          <User className="w-5 h-5"/>
+                        </div>
+                        <div className='text-left'>
+                          <div className="text-white font-mono text-sm">Individual</div>
+                          <div className="text-xs text-gray-400">Solo participation</div>
+                        </div>
+                      </button>
+
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          setTempFormData({...tempFormData, participationType: 'team'})
+                          setHasUnsavedChanges(true)
+                        }}
+                        className={`flex items-start gap-3 p-4 rounded-md border transition-colors ${
+                          tempFormData.participationType === 'team'
+                            ? 'border-cyan-400 bg-cyan-500/10'
+                            : 'border-gray-700 bg-gray-900/40 hover:bg-gray-800/40'
+                        }`}
+                      >
+                        <div className="w-9 h-9 rounded-md bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
+                          <Users className="w-5 h-5"/>
+                        </div>
+                        <div className='text-left'>
+                          <div className="text-white font-mono text-sm">Team Participation</div>
+                          <div className="text-xs text-gray-400">Enable teams</div>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Team Size - shown only for team participation */}
+                  {tempFormData.participationType === 'team' && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-gray-200 font-mono text-sm">Team Size (Min)</Label>
+                        <Input 
+                          type="number" 
+                          min={1}
+                          className="bg-black border-gray-700 text-gray-100 focus:border-teal-400 transition-colors h-11 font-mono" 
+                          placeholder="2"
+                          value={tempFormData.teamSizeMin}
+                          onChange={(e) => {
+                            setTempFormData({...tempFormData, teamSizeMin: parseInt(e.target.value) || 1})
+                            setHasUnsavedChanges(true)
+                          }}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-gray-200 font-mono text-sm">Team Size (Max)</Label>
+                        <Input 
+                          type="number" 
+                          min={1}
+                          className="bg-black border-gray-700 text-gray-100 focus:border-teal-400 transition-colors h-11 font-mono" 
+                          placeholder="5"
+                          value={tempFormData.teamSizeMax}
+                          onChange={(e) => {
+                            setTempFormData({...tempFormData, teamSizeMax: parseInt(e.target.value) || 5})
+                            setHasUnsavedChanges(true)
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  
+
+                  {/* Participant Limits */}
+                  <div className="grid gap-4">
                     <div className="space-y-2">
                       <Label className="text-gray-200 font-mono text-sm">Max Participants</Label>
                       <Input 
                         type="number" 
-                        className="bg-black/60 border-gray-700 text-gray-100 h-11 font-mono" 
+                        min={1}
+                        className="bg-black border-gray-700 text-gray-100 focus:border-teal-400 transition-colors h-11 font-mono" 
                         placeholder="500"
-                        value={formData.maxParticipants}
-                        onChange={(e) => setFormData({...formData, maxParticipants: parseInt(e.target.value) || 0})}
+                        value={tempFormData.maxParticipants}
+                        onChange={(e) => {
+                          setTempFormData({...tempFormData, maxParticipants: parseInt(e.target.value) || 0})
+                          setHasUnsavedChanges(true)
+                        }}
                       />
                     </div>
                   </div>
 
+                  {/* Registration Dates */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="text-gray-200 font-mono text-sm">Duration</Label>
+                      <Label className="text-gray-200 font-mono text-sm">Registration Start</Label>
                       <Input 
-                        className="bg-black/60 border-gray-700 text-gray-100 h-11 font-mono" 
-                        placeholder="48H"
-                        value={formData.duration}
-                        onChange={(e) => setFormData({...formData, duration: e.target.value})}
+                        type="datetime-local"
+                        className="bg-black border-gray-700 text-gray-100 focus:border-teal-400 transition-colors h-11 font-mono" 
+                        value={tempFormData.registrationStartDate}
+                        onChange={(e) => {
+                          setTempFormData({...tempFormData, registrationStartDate: e.target.value})
+                          setHasUnsavedChanges(true)
+                        }}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-gray-200 font-mono text-sm">Registration Deadline</Label>
+                      <Label className="text-gray-200 font-mono text-sm">Registration End</Label>
                       <Input 
-                        className="bg-black/60 border-gray-700 text-gray-100 h-11 font-mono" 
-                        placeholder="Oct 07"
-                        value={formData.registrationDeadline}
-                        onChange={(e) => setFormData({...formData, registrationDeadline: e.target.value})}
+                        type="datetime-local"
+                        className="bg-black border-gray-700 text-gray-100 focus:border-teal-400 transition-colors h-11 font-mono" 
+                        value={tempFormData.registrationEndDate}
+                        onChange={(e) => {
+                          setTempFormData({...tempFormData, registrationEndDate: e.target.value})
+                          setHasUnsavedChanges(true)
+                        }}
                       />
                     </div>
                   </div>
                 </div>
               )}
 
+              
+
               {/* Banner Section */}
               {activeSection === 'banner' && (
                 <div className="space-y-6">
                   <div className="space-y-3">
                     <Label className="text-gray-200 font-mono text-sm">Desktop Banner</Label>
-                    {formData.banner && formData.banner !== '/api/placeholder/1200/400' ? (
+                    {tempFormData.banner && tempFormData.banner !== '/api/placeholder/1200/400' ? (
                       <div className="relative border-2 border-gray-700 rounded-lg overflow-hidden">
                         <img 
-                          src={formData.banner} 
+                          src={tempFormData.banner} 
                           alt="Banner preview" 
                           className="w-full h-48 object-cover"
                         />
                         <button
                           type="button"
                           onClick={() => {
-                            setFormData({...formData, banner: '/api/placeholder/1200/400'})
+                            setTempFormData({...tempFormData, banner: '/api/placeholder/1200/400'})
+                            setHasUnsavedChanges(true)
                             setValue('bannerUrl', '/api/placeholder/1200/400')
                             if (bannerInputRef.current) {
                               bannerInputRef.current.value = ''
@@ -1146,7 +1659,8 @@ export default function OrganizeStep3Page() {
                         try {
                           const res = await uploadHackathonBanner(file)
                           if (res.success && res.url) {
-                            setFormData({...formData, banner: res.url})
+                            setTempFormData({...tempFormData, banner: res.url})
+                            setHasUnsavedChanges(true)
                             setValue('bannerUrl', res.url)
                             showCustomToast('success', 'Banner uploaded successfully!')
                           } else {
@@ -1165,9 +1679,10 @@ export default function OrganizeStep3Page() {
                     <Input 
                       placeholder="Or paste image URL here" 
                       className="bg-black/60 border-gray-700 text-gray-100 h-11 font-mono"
-                      value={formData.banner === '/api/placeholder/1200/400' ? '' : formData.banner}
+                      value={tempFormData.banner === '/api/placeholder/1200/400' ? '' : tempFormData.banner}
                       onChange={(e) => {
-                        setFormData({...formData, banner: e.target.value})
+                        setTempFormData({...tempFormData, banner: e.target.value})
+                        setHasUnsavedChanges(true)
                         setValue('bannerUrl', e.target.value)
                       }}
                     />
@@ -1175,17 +1690,18 @@ export default function OrganizeStep3Page() {
                   
                   <div className="space-y-3">
                     <Label className="text-gray-200 font-mono text-sm">Hackathon Logo</Label>
-                    {formData.logo && formData.logo !== '' ? (
+                    {tempFormData.logo && tempFormData.logo !== '' ? (
                       <div className="relative border-2 border-gray-700 rounded-lg overflow-hidden w-48 h-48 mx-auto">
                         <img 
-                          src={formData.logo} 
+                          src={tempFormData.logo} 
                           alt="Logo preview" 
                           className="w-full h-full object-contain p-4 bg-gray-900"
                         />
                         <button
                           type="button"
                           onClick={() => {
-                            setFormData({...formData, logo: ''})
+                            setTempFormData({...tempFormData, logo: ''})
+                            setHasUnsavedChanges(true)
                             setValue('logoUrl', '')
                             if (logoInputRef.current) {
                               logoInputRef.current.value = ''
@@ -1225,7 +1741,8 @@ export default function OrganizeStep3Page() {
                         try {
                           const res = await uploadHackathonLogo(file)
                           if (res.success && res.url) {
-                            setFormData({...formData, logo: res.url})
+                            setTempFormData({...tempFormData, logo: res.url})
+                            setHasUnsavedChanges(true)
                             setValue('logoUrl', res.url)
                             showCustomToast('success', 'Logo uploaded successfully!')
                           } else {
@@ -1244,9 +1761,10 @@ export default function OrganizeStep3Page() {
                     <Input 
                       placeholder="Or paste logo URL here" 
                       className="bg-black/60 border-gray-700 text-gray-100 h-11 font-mono"
-                      value={formData.logo}
+                      value={tempFormData.logo}
                       onChange={(e) => {
-                        setFormData({...formData, logo: e.target.value})
+                        setTempFormData({...tempFormData, logo: e.target.value})
+                        setHasUnsavedChanges(true)
                         setValue('logoUrl', e.target.value)
                       }}
                     />
@@ -1255,7 +1773,7 @@ export default function OrganizeStep3Page() {
               )}
 
               {/* About Section */}
-              {activeSection === 'about' && (
+              {/* {activeSection === 'about' && (
                 <div className="space-y-6">
                   <div className="space-y-3">
                     <Label className="text-gray-200 font-mono text-sm">About Your Hackathon</Label>
@@ -1264,7 +1782,7 @@ export default function OrganizeStep3Page() {
                       rows={14} 
                       className="bg-black/60 border-gray-700 text-gray-100 focus:border-blue-500 transition-colors font-mono text-sm" 
                       placeholder="Describe your hackathon in detail. Include the theme, goals, what participants will build, and what makes your event unique..."
-                      value={formData.about}
+                      value={tempFormData.about}
                       onChange={(e) => setFormData({...formData, about: e.target.value})}
                     />
                   </div>
@@ -1273,6 +1791,73 @@ export default function OrganizeStep3Page() {
                     <Input 
                       className="bg-black/60 border-gray-700 text-gray-100 h-11 font-mono" 
                       placeholder="AI, Web3, Healthcare, Social Impact (comma separated)" 
+                    />
+                  </div>
+                </div>
+              )} */}
+
+              {/* About Section */}
+              {activeSection === 'about' && (
+                <div className="space-y-6">
+                  <div className="space-y-3">
+                    <Label className="text-gray-200 font-mono text-sm flex items-center gap-2">
+                      Categories <span className="text-red-400 text-xs">*</span>
+                    </Label>
+                    <p className="text-xs text-gray-400 font-mono mb-2">
+                      Select relevant categories that best describe your hackathon's focus areas.
+                    </p>
+                    
+                    <MultiSelect
+                      options={[
+                        { value: "web3", label: "Web3 & Blockchain", style: { badgeColor: "#8b5cf6", iconColor: "#a78bfa" } },
+                        { value: "ai-ml", label: "AI & Machine Learning", style: { badgeColor: "#3b82f6", iconColor: "#60a5fa" } },
+                        { value: "iot", label: "IoT & Hardware", style: { badgeColor: "#10b981", iconColor: "#34d399" } },
+                        { value: "mobile", label: "Mobile Development", style: { badgeColor: "#f59e0b", iconColor: "#fbbf24" } },
+                        { value: "web", label: "Web Development", style: { badgeColor: "#06b6d4", iconColor: "#22d3ee" } },
+                        { value: "game", label: "Game Development", style: { badgeColor: "#ec4899", iconColor: "#f472b6" } },
+                        { value: "ar-vr", label: "AR/VR", style: { badgeColor: "#a855f7", iconColor: "#c084fc" } },
+                        { value: "cybersecurity", label: "Cybersecurity", style: { badgeColor: "#ef4444", iconColor: "#f87171" } },
+                        { value: "fintech", label: "FinTech", style: { badgeColor: "#14b8a6", iconColor: "#2dd4bf" } },
+                        { value: "healthcare", label: "Healthcare & BioTech", style: { badgeColor: "#22c55e", iconColor: "#4ade80" } },
+                        { value: "edtech", label: "EdTech", style: { badgeColor: "#f97316", iconColor: "#fb923c" } },
+                        { value: "social-good", label: "Social Good", style: { badgeColor: "#84cc16", iconColor: "#a3e635" } },
+                        { value: "climate", label: "Climate & Sustainability", style: { badgeColor: "#059669", iconColor: "#10b981" } },
+                        { value: "devtools", label: "DevTools & Productivity", style: { badgeColor: "#6366f1", iconColor: "#818cf8" } },
+                        { value: "data", label: "Data Science & Analytics", style: { badgeColor: "#8b5cf6", iconColor: "#a78bfa" } },
+                        { value: "cloud", label: "Cloud Computing", style: { badgeColor: "#0ea5e9", iconColor: "#38bdf8" } },
+                        { value: "automation", label: "Automation & Robotics", style: { badgeColor: "#64748b", iconColor: "#94a3b8" } },
+                        { value: "design", label: "UI/UX Design", style: { badgeColor: "#d946ef", iconColor: "#e879f9" } },
+                        { value: "open-source", label: "Open Source", style: { badgeColor: "#000000", iconColor: "#374151" } },
+                        { value: "enterprise", label: "Enterprise Solutions", style: { badgeColor: "#475569", iconColor: "#64748b" } },
+                      ]}
+                      defaultValue={tempFormData.categories}
+                      onValueChange={(values) => {
+                        setTempFormData({...tempFormData, categories: values})
+                        setHasUnsavedChanges(true)
+                        setValue('categories', values)
+                      }}
+                      placeholder="Select categories..."            
+                      className="bg-black border-gray-700"
+                      popoverClassName="bg-[#020817] border-gray-700 z-[100] [&_[cmdk-item][data-selected=true]]:!bg-gray-800 [&_[cmdk-item][data-selected=true]]:!text-gray-100 [&_[cmdk-separator]]:!border-t [&_[cmdk-separator]]:!border-gray-700"
+                    />
+
+
+                    <Label className="text-gray-200 font-mono text-sm flex items-center gap-2">
+                      About Your Hackathon <span className="text-red-400 text-xs">*</span>
+                    </Label>
+                    <p className="text-xs text-gray-400 font-mono mb-2">
+                      Share rules, eligibility, process, format, etc. Use rich text formatting to make it clear and engaging. Minimum 100 characters required.
+                    </p>
+                    
+                    <MinimalTiptap
+                      content={tempFormData.about}
+                      onChange={(value) => {
+                        setTempFormData({...tempFormData, about: value})
+                        setHasUnsavedChanges(true)
+                        setValue('about', value)
+                      }}
+                      placeholder="Start typing your opportunity details here... Use headings, lists, and formatting to make it clear and engaging."
+                      className="w-full"
                     />
                   </div>
                 </div>
@@ -1286,21 +1871,34 @@ export default function OrganizeStep3Page() {
                     <p className="text-xs text-gray-400 font-mono">Select all that apply</p>
                     <div className="grid grid-cols-2 gap-3">
                       {[
-                        { label: 'Everyone', icon: '👥', selected: formData.eligibility.includes('Everyone') },
-                        { label: 'College Students', icon: '🎓', selected: formData.eligibility.includes('College Students') },
-                        { label: 'Professionals', icon: '💼', selected: formData.eligibility.includes('Professionals') },
-                        { label: 'School Students', icon: '📚', selected: formData.eligibility.includes('School Students') },
-                        { label: 'Freshers', icon: '🔍', selected: formData.eligibility.includes('Freshers') },
-                        { label: 'Others', icon: '⋯', selected: formData.eligibility.includes('Others') }
+                        { label: 'Everyone', icon: '👥', selected: tempFormData.eligibility.includes('Everyone') },
+                        { label: 'Uni/College Students', icon: '🎓', selected: tempFormData.eligibility.includes('Uni/College Students') },
+                        { label: 'Professionals', icon: '💼', selected: tempFormData.eligibility.includes('Professionals') },
+                        { label: 'High School Students', icon: '📚', selected: tempFormData.eligibility.includes('High School Students') },
+                        { label: 'Freshers', icon: '🔍', selected: tempFormData.eligibility.includes('Freshers') },
+                        { label: 'Others', icon: '⋯', selected: tempFormData.eligibility.includes('Others') }
                       ].map(({ label, icon, selected }) => (
                         <div
                           key={label}
                           onClick={() => {
-                            if (selected) {
-                              setFormData({...formData, eligibility: formData.eligibility.filter(el => el !== label)})
+                            if (label === 'Everyone') {
+                              // If clicking Everyone, either select only Everyone or deselect all
+                              if (selected) {
+                                setTempFormData({...tempFormData, eligibility: []})
+                              } else {
+                                setTempFormData({...tempFormData, eligibility: ['Everyone']})
+                              }
                             } else {
-                              setFormData({...formData, eligibility: [...formData.eligibility, label]})
+                              // If clicking any other option, remove Everyone and toggle this option
+                              let newEligibility = tempFormData.eligibility.filter(el => el !== 'Everyone')
+                              if (selected) {
+                                newEligibility = newEligibility.filter(el => el !== label)
+                              } else {
+                                newEligibility = [...newEligibility, label]
+                              }
+                              setTempFormData({...tempFormData, eligibility: newEligibility})
                             }
+                            setHasUnsavedChanges(true)
                           }}
                           className={`relative p-4 rounded-xl border-2 cursor-pointer transition-all hover:scale-105 ${
                             selected 
@@ -1324,7 +1922,7 @@ export default function OrganizeStep3Page() {
                     </div>
                   </div>
                 </div>
-              )}
+                )}
 
               {/* Requirements */}
               {activeSection === 'requirements' && (
@@ -1333,7 +1931,7 @@ export default function OrganizeStep3Page() {
                     <Label className="text-gray-200 font-mono text-sm">Participation Requirements</Label>
                     <p className="text-xs text-gray-400 font-mono">List what participants need to have or bring</p>
                     <div className="space-y-2">
-                      {formData.requirements.map((req, index) => (
+                      {tempFormData.requirements.map((req, index) => (
                         <div key={index} className="flex gap-3 items-center p-3 bg-black/40 border border-gray-700 rounded-lg group hover:border-gray-600 transition-colors">
                           <div className="w-7 h-7 bg-green-500 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                             {index + 1}
@@ -1377,8 +1975,12 @@ export default function OrganizeStep3Page() {
                     <Input 
                       placeholder="$5,000" 
                       className="bg-black/60 border-gray-700 text-gray-100 h-11 font-mono"
-                      value={formData.totalPrizePool}
-                      onChange={(e) => setFormData({...formData, totalPrizePool: e.target.value})}
+                      value={tempFormData.totalPrizePool}
+                      onChange={(e) => {
+                        setTempFormData({...tempFormData, totalPrizePool: e.target.value})
+                        setHasUnsavedChanges(true)
+                      }}
+                      
                     />
                   </div>
                   <div className="space-y-3">
@@ -1386,9 +1988,9 @@ export default function OrganizeStep3Page() {
                     <p className="text-xs text-gray-400 font-mono">Add prizes and rewards for winners</p>
                     
                     {/* Existing Prizes */}
-                    {formData.prizes.length > 0 && (
+                    {tempFormData.prizes.length > 0 && (
                       <div className="space-y-3">
-                        {formData.prizes.map((prize, index) => (
+                        {tempFormData.prizes.map((prize, index) => (
                           <div key={index} className="p-4 bg-gray-800/30 border border-gray-700 rounded-lg">
                             <div className="flex justify-between items-start mb-2">
                               <h4 className="text-white font-mono text-sm font-semibold">{prize.position}</h4>
@@ -1405,7 +2007,10 @@ export default function OrganizeStep3Page() {
                                   variant="ghost" 
                                   size="sm"
                                   className="text-red-400 hover:text-red-300 hover:bg-red-500/10 h-6 w-6 p-0"
-                                  onClick={() => setFormData({...formData, prizes: formData.prizes.filter((_, i) => i !== index)})}
+                                  onClick={() => {
+                                    setTempFormData({...tempFormData, prizes: tempFormData.prizes.filter((_, i) => i !== index)})
+                                    setHasUnsavedChanges(true)
+                                  }}
                                 >
                                   <X className="w-4 h-4" />
                                 </Button>
@@ -1440,17 +2045,19 @@ export default function OrganizeStep3Page() {
                         value={newPrize.description}
                         onChange={(e) => setNewPrize({...newPrize, description: e.target.value})}
                       />
-                      <select 
-                        className="w-full bg-gray-900/60 border border-gray-600 text-gray-100 rounded-md px-3 h-11 font-mono"
+                      <Select 
                         value={newPrize.type}
-                        onChange={(e) => setNewPrize({...newPrize, type: e.target.value})}
+                        onValueChange={(value) => setNewPrize({...newPrize, type: value})}
                       >
-                        <option>Cash</option>
-                        <option>Certificate</option>
-                        <option>Swag</option>
-                        <option>Mentorship</option>
-                        <option>Other</option>
-                      </select>
+                        <SelectTrigger className="bg-gray-900/60 font-mono border-gray-600 text-gray-200 h-11 text-md">
+                          <SelectValue placeholder="Select prize type" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-gray-900 border-gray-700 font-mono z-[100]">
+                          <SelectItem value="Cash">Cash</SelectItem>
+                          <SelectItem value="Certificate">Certificate</SelectItem>
+                          <SelectItem value="Others">Others</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     {/* Update the Add Prize button */}
                     <div className="flex gap-3">
@@ -1482,9 +2089,9 @@ export default function OrganizeStep3Page() {
                     <p className="text-xs text-gray-400 font-mono">Define the key stages and milestones of your hackathon</p>
                     
                     {/* Existing Timeline Items */}
-                    {formData.timeline.length > 0 && (
+                    {tempFormData.timeline.length > 0 && (
                       <div className="space-y-3">
-                        {formData.timeline.map((item, index) => (
+                        {tempFormData.timeline.map((item, index) => (
                           <div key={index} className="p-4 bg-gray-800/30 border border-gray-700 rounded-lg">
                             <div className="flex justify-between items-start mb-2">
                               <h4 className="text-white font-mono text-sm font-semibold">{item.title}</h4>
@@ -1501,7 +2108,10 @@ export default function OrganizeStep3Page() {
                                   variant="ghost" 
                                   size="sm"
                                   className="text-red-400 hover:text-red-300 hover:bg-red-500/10 h-6 w-6 p-0"
-                                  onClick={() => setFormData({...formData, timeline: formData.timeline.filter((_, i) => i !== index)})}
+                                  onClick={() => {
+                                    setTempFormData({...tempFormData, timeline: tempFormData.timeline.filter((_, i) => i !== index)})
+                                    setHasUnsavedChanges(true)
+                                  }}
                                 >
                                   <X className="w-4 h-4" />
                                 </Button>
@@ -1531,7 +2141,7 @@ export default function OrganizeStep3Page() {
                         value={newTimelineItem.description}
                         onChange={(e) => setNewTimelineItem({...newTimelineItem, description: e.target.value})}
                       />
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid sm:grid-cols-2 gap-3">
                         <div className="space-y-2">
                           <Label className="text-gray-300 font-mono text-xs">Start Date & Time</Label>
                           <Input 
@@ -1581,9 +2191,9 @@ export default function OrganizeStep3Page() {
                     <p className="text-xs text-gray-400 font-mono">Add important dates participants should remember</p>
                     
                     {/* Existing Date Items */}
-                    {formData.importantDates.length > 0 && (
+                    {tempFormData.importantDates.length > 0 && (
                       <div className="space-y-3">
-                        {formData.importantDates.map((item, index) => (
+                        {tempFormData.importantDates.map((item, index) => (
                           <div key={index} className="p-4 bg-gray-800/30 border border-gray-700 rounded-lg">
                             <div className="flex justify-between items-start mb-2">
                               <h4 className="text-white font-mono text-sm font-semibold">{item.title}</h4>
@@ -1591,7 +2201,10 @@ export default function OrganizeStep3Page() {
                                 variant="ghost" 
                                 size="sm"
                                 className="text-red-400 hover:text-red-300 hover:bg-red-500/10 h-6 w-6 p-0"
-                                onClick={() => setFormData({...formData, importantDates: formData.importantDates.filter((_, i) => i !== index)})}
+                                onClick={() => {
+                                  setTempFormData({...tempFormData, importantDates: tempFormData.importantDates.filter((_, i) => i !== index)})
+                                  setHasUnsavedChanges(true)
+                              }}
                               >
                                 <X className="w-4 h-4" />
                               </Button>
@@ -1654,9 +2267,9 @@ export default function OrganizeStep3Page() {
                     <p className="text-xs text-gray-400 font-mono">Help participants by answering common questions</p>
                     
                     {/* Existing FAQs */}
-                    {formData.faq.length > 0 && (
+                    {tempFormData.faq.length > 0 && (
                       <div className="space-y-3">
-                        {formData.faq.map((faq, index) => (
+                        {tempFormData.faq.map((faq, index) => (
                           <div key={index} className="p-4 bg-gray-800/30 border border-gray-700 rounded-lg">
                             <div className="flex justify-between items-start mb-2">
                               <h4 className="text-white font-mono text-sm font-semibold">{faq.question}</h4>
@@ -1673,7 +2286,11 @@ export default function OrganizeStep3Page() {
                                   variant="ghost" 
                                   size="sm"
                                   className="text-red-400 hover:text-red-300 hover:bg-red-500/10 h-6 w-6 p-0"
-                                  onClick={() => setFormData({...formData, faq: formData.faq.filter((_, i) => i !== index)})}
+                                  onClick={() => {
+                                    setTempFormData({...tempFormData, faq: tempFormData.faq.filter((_, i) => i !== index)})
+                                    setHasUnsavedChanges(true)
+                                  
+                                  }}
                                 >
                                   <X className="w-4 h-4" />
                                 </Button>
@@ -1731,9 +2348,9 @@ export default function OrganizeStep3Page() {
                     <p className="text-xs text-gray-400 font-mono">Add team members and their contact information</p>
                     
                     {/* Existing Organizers */}
-                    {formData.organizers.length > 0 && (
+                    {tempFormData.organizers.length > 0 && (
                       <div className="space-y-3">
-                        {formData.organizers.map((organizer, index) => (
+                        {tempFormData.organizers.map((organizer, index) => (
                           <div key={index} className="p-4 bg-gray-800/30 border border-gray-700 rounded-lg">
                             <div className="flex justify-between items-start mb-2">
                               <div className="flex gap-3 items-center">
@@ -1762,7 +2379,10 @@ export default function OrganizeStep3Page() {
                                   variant="ghost" 
                                   size="sm"
                                   className="text-red-400 hover:text-red-300 hover:bg-red-500/10 h-6 w-6 p-0"
-                                  onClick={() => setFormData({...formData, organizers: formData.organizers.filter((_, i) => i !== index)})}
+                                  onClick={() => {
+                                    setTempFormData({...tempFormData, organizers: tempFormData.organizers.filter((_, i) => i !== index)})
+                                    setHasUnsavedChanges(true)
+                                  }}
                                 >
                                   <X className="w-4 h-4" />
                                 </Button>
@@ -1891,9 +2511,9 @@ export default function OrganizeStep3Page() {
                     <p className="text-xs text-gray-400 font-mono">Showcase sponsors and partners supporting your event</p>
                     
                     {/* Existing Sponsors */}
-                    {formData.sponsors.length > 0 && (
+                    {tempFormData.sponsors.length > 0 && (
                       <div className="space-y-3">
-                        {formData.sponsors.map((sponsor, index) => (
+                        {tempFormData.sponsors.map((sponsor, index) => (
                           <div key={index} className="p-4 bg-gray-800/30 border border-gray-700 rounded-lg">
                             <div className="flex justify-between items-start mb-2">
                               <div className="flex gap-3 items-center">
@@ -1922,7 +2542,10 @@ export default function OrganizeStep3Page() {
                                   variant="ghost" 
                                   size="sm"
                                   className="text-red-400 hover:text-red-300 hover:bg-red-500/10 h-6 w-6 p-0"
-                                  onClick={() => setFormData({...formData, sponsors: formData.sponsors.filter((_, i) => i !== index)})}
+                                  onClick={() => {
+                                    setTempFormData({...tempFormData, sponsors: tempFormData.sponsors.filter((_, i) => i !== index)})
+                                    setHasUnsavedChanges(true)
+                                  }}
                                 >
                                   <X className="w-4 h-4" />
                                 </Button>
@@ -1961,20 +2584,8 @@ export default function OrganizeStep3Page() {
                         placeholder="Sponsor Name" 
                         className="bg-gray-900/60 border-gray-600 text-gray-100 h-11 font-mono"
                         value={newSponsor.name}
-                        onChange={(e) => setNewSponsor({...newSponsor, name: e.target.value})}
-                      />
-                      <select 
-                        className="w-full bg-gray-900/60 border border-gray-600 text-gray-100 rounded-md px-3 h-11 font-mono"
-                        value={newSponsor.tier}
                         onChange={(e) => setNewSponsor({...newSponsor, tier: e.target.value})}
-                      >
-                        <option>Sponsor Tier</option>
-                        <option>Title Sponsor</option>
-                        <option>Gold Sponsor</option>
-                        <option>Silver Sponsor</option>
-                        <option>Bronze Sponsor</option>
-                        <option>Community Partner</option>
-                      </select>
+                      />
                       <Input 
                         placeholder="Website Link" 
                         className="bg-gray-900/60 border-gray-600 text-gray-100 h-11 font-mono"
@@ -2047,17 +2658,64 @@ export default function OrganizeStep3Page() {
                 variant="outline" 
                 className="flex-1 bg-gray-800/50 hover:bg-gray-700 border-gray-600 text-white h-11 font-mono"
                 onClick={() => {
-                  setFormData(originalFormData)
-                  reset(originalFormData)
+                  setTempFormData(originalFormData)
+                  setHasUnsavedChanges(false)
                   setOpen(false)
                 }}
               >
                 Cancel
               </Button>
+              {/* Use this Button to bypass the validations */}
+              {/* <Button 
+                className="flex-1 bg-gradient-to-r from-purple-500 via-blue-500 to-teal-500 text-white h-11 font-bold font-mono hover:from-purple-600 hover:via-blue-600 hover:to-teal-600 shadow-lg disabled:opacity-50" 
+                disabled={isSaving}
+                onClick={() => onSave({} as CreateHackathonStep3FormData)}
+              >
+                {isSaving ? 'Saving...' : 'Save Changes'}
+              </Button> */}
               <Button 
                 className="flex-1 bg-gradient-to-r from-purple-500 via-blue-500 to-teal-500 text-white h-11 font-bold font-mono hover:from-purple-600 hover:via-blue-600 hover:to-teal-600 shadow-lg disabled:opacity-50" 
                 disabled={isSaving}
-                onClick={handleSubmit(onSave)}
+                onClick={async () => {
+                  const validationError = validateCurrentSection()
+                  if (validationError) {
+                    showCustomToast('error', validationError)
+                    return
+                  }
+                  
+                  const saveData: CreateHackathonStep3FormData = {
+                    title: tempFormData.title,
+                    organizer: tempFormData.organizer,
+                    websiteUrl: tempFormData.websiteUrl,
+                    visibility: tempFormData.visibility,
+                    mode: tempFormData.mode,
+                    location: tempFormData.location,
+                    participationType: tempFormData.participationType,
+                    teamSizeMin: tempFormData.teamSizeMin,
+                    teamSizeMax: tempFormData.teamSizeMax,
+                    registrationStartDate: tempFormData.registrationStartDate,
+                    registrationEndDate: tempFormData.registrationEndDate,
+                    participants: tempFormData.participants,
+                    maxParticipants: tempFormData.maxParticipants,
+                    totalPrizePool: tempFormData.totalPrizePool,
+                    bannerUrl: tempFormData.banner,
+                    logoUrl: tempFormData.logo,
+                    about: tempFormData.about,
+                    duration: tempFormData.duration,
+                    registrationDeadline: tempFormData.registrationDeadline,
+                    eligibility: tempFormData.eligibility,
+                    requirements: tempFormData.requirements,
+                    categories: tempFormData.categories,
+                    prizes: tempFormData.prizes,
+                    timeline: tempFormData.timeline,
+                    importantDates: tempFormData.importantDates,
+                    faq: tempFormData.faq,
+                    organizers: tempFormData.organizers,
+                    sponsors: tempFormData.sponsors
+                  }
+
+                  await onSave(saveData)
+                }}
               >
                 {isSaving ? 'Saving...' : 'Save Changes'}
               </Button>
@@ -2076,9 +2734,9 @@ export default function OrganizeStep3Page() {
                 Ready to Publish?
               </AlertDialogTitle>
               <AlertDialogDescription className="text-gray-300 font-mono text-sm space-y-3 pt-4">
-                <p className="leading-relaxed">
+                <div className="leading-relaxed">
                   Please confirm that all hackathon details are correct and complete before publishing.
-                </p>
+                </div>
                 <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 space-y-2">
                   <div className="text-yellow-300 font-semibold flex items-center gap-2">
                     <AlertCircle className="w-4 h-4" />
@@ -2111,17 +2769,17 @@ export default function OrganizeStep3Page() {
                 </div>
               </AlertDialogDescription>
             </AlertDialogHeader>
-            <AlertDialogFooter className="gap-3 pt-4">
+            <AlertDialogFooter className="gap-3">
               <AlertDialogCancel 
-                className="bg-gray-800 hover:bg-gray-700 border-gray-600 text-white font-mono"
+                className="bg-gray-800 py-6 hover:bg-black border-gray-600 text-white font-mono"
                 disabled={isPublishing}
               >
                 Review Again
               </AlertDialogCancel>
               <AlertDialogAction
-                onClick={handlePublish}
+                onClick={handlePublish}  // ✅ Simply call handlePublish
                 disabled={isPublishing}
-                className="bg-gradient-to-r from-purple-500 via-blue-500 to-teal-500 hover:from-purple-600 hover:via-blue-600 hover:to-teal-600 text-white font-mono font-bold disabled:opacity-50"
+                className="bg-gradient-to-r py-6 from-purple-500 via-blue-500 to-teal-500 hover:from-purple-600 hover:via-blue-600 hover:to-teal-600 text-white font-mono font-bold disabled:opacity-50"
               >
                 {isPublishing ? 'Publishing...' : 'Publish Hackathon'}
               </AlertDialogAction>

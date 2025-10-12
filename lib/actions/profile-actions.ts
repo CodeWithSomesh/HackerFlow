@@ -207,7 +207,7 @@ export async function saveHackerProfile(formData: HackerProfileData) {
 
     const profileData = {
       user_id: user.id,
-      user_primary_typeary_type: 'hacker',
+      user_primary_type: 'hacker',
       full_name: formData.fullName,
       bio: formData.bio || null,
       city: formData.city,

@@ -6,9 +6,19 @@ export const createHackathonStep1Schema = z.object({
   organization: z.string().min(2, 'Organization name is required').max(100, 'Organization name must be less than 100 characters'),
   websiteUrl: z.string().url('Please enter a valid URL').optional().or(z.literal('')),
   visibility: z.enum(['public', 'invite']),
-  mode: z.enum(['online', 'offline']),
+  mode: z.enum(['online', 'offline', 'hybrid']),
+  location: z.string().optional(),
   categories: z.array(z.string()).min(1, 'Please select at least one category'),
   about: z.string().min(500, 'About section must be at least 500 characters').max(10000, 'About section must be less than 10000 characters'),
+}).refine((data) => {
+  // Make location required for offline and hybrid modes
+  if ((data.mode === 'offline' || data.mode === 'hybrid') && !data.location) {
+    return false
+  }
+  return true
+}, {
+  message: 'Location is required for offline and hybrid events',
+  path: ['location'],
 });
 
 export type CreateHackathonStep1FormData = z.infer<typeof createHackathonStep1Schema>;
@@ -52,15 +62,27 @@ export const createHackathonStep2Schema = z.object({
   export type CreateHackathonStep2FormData = z.infer<typeof createHackathonStep2Schema>;
 
   export const createHackathonStep3Schema = z.object({
+    // Step 1 fields
     title: z.string().min(5, 'Title must be at least 5 characters').max(100, 'Title must be less than 100 characters'),
     organizer: z.string().min(2, 'Organizer name is required').max(100, 'Organizer name must be less than 100 characters'),
-    mode: z.string().min(1, 'Mode is required'),
-    location: z.string().min(1, 'Location is required'),
+    websiteUrl: z.string().url().optional().or(z.literal('')),
+    visibility: z.enum(['public', 'invite']),
+    mode: z.enum(['online', 'offline', 'hybrid']),
+    location: z.string().optional(),
+    
+    // Step 2 fields
+    participationType: z.enum(['individual', 'team']),
+    teamSizeMin: z.number().min(1).optional(),
+    teamSizeMax: z.number().min(1).optional(),
+    registrationStartDate: z.string().min(1, 'Registration start date is required'),
+    registrationEndDate: z.string().min(1, 'Registration end date is required'),
+    
+    // Step 3 fields
     participants: z.number().min(0, 'Participants cannot be negative'),
     maxParticipants: z.number().min(1, 'Max participants must be at least 1'),
     totalPrizePool: z.string().min(1, 'Prize pool is required'),
-    bannerUrl: z.string().optional(), // Changed from 'banner'
-    logoUrl: z.string().optional(), // Changed from 'logo'
+    bannerUrl: z.string().optional(),
+    logoUrl: z.string().optional(),
     about: z.string().min(100, 'About section must be at least 100 characters').max(10000, 'About section must be less than 10000 characters'),
     duration: z.string().min(1, 'Duration is required'),
     registrationDeadline: z.string().min(1, 'Registration deadline is required'),
@@ -104,6 +126,25 @@ export const createHackathonStep2Schema = z.object({
       logo: z.string().optional(),
       description: z.string().optional()
     })).optional()
-  });
+  }).refine((data) => {
+    // Make location required for offline and hybrid modes
+    if ((data.mode === 'offline' || data.mode === 'hybrid') && !data.location) {
+      return false
+    }
+    return true
+  }, {
+    message: 'Location is required for offline and hybrid events',
+    path: ['location'],
+  }).refine((data) => {
+    // Validate team sizes when participation type is team
+    if (data.participationType === 'team') {
+      if (!data.teamSizeMin || !data.teamSizeMax) return false
+      if (data.teamSizeMin > data.teamSizeMax) return false
+    }
+    return true
+  }, {
+    message: 'Team size min must be less than or equal to team size max',
+    path: ['teamSizeMax'],
+  })
 
 export type CreateHackathonStep3FormData = z.infer<typeof createHackathonStep3Schema>;
