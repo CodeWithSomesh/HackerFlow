@@ -494,42 +494,6 @@ export function HackerProfileSetup() {
     }
   }
 
-  // const handleSkip = () => {
-  //   router.push("/onboarding/complete")
-  // }
-
-
-  // const handleConnectGitHub = async () => {
-  //   setGithubAnalyzing(true)
-  //   setGithubConnected(true)
-  //   setError(null)
-
-  //   try {
-  //     // For now, use mock data. In production, you'd implement real GitHub OAuth
-  //     const repositories = getMockGitHubRepositories()
-  //     setGithubRepositories(repositories)
-      
-  //     // Analyze repositories to extract skills
-  //     const skills = analyzeGitHubRepositories(repositories)
-      
-  //     // Auto-populate skills based on analysis
-  //     setFormData((prev) => ({
-  //       ...prev,
-  //       programmingLanguages: skills.programmingLanguages,
-  //       frameworks: skills.frameworks,
-  //       githubUsername: "johndoe" // In production, get from GitHub API
-  //     }))
-
-  //     setGithubAnalyzing(false)
-  //     setShowGithubProjects(true)
-  //   } catch (err) {
-  //     console.error('Error connecting to GitHub:', err)
-  //     setError('Failed to connect to GitHub')
-  //     setGithubConnected(false)
-  //     setGithubAnalyzing(false)
-  //   }
-  // }
-
   return (
     <div className="min-h-screen">
       <ProfileSetupToastHandler />

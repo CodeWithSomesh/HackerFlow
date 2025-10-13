@@ -17,7 +17,6 @@ import {
     ChevronUp,
     Building,
     CalendarClock,
-    Dot,
     Sparkles,
     Mail,
     Phone,
@@ -30,7 +29,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { mockHackathons, Hackathon, faqData } from "@/lib/mockHackathons"; // Adjust path if different
+import { mockHackathons, Hackathon, } from "@/lib/mockHackathons"; // Adjust path if different
 import { IconUserStar } from "@tabler/icons-react";
 import TrophyImage from "@/assets/Trophy Prize.png"
 import PrizeImage from "@/assets/Prize Box.png"
@@ -249,7 +248,7 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
         <div className="text-center">
           <div className="text-6xl mb-4">🔍</div>
           <h1 className="text-3xl font-blackops text-white mb-4">Hackathon Not Found</h1>
-          <p className="text-gray-400 font-mono mb-6">The hackathon you're looking for doesn't exist or has been removed.</p>
+          <p className="text-gray-400 font-mono mb-6">The hackathon you&apos;re looking for doesn&apos;t exist or has been removed.</p>
           <Link 
             href="/hackathons"
             className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white px-6 py-3 rounded-lg transition-all font-mono font-bold"
