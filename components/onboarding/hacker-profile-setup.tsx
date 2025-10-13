@@ -34,6 +34,7 @@ import { triggerSideCannons,
 } from "@/lib/confetti"
 import type { User } from "@supabase/supabase-js";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { ProfileSetupToastHandler } from "../toasts/profileSetup-toastHandler"
 
 
 export function HackerProfileSetup() {
@@ -493,44 +494,9 @@ export function HackerProfileSetup() {
     }
   }
 
-  // const handleSkip = () => {
-  //   router.push("/onboarding/complete")
-  // }
-
-
-  // const handleConnectGitHub = async () => {
-  //   setGithubAnalyzing(true)
-  //   setGithubConnected(true)
-  //   setError(null)
-
-  //   try {
-  //     // For now, use mock data. In production, you'd implement real GitHub OAuth
-  //     const repositories = getMockGitHubRepositories()
-  //     setGithubRepositories(repositories)
-      
-  //     // Analyze repositories to extract skills
-  //     const skills = analyzeGitHubRepositories(repositories)
-      
-  //     // Auto-populate skills based on analysis
-  //     setFormData((prev) => ({
-  //       ...prev,
-  //       programmingLanguages: skills.programmingLanguages,
-  //       frameworks: skills.frameworks,
-  //       githubUsername: "johndoe" // In production, get from GitHub API
-  //     }))
-
-  //     setGithubAnalyzing(false)
-  //     setShowGithubProjects(true)
-  //   } catch (err) {
-  //     console.error('Error connecting to GitHub:', err)
-  //     setError('Failed to connect to GitHub')
-  //     setGithubConnected(false)
-  //     setGithubAnalyzing(false)
-  //   }
-  // }
-
   return (
     <div className="min-h-screen">
+      <ProfileSetupToastHandler />
       {/* Background Effects */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10">
         <div className="absolute top-96 left-2 w-96 h-96 bg-pink-500 rounded-full blur-3xl animate-pulse"></div>

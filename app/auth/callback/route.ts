@@ -6,15 +6,11 @@ export async function GET(request: Request) {
   const code = searchParams.get('code')
   const userType = searchParams.get('user_primary_type') as 'hacker' | 'organizer' | null
   
-  // Debug logging
   console.log('Callback URL:', request.url)
   console.log('User type from URL:', userType)
-  console.log('All search params:', Object.fromEntries(searchParams.entries()))
   
-  // if "next" is in param, use it as the redirect URL
   let next = searchParams.get('next') ?? '/'
   if (!next.startsWith('/')) {
-    // if "next" is not a relative URL, use the default
     next = '/'
   }
 
@@ -22,14 +18,16 @@ export async function GET(request: Request) {
     const supabase = await createClient()
     const { data, error } = await supabase.auth.exchangeCodeForSession(code)
     
-    console.log('Exchange code result:', { data, error })
-    
     if (!error) {
-      // Get user info
       const { data: { user } } = await supabase.auth.getUser()
       
       console.log('User after exchange:', user)
-      console.log('User metadata before update:', user?.user_metadata)
+      
+      // Determine if this is a new OAuth user (first time signing in)
+      const isNewUser = data.user?.identities && data.user.identities.length > 0 && 
+                        data.user.identities[0].created_at === data.user.created_at
+      
+      console.log('Is new user:', isNewUser)
       
       // Update user metadata with user type if not already set
       if (user && userType && !user.user_metadata?.user_primary_type) {
@@ -39,13 +37,12 @@ export async function GET(request: Request) {
         console.log('Updated user metadata with user_primary_type:', userType)
       }
       
-      // Determine the final user type
       const finalUserType = userType || user?.user_metadata?.user_primary_type || 'hacker'
       console.log('Final user type for redirect:', finalUserType)
       
       // Check if profile exists
       let hasProfile = false
-      let redirectPath = '/hackathons' // Default for users with profiles
+      let redirectPath = '/hackathons'
       
       if (user) {
         if (finalUserType === 'hacker') {
@@ -58,8 +55,14 @@ export async function GET(request: Request) {
           hasProfile = !!profile
           console.log('Hacker profile exists:', hasProfile)
           
-          if (!hasProfile) {
-            redirectPath = '/onboarding/hacker/profile-setup'
+          // Redirect based on profile existence
+          if (!hasProfile && isNewUser) {
+            redirectPath = '/onboarding/hacker/profile-setup?toast=welcome'
+          } else if (hasProfile) {
+            redirectPath = '/hackathons?toast=login_success'
+          } else {
+            // Existing user but no profile (edge case)
+            redirectPath = '/onboarding/hacker/profile-setup?toast=complete_profile'
           }
         } else if (finalUserType === 'organizer') {
           const { data: profile } = await supabase
@@ -71,8 +74,14 @@ export async function GET(request: Request) {
           hasProfile = !!profile
           console.log('Organizer profile exists:', hasProfile)
           
-          if (!hasProfile) {
-            redirectPath = '/onboarding/organizer/profile-setup'
+          // Redirect based on profile existence
+          if (!hasProfile && isNewUser) {
+            redirectPath = '/onboarding/organizer/profile-setup?toast=welcome'
+          } else if (hasProfile) {
+            redirectPath = '/hackathons?toast=login_success'
+          } else {
+            // Existing user but no profile (edge case)
+            redirectPath = '/onboarding/organizer/profile-setup?toast=complete_profile'
           }
         }
       }
@@ -83,26 +92,17 @@ export async function GET(request: Request) {
       const forwardedHost = request.headers.get('x-forwarded-host')
       const isLocalEnv = process.env.NODE_ENV === 'development'
       
-      console.log('Redirect details:', { origin, forwardedHost, isLocalEnv, redirectPath })
-      
       if (isLocalEnv) {
-        const redirectUrl = `${origin}${redirectPath}`
-        console.log('Redirecting to (local):', redirectUrl)
-        return NextResponse.redirect(redirectUrl)
+        return NextResponse.redirect(`${origin}${redirectPath}`)
       } else if (forwardedHost) {
-        const redirectUrl = `https://${forwardedHost}${redirectPath}`
-        console.log('Redirecting to (forwarded):', redirectUrl)
-        return NextResponse.redirect(redirectUrl)
+        return NextResponse.redirect(`https://${forwardedHost}${redirectPath}`)
       } else {
-        const redirectUrl = `${origin}${redirectPath}`
-        console.log('Redirecting to (fallback):', redirectUrl)
-        return NextResponse.redirect(redirectUrl)
+        return NextResponse.redirect(`${origin}${redirectPath}`)
       }
     } else {
       console.error('Auth callback error:', error)
     }
   }
 
-  // return the user to an error page with instructions
   return NextResponse.redirect(`${origin}/auth/error`)
 }

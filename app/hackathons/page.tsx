@@ -1,295 +1,14 @@
 'use client'
 
-import { useState } from "react";
-import { Search, Filter, MapPin, Calendar, Users, Trophy, Clock, Star, ExternalLink, ChevronRight } from "lucide-react";
-import hackathonPicture1 from '@/assets/hackathonPic1.webp';
-import hackathonPicture2 from '@/assets/hackathonPic2.webp';
-import hackathonPicture3 from '@/assets/hackathonPic3.webp';
-import hackathonPicture4 from '@/assets/hackathonPic4.webp';
-import hackathonPicture5 from '@/assets/hackathonPic5.webp';
-import hackathonPicture6 from '@/assets/hackathonPic6.webp';
+import { useEffect, useState } from "react";
+import { Search, Filter, MapPin, Calendar, Users, Trophy, Clock, Star, ExternalLink, ChevronRight, Globe, Building, X } from "lucide-react";
 import Image, { StaticImageData } from "next/image";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
+import { mockHackathons, Hackathon } from "@/lib/mockHackathons2";
+import { fetchPublishedHackathons } from "@/lib/actions/createHackathon-actions";
 
-interface Hackathon {
-  id: string;
-  title: string;
-  description: string;
-  organizer: string;
-  startDate: string;
-  endDate: string;
-  location: string;
-  mode: "Online" | "Hybrid" | "Physical";
-  participants: number;
-  maxParticipants: number;
-  prize: string;
-  tags: string[];
-  image: string | StaticImageData;
-  status: "Open" | "Closing Soon" | "Full";
-  timeLeft: string;
-  featured?: boolean;
-  colorTheme: string;
-  category: string;
-  level: "Beginner" | "Intermediate" | "Advanced";
-  prizeValue: number;
-}
 
-const mockHackathons: Hackathon[] = [
-  {
-    id: "1",
-    title: "Genesis Season One",
-    description: "Submit your web3 project, graduate, and compete for 1M $TKAI plus Pro Plans from Cursor, Vercel, and more.",
-    organizer: "Genesis DAO",
-    startDate: "2024-01-15",
-    endDate: "2024-02-15",
-    location: "Kuala Lumpur, Malaysia",
-    mode: "Hybrid",
-    participants: 1250,
-    maxParticipants: 2000,
-    prize: "1,000,000 $TKAI",
-    tags: ["Blockchain", "Web3", "DeFi"],
-    image: hackathonPicture1,
-    status: "Open",
-    timeLeft: "28 days left",
-    featured: true,
-    colorTheme: "purple",
-    category: "Blockchain",
-    level: "Advanced",
-    prizeValue: 1000000
-  },
-  {
-    id: "2",
-    title: "Hyperliquid Community Hackathon",
-    description: "Building on the blockchain to house all of finance. Create innovative solutions for decentralized finance.",
-    organizer: "Hyperliquid Labs",
-    startDate: "2024-01-20",
-    endDate: "2024-01-22",
-    location: "Penang, Malaysia",
-    mode: "Physical",
-    participants: 484,
-    maxParticipants: 500,
-    prize: "250,000 USDT",
-    tags: ["Blockchain", "DeFi", "Trading"],
-    image: hackathonPicture2,
-    status: "Closing Soon",
-    timeLeft: "12 hours left",
-    colorTheme: "teal",
-    category: "FinTech",
-    level: "Intermediate",
-    prizeValue: 250000
-  },
-  {
-    id: "3",
-    title: "CopernicusLAC Panama Hackathon 2025",
-    description: "Resolución de problemas en ALC sobre reducción del riesgo de desastres con datos de Copernicus.",
-    organizer: "ESA & Copernicus",
-    startDate: "2024-02-01",
-    endDate: "2024-02-05",
-    location: "Selangor, Malaysia",
-    mode: "Online",
-    participants: 314,
-    maxParticipants: 1000,
-    prize: "8,000 EUR",
-    tags: ["Space Tech", "Agriculture", "Sustainability"],
-    image: hackathonPicture3,
-    status: "Open",
-    timeLeft: "45 days left",
-    colorTheme: "green",
-    category: "Space & Science",
-    level: "Beginner",
-    prizeValue: 8000
-  },
-  {
-    id: "4",
-    title: "FinTech Innovation Challenge",
-    description: "Revolutionize financial services with cutting-edge technology solutions. Build the future of digital banking.",
-    organizer: "Maybank & CIMB",
-    startDate: "2024-01-25",
-    endDate: "2024-01-28",
-    location: "Cyberjaya, Malaysia",
-    mode: "Hybrid",
-    participants: 892,
-    maxParticipants: 1500,
-    prize: "150,000 MYR",
-    tags: ["FinTech", "AI", "Mobile"],
-    image: hackathonPicture4,
-    status: "Open",
-    timeLeft: "18 days left",
-    colorTheme: "pink",
-    category: "FinTech",
-    level: "Intermediate",
-    prizeValue: 150000
-  },
-  {
-    id: "5",
-    title: "ETHRome 2025",
-    description: "The hackathon for builders by builders. Rome, 17-19 October. Privacy, AI and DeFi tracks.",
-    organizer: "ETH Rome",
-    startDate: "2024-02-10",
-    endDate: "2024-02-12",
-    location: "Rome, Italy",
-    mode: "Physical",
-    participants: 320,
-    maxParticipants: 400,
-    prize: "50,000 EUR",
-    tags: ["Blockchain", "Privacy", "DeFi"],
-    image: hackathonPicture5,
-    status: "Open",
-    timeLeft: "52 days left",
-    colorTheme: "yellow",
-    category: "Blockchain",
-    level: "Advanced",
-    prizeValue: 50000
-  },
-  {
-    id: "6",
-    title: "ETHAccra Hackathon 2025",
-    description: "ETHAccra fosters innovation and collaboration through events, workshops, strong community.",
-    organizer: "ETH Accra",
-    startDate: "2024-02-15",
-    endDate: "2024-02-18",
-    location: "Accra, Ghana",
-    mode: "Hybrid",
-    participants: 220,
-    maxParticipants: 300,
-    prize: "25,000 USD",
-    tags: ["Blockchain", "AI", "Cloud Gaming"],
-    image: hackathonPicture6,
-    status: "Open",
-    timeLeft: "60 days left",
-    colorTheme: "cyan",
-    category: "Gaming",
-    level: "Beginner",
-    prizeValue: 25000
-  },
-  {
-    id: "7",
-    title: "Genesis Season One",
-    description: "Submit your web3 project, graduate, and compete for 1M $TKAI plus Pro Plans from Cursor, Vercel, and more.",
-    organizer: "Genesis DAO",
-    startDate: "2024-01-15",
-    endDate: "2024-02-15",
-    location: "Kuala Lumpur, Malaysia",
-    mode: "Hybrid",
-    participants: 1250,
-    maxParticipants: 2000,
-    prize: "1,000,000 $TKAI",
-    tags: ["Blockchain", "Web3", "DeFi"],
-    image: "/api/placeholder/400/200",
-    status: "Open",
-    timeLeft: "28 days left",
-    featured: true,
-    colorTheme: "purple",
-    category: "Blockchain",
-    level: "Advanced",
-    prizeValue: 1000000
-  },
-  {
-    id: "8",
-    title: "Hyperliquid Community Hackathon",
-    description: "Building on the blockchain to house all of finance. Create innovative solutions for decentralized finance.",
-    organizer: "Hyperliquid Labs",
-    startDate: "2024-01-20",
-    endDate: "2024-01-22",
-    location: "Penang, Malaysia",
-    mode: "Physical",
-    participants: 484,
-    maxParticipants: 500,
-    prize: "250,000 USDT",
-    tags: ["Blockchain", "DeFi", "Trading"],
-    image: "/api/placeholder/400/200",
-    status: "Closing Soon",
-    timeLeft: "12 hours left",
-    colorTheme: "teal",
-    category: "FinTech",
-    level: "Intermediate",
-    prizeValue: 250000
-  },
-  {
-    id: "9",
-    title: "CopernicusLAC Panama Hackathon 2025",
-    description: "Resolución de problemas en ALC sobre reducción del riesgo de desastres con datos de Copernicus.",
-    organizer: "ESA & Copernicus",
-    startDate: "2024-02-01",
-    endDate: "2024-02-05",
-    location: "Selangor, Malaysia",
-    mode: "Online",
-    participants: 314,
-    maxParticipants: 1000,
-    prize: "8,000 EUR",
-    tags: ["Space Tech", "Agriculture", "Sustainability"],
-    image: "/api/placeholder/400/200",
-    status: "Open",
-    timeLeft: "45 days left",
-    colorTheme: "green",
-    category: "Space & Science",
-    level: "Beginner",
-    prizeValue: 8000
-  },
-  {
-    id: "10",
-    title: "FinTech Innovation Challenge",
-    description: "Revolutionize financial services with cutting-edge technology solutions. Build the future of digital banking.",
-    organizer: "Maybank & CIMB",
-    startDate: "2024-01-25",
-    endDate: "2024-01-28",
-    location: "Cyberjaya, Malaysia",
-    mode: "Hybrid",
-    participants: 892,
-    maxParticipants: 1500,
-    prize: "150,000 MYR",
-    tags: ["FinTech", "AI", "Mobile"],
-    image: "/api/placeholder/400/200",
-    status: "Open",
-    timeLeft: "18 days left",
-    colorTheme: "pink",
-    category: "FinTech",
-    level: "Intermediate",
-    prizeValue: 150000
-  },
-  {
-    id: "11",
-    title: "ETHRome 2025",
-    description: "The hackathon for builders by builders. Rome, 17-19 October. Privacy, AI and DeFi tracks.",
-    organizer: "ETH Rome",
-    startDate: "2024-02-10",
-    endDate: "2024-02-12",
-    location: "Rome, Italy",
-    mode: "Physical",
-    participants: 320,
-    maxParticipants: 400,
-    prize: "50,000 EUR",
-    tags: ["Blockchain", "Privacy", "DeFi"],
-    image: "/api/placeholder/400/200",
-    status: "Open",
-    timeLeft: "52 days left",
-    colorTheme: "yellow",
-    category: "Blockchain",
-    level: "Advanced",
-    prizeValue: 50000
-  },
-  {
-    id: "12",
-    title: "ETHAccra Hackathon 2025",
-    description: "ETHAccra fosters innovation and collaboration through events, workshops, strong community.",
-    organizer: "ETH Accra",
-    startDate: "2024-02-15",
-    endDate: "2024-02-18",
-    location: "Accra, Ghana",
-    mode: "Hybrid",
-    participants: 220,
-    maxParticipants: 300,
-    prize: "25,000 USD",
-    tags: ["Blockchain", "AI", "Cloud Gaming"],
-    image: "/api/placeholder/400/200",
-    status: "Open",
-    timeLeft: "60 days left",
-    colorTheme: "cyan",
-    category: "Gaming",
-    level: "Beginner",
-    prizeValue: 25000
-  }
-];
 
 const Hackathons = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -299,8 +18,98 @@ const Hackathons = () => {
   const [selectedLevel, setSelectedLevel] = useState<string>("all");
   const [prizeRange, setPrizeRange] = useState<string>("all");
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [dbHackathons, setDbHackathons] = useState<Hackathon[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const filteredHackathons = mockHackathons.filter(hackathon => {
+  useEffect(() => {
+    loadHackathons();
+  }, []);
+
+  const loadHackathons = async () => {
+    setIsLoading(true);
+    try {
+      const result = await fetchPublishedHackathons();
+      
+      if (result.success && result.data) {
+        // Transform DB data to match our interface
+        const transformedData: Hackathon[] = result.data.map((hack: any, index:number) => ({
+          id: hack.id,
+          title: hack.title,
+          description: hack.about || 'No description available',
+          organizer: hack.organization,
+          startDate: hack.registration_start_date,
+          endDate: hack.registration_end_date,
+          location: hack.location || 'Online',
+          mode: hack.mode as "online" | "hybrid" | "offline",
+          participants: hack.participants || 0,
+          maxParticipants: hack.max_participants || 1000,
+          prize: hack.total_prize_pool || '$0',
+          tags: hack.categories || [],
+          image: hack.banner_url || '/api/placeholder/400/200',
+          status: calculateStatus(hack),
+          timeLeft: calculateTimeLeft(hack.registration_end_date),
+          featured: false,
+          colorTheme: getRandomTheme(index),
+          category: hack.categories?.[0] || 'General',
+          level: hack.eligibility?.includes('Professionals') ? 'Advanced' : 
+                 hack.eligibility?.includes('Students') ? 'Intermediate' : 'Beginner',
+          prizeValue: parsePrizeValue(hack.total_prize_pool)
+        }));
+
+        setDbHackathons(transformedData);
+      } else {
+        console.error('Failed to fetch hackathons:', result.error);
+      }
+    } catch (error) {
+      console.error('Error loading hackathons:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const calculateStatus = (hack: any): "Open" | "Closing Soon" | "Full" => {
+    const now = new Date();
+    const endDate = new Date(hack.registration_end_date);
+    const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    
+    const currentParticipants = hack.participants || 0;
+    const maxParticipants = hack.max_participants || 1000;
+    
+    if (currentParticipants >= maxParticipants) return "Full";
+    if (daysLeft <= 3 && daysLeft > 0) return "Closing Soon";
+    if (daysLeft < 0) return "Full"; // Treat past deadline as full
+    return "Open";
+  };
+
+  const calculateTimeLeft = (endDate: string): string => {
+    const now = new Date();
+    const end = new Date(endDate);
+    const diffTime = end.getTime() - now.getTime();
+    const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (daysLeft < 0) return "Ended";
+    if (daysLeft === 0) return "Ends today";
+    if (daysLeft === 1) return "1 day left";
+    if (daysLeft < 7) return `${daysLeft} days left`;
+    if (daysLeft < 30) return `${Math.ceil(daysLeft / 7)} weeks left`;
+    return `${Math.ceil(daysLeft / 30)} months left`;
+  };
+
+  const getRandomTheme = (index: number) => {
+    const themes = ['purple', 'cyan', 'teal', 'green', 'yellow', 'pink'];
+    return themes[index % themes.length];
+  };
+
+  const parsePrizeValue = (prizeStr: string): number => {
+    if (!prizeStr) return 0;
+    // Remove currency symbols and extract numbers
+    const numStr = prizeStr.replace(/[^0-9,]/g, '').replace(/,/g, '');
+    return parseInt(numStr) || 0;
+  };
+
+  const allHackathons = [...dbHackathons, ...mockHackathons];
+
+  const filteredHackathons = allHackathons.filter(hackathon => {
     const matchesSearch = hackathon.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          hackathon.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          hackathon.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -322,60 +131,65 @@ const Hackathons = () => {
   const getCardTheme = (theme: string) => {
     const themes = {
       purple: {
-        gradient: "bg-gradient-to-br from-purple-300 to-purple-600",
-        border: "border-purple-400",
-        text: "text-purple-400"
+        gradient: "from-purple-500 to-purple-700",
+        border: "border-purple-500/50",
+        text: "text-purple-400",
+        glow: "shadow-purple-500/20"
       },
       teal: {
-        gradient: "bg-gradient-to-br from-teal-300 to-teal-600",
-        border: "border-teal-400", 
-        text: "text-teal-400"
+        gradient: "from-teal-500 to-teal-700",
+        border: "border-teal-500/50", 
+        text: "text-teal-400",
+        glow: "shadow-teal-500/20"
       },
       pink: {
-        gradient: "bg-gradient-to-br from-pink-300 to-pink-600",
-        border: "border-pink-400",
-        text: "text-pink-400"
+        gradient: "from-pink-500 to-pink-700",
+        border: "border-pink-500/50",
+        text: "text-pink-400",
+        glow: "shadow-pink-500/20"
       },
       green: {
-        gradient: "bg-gradient-to-br from-green-300 to-green-600",
-        border: "border-green-400",
-        text: "text-green-400"
+        gradient: "from-green-500 to-green-700",
+        border: "border-green-500/50",
+        text: "text-green-400",
+        glow: "shadow-green-500/20"
       },
       yellow: {
-        gradient: "bg-gradient-to-br from-yellow-300 to-yellow-600",
-        border: "border-yellow-400",
-        text: "text-yellow-400"
+        gradient: "from-yellow-500 to-yellow-700",
+        border: "border-yellow-500/50",
+        text: "text-yellow-400",
+        glow: "shadow-yellow-500/20"
       },
       cyan: {
-        gradient: "bg-gradient-to-br from-cyan-300 to-cyan-600",
-        border: "border-cyan-400",
-        text: "text-cyan-400"
+        gradient: "from-cyan-500 to-cyan-700",
+        border: "border-cyan-500/50",
+        text: "text-cyan-400",
+        glow: "shadow-cyan-500/20"
       }
-    }as const;
+    } as const;
     type ThemeKey = keyof typeof themes;
-
     return themes[(theme as ThemeKey)] || themes.purple;
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "Open": 
-        return "bg-green-500 text-white";
+        return "bg-green-500 border-white text-white";
       case "Closing Soon": 
-        return "bg-red-500 text-white animate-pulse";
+        return "bg-red-500 border--white text-white animate-pulse";
       case "Full": 
-        return "bg-gray-500 text-white";
+        return "bg-gray-500 border--white text-white";
       default: 
-        return "bg-gray-500 text-white";
+        return "bg-gray-500 border--white text-white";
     }
   };
 
   const getModeIcon = (mode: string) => {
-    switch (mode) {
-      case "Online": return "🌐";
-      case "Physical": return "🏢";
-      case "Hybrid": return "🔄";
-      default: return "📍";
+    switch (mode.toLowerCase()) {
+      case "online": return <Globe className="w-4 h-4" />;
+      case "offline": return <Building className="w-4 h-4" />;
+      case "hybrid": return <div className="flex items-center"><Globe className="w-3 h-3" /><Building className="w-3 h-3" /></div>;
+      default: return <MapPin className="w-4 h-4" />;
     }
   };
 
@@ -388,86 +202,95 @@ const Hackathons = () => {
     setPrizeRange("all");
   };
 
+  const activeFiltersCount = [selectedMode, selectedStatus, selectedCategory, selectedLevel, prizeRange].filter(f => f !== "all").length;
+
   return (
-    <div className="min-h-screen bg-black mt-4" suppressHydrationWarning>
+    <div className="min-h-screen bg-black mt-4">
       {/* Header */}
-      <div className="bg-gradient-to-r from-teal-400 to-yellow-400 shadow-lg borde border-gray-00">
-        <div className="max-w-7xl mx-auto px-6 pt-8 pb-2">
-          <div className="mb-4">
-            <h1 className="text-4xl font-bold font-blackops text-white -2">
-              Discover Hackathons
-            </h1>
-            <p className="text-xl text-white">
-              Join the most exciting coding events around the world
-            </p>
-          </div>
+      <div className="bg-gradient-to-r from-teal-600 via-cyan-500 to-yellow-400 border-y-4 border-pink-400 shadow-2xl">
+        <div className="max-w-7xl mx-auto px-6 py-6">
+          <h1 className="text-5xl font-blackops text-white drop-shadow-lg">
+            Discover Hackathons
+          </h1>
+          <p className="text-xl text-white/90 font-mono mb-4">
+            Join the most exciting coding events around the world 🚀
+          </p>
           
-          {/* Search and Filters */}
-          <div className="flex flex-col lg:flex-row gap-4 mb-6">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search hackathons..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            
-            <div className="flex gap-3">
-              <select 
-                value={selectedMode} 
-                onChange={(e) => setSelectedMode(e.target.value)}
-                className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="all">All Modes</option>
-                <option value="online">Online</option>
-                <option value="physical">Physical</option>
-                <option value="hybrid">Hybrid</option>
-              </select>
-              
-              <select 
-                value={selectedStatus} 
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="all">All Status</option>
-                <option value="open">Open</option>
-                <option value="closing-soon">Closing Soon</option>
-                <option value="full">Full</option>
-              </select>
-              
-              <button 
-                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors duration-200 flex items-center gap-2"
-              >
-                <Filter className="h-5 w-5" />
-                Filters
-              </button>
-            </div>
+          {/* Search Bar */}
+          <div className="relative mb-6">
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search by title, tags, or description..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-gray-900/80 backdrop-blur border-2 border-gray-700 rounded-xl pl-6 pr-4 py-4 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-teal-400 transition-all font-mono"
+            />
           </div>
 
-          {/* Advanced Filters */}
+          {/* Quick Filters */}
+          <div className="flex flex-wrap gap-3">
+            <select 
+              value={selectedMode} 
+              onChange={(e) => setSelectedMode(e.target.value)}
+              className="bg-gray-900/80 backdrop-blur border-2 border-gray-700 rounded-lg px-4 py-2.5 text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 transition-all"
+            >
+              <option value="all">All Modes</option>
+              <option value="online">🌐 Online</option>
+              <option value="offline">🏢 Physical</option>
+              <option value="hybrid">🔄 Hybrid</option>
+            </select>
+            
+            <select 
+              value={selectedStatus} 
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              className="bg-gray-900/80 backdrop-blur border-2 border-gray-700 rounded-lg px-4 py-2.5 text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 transition-all"
+            >
+              <option value="all">All Status</option>
+              <option value="open">✅ Open</option>
+              <option value="closing-soon">⚡ Closing Soon</option>
+              <option value="full">🔒 Full</option>
+            </select>
+            
+            <button 
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              className="bg-teal-600 hover:bg-teal-500 text-white px-6 py-2.5 rounded-lg transition-all font-mono font-bold text-sm flex items-center gap-2 border-2 border-teal-400 shadow-lg hover:shadow-teal-400/50"
+            >
+              <Filter className="h-4 w-4" />
+              Advanced Filters
+              {activeFiltersCount > 0 && (
+                <span className="bg-yellow-400 text-black rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">
+                  {activeFiltersCount}
+                </span>
+              )}
+            </button>
+
+            {activeFiltersCount > 0 && (
+              <button 
+                onClick={clearAllFilters}
+                className="bg-red-600/80 hover:bg-red-500 border-2 border-red-400 text-white px-4 py-2.5 rounded-lg font-mono font-bold text-sm transition-all flex items-center gap-2"
+              >
+                <X className="h-4 w-4" />
+                Clear All
+              </button>
+            )}
+          </div>
+
+          {/* Advanced Filters Panel */}
           {showAdvancedFilters && (
-            <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 mb-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-semibold text-white">Advanced Filters</h3>
-                <button 
-                  onClick={clearAllFilters}
-                  className="bg-red-600 hover:bg-red-700 border border-red-500 px-4 py-2 text-white text-sm rounded-lg font-medium transition-all duration-200"
-                >
-                  Clear All
-                </button>
-              </div>
+            <div className="bg-gray-900/95 backdrop-blur border-2 mt-2 border-gray-700 rounded-xl p-6 shadow-2xl animate-in slide-in-from-top duration-300">
+              <h3 className="text-xl font-blackops text-white mb-4 flex items-center gap-2">
+                <Filter className="w-5 h-5 text-teal-400" />
+                Advanced Filters
+              </h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
-                  <label className="block text-gray-300 font-medium text-sm mb-2">Category</label>
+                  <label className="block text-gray-300 font-mono font-semibold text-sm mb-2">Category</label>
                   <select 
                     value={selectedCategory} 
                     onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full bg-gray-800 border-2 border-gray-700 rounded-lg px-3 py-2.5 text-white font-mono focus:outline-none focus:ring-2 focus:ring-teal-400 transition-all"
                   >
                     <option value="all">All Categories</option>
                     <option value="Blockchain">Blockchain</option>
@@ -479,41 +302,41 @@ const Hackathons = () => {
                 </div>
                 
                 <div>
-                  <label className="block text-gray-300 font-medium text-sm mb-2">Level</label>
+                  <label className="block text-gray-300 font-mono font-semibold text-sm mb-2">Skill Level</label>
                   <select 
                     value={selectedLevel} 
                     onChange={(e) => setSelectedLevel(e.target.value)}
-                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full bg-gray-800 border-2 border-gray-700 rounded-lg px-3 py-2.5 text-white font-mono focus:outline-none focus:ring-2 focus:ring-teal-400 transition-all"
                   >
                     <option value="all">All Levels</option>
-                    <option value="Beginner">Beginner</option>
-                    <option value="Intermediate">Intermediate</option>
-                    <option value="Advanced">Advanced</option>
+                    <option value="Beginner">🌱 Beginner</option>
+                    <option value="Intermediate">⚡ Intermediate</option>
+                    <option value="Advanced">🚀 Advanced</option>
                   </select>
                 </div>
                 
                 <div>
-                  <label className="block text-gray-300 font-medium text-sm mb-2">Prize Range</label>
+                  <label className="block text-gray-300 font-mono font-semibold text-sm mb-2">Prize Range</label>
                   <select 
                     value={prizeRange} 
                     onChange={(e) => setPrizeRange(e.target.value)}
-                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full bg-gray-800 border-2 border-gray-700 rounded-lg px-3 py-2.5 text-white font-mono focus:outline-none focus:ring-2 focus:ring-teal-400 transition-all"
                   >
                     <option value="all">All Prizes</option>
-                    <option value="free">Free</option>
-                    <option value="1k-10k">$1K - $10K</option>
-                    <option value="10k-100k">$10K - $100K</option>
-                    <option value="100k+">$100K+</option>
+                    <option value="free">Free Entry</option>
+                    <option value="1k-10k">💰 $1K - $10K</option>
+                    <option value="10k-100k">💎 $10K - $100K</option>
+                    <option value="100k+">🏆 $100K+</option>
                   </select>
                 </div>
                 
                 <div>
-                  <label className="block text-gray-300 font-medium text-sm mb-2">Sort By</label>
-                  <select className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <option>Registration Deadline</option>
-                    <option>Prize Amount</option>
-                    <option>Participants Count</option>
-                    <option>Recently Added</option>
+                  <label className="block text-gray-300 font-mono font-semibold text-sm mb-2">Sort By</label>
+                  <select className="w-full bg-gray-800 border-2 border-gray-700 rounded-lg px-3 py-2.5 text-white font-mono focus:outline-none focus:ring-2 focus:ring-teal-400 transition-all">
+                    <option>📅 Deadline</option>
+                    <option>💰 Prize Amount</option>
+                    <option>👥 Participants</option>
+                    <option>🆕 Recently Added</option>
                   </select>
                 </div>
               </div>
@@ -522,158 +345,181 @@ const Hackathons = () => {
         </div>
       </div>
 
-      {/* Cards Grid */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {filteredHackathons.map((hackathon) => {
-              const theme = getCardTheme(hackathon.colorTheme);
-              
-              return (
-                <Link 
-                  key={hackathon.id} href={`/hackathons/${hackathon.id}`}
-                  className="bg-gray-900 rounded-xl shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden border border-slate-400 hover:scale-105 h-fit"
-                >
-                  {/* Header with gradient background */}
-                  <div className={`relative h-56 ${theme.gradient} flex items-center justify-center overflow-hidden`}>
-                    {hackathon.image === "/api/placeholder/400/200" ? <div className="text-6xl opacity-80">🚀</div> 
-                    : 
-                    <Image
-                      src={hackathon.image}
-                      alt="Hackathon banner"
-                      width={600}
-                      height={500}
-                      />
-                    }
-                    
-                    
-                    {/* Status Badge */}
-                    <div className="absolute top-4 right-4">
-                      <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusBadge(hackathon.status)}`}>
-                        {hackathon.status}
-                      </span>
-                    </div>
-                    
-                    {/* Featured Badge */}
-                    {hackathon.featured && (
-                      <div className="absolute top-4 left-4">
-                        <div className="flex items-center gap-1 bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full text-sm font-semibold">
-                          <Star className="h-4 w-4" />
-                          Featured
+      {/* Results Section */}
+      <div className="max-w-7xl mx-auto px-6 py-6">
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="w-16 h-16 border-4 border-teal-400 border-t-transparent rounded-full animate-spin mb-4"></div>
+            <p className="text-gray-400 font-mono">Loading hackathons...</p>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-gray-400 font-mono">
+                Found <span className="text-teal-400 font-bold">{filteredHackathons.length}</span> hackathons
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {filteredHackathons.map((hackathon) => {
+                const theme = getCardTheme(hackathon.colorTheme);
+                
+                return (
+                  <Link 
+                    key={hackathon.id} 
+                    href={`/hackathons/${hackathon.id}`}
+                    className={`group bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden border-2 ${theme.border} hover:scale-[1.02] ${theme.glow} h-fit`}
+                  >
+                    {/* Image Header */}
+                    <div className="relative h-48 overflow-hidden bg-gradient-to-br from-gray-800 to-gray-900">
+                      {hackathon.image === "/api/placeholder/400/200" ? (
+                        <div className="w-full h-full flex items-center justify-center text-6xl opacity-50">🚀</div>
+                      ) : (
+                        <Image
+                          src={hackathon.image}
+                          alt={hackathon.title}
+                          width={600}
+                          height={300}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        />
+                      )}
+                      
+                      {/* Overlays */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                      
+                      {/* Status Badge */}
+                      <div className="absolute top-3 right-3">
+                        <span className={`px-2 py-1.5 rounded-sm text-xs font-bold font-mono border-2 ${getStatusBadge(hackathon.status)} backdrop-blur`}>
+                          {hackathon.status}
+                        </span>
+                      </div>
+                      
+                      {/* Featured Badge */}
+                      {hackathon.featured && (
+                        <div className="absolute top-3 left-3">
+                          <div className="flex items-center gap-1.5 bg-yellow-400 text-black px-3 py-1.5 rounded-lg text-xs font-bold font-mono border-2 border-yellow-300">
+                            <Star className="h-3 w-3 fill-current" />
+                            FEATURED
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Bottom Info Bar */}
+                      <div className="absolute bottom-0 left-0 right-0 p-3 flex items-center justify-between">
+                        <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold font-mono bg-black/80 backdrop-blur border-2 ${theme.border} ${theme.text}`}>
+                          {getModeIcon(hackathon.mode)}
+                          {hackathon.mode.toUpperCase()}
+                        </div>
+                        
+                        <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold font-mono bg-black/80 backdrop-blur border-2 ${theme.border} ${theme.text}`}>
+                          <Users className="h-3 w-3" />
+                          {hackathon.participants}
                         </div>
                       </div>
-                    )}
-                    
-                    {/* Mode Badge */}
-                    <div className="absolute bottom-4 left-4">
-                      <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold ${theme.text} bg-black border border-white`}>
-                        <span>{getModeIcon(hackathon.mode)}</span>
-                        {hackathon.mode}
-                      </div>
                     </div>
                     
-                    {/* Participants Count */}
-                    <div className="absolute bottom-4 right-4">
-                      <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold ${theme.text} bg-black border border-white`}> 
-                        <Users className="h-4 w-4" />
-                        {hackathon.participants}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Content */}
-                  <div className="p-6">
-                    <div className="mb-4">
-                      <h3 className="text-xl font-bold text-white mb-1 line-clamp-2">
-                        {hackathon.title}
-                      </h3>
-                      <p className="text-sm font-medium text-gray-400 mb-3">
-                        by {hackathon.organizer}
-                      </p>
-                      {/* <p className="text-gray-300 text-sm line-clamp-3 leading-relaxed">
-                        {hackathon.description}
-                      </p> */}
-                    </div>
-                    
-                    {/* Details */}
-                    <div className="space-y-3 mb-4">
-                      <div className="flex items-center gap-3 text-sm text-gray-400">
-                        <Calendar className="h-4 w-4 text-blue-400" />
-                        <span>{new Date(hackathon.startDate).toLocaleDateString()} - {new Date(hackathon.endDate).toLocaleDateString()}</span>
+                    {/* Content */}
+                    <div className="p-5">
+                      {/* Title & Organizer */}
+                      <div className="mb-4">
+                        <h3 className="text-xl font-blackops text-white mb-2 line-clamp-2 group-hover:text-teal-400 transition-colors">
+                          {hackathon.title}
+                        </h3>
+                        <p className="text-sm font-mono font-semibold text-gray-400">
+                          by {hackathon.organizer}
+                        </p>
                       </div>
                       
-                      <div className="flex items-center gap-3 text-sm text-gray-400">
-                        <MapPin className="h-4 w-4 text-green-400" />
-                        <span>{hackathon.location}</span>
+                      {/* Details Grid */}
+                      <div className="space-y-2.5 mb-4">
+                        <div className="flex items-center gap-2 text-sm text-gray-300 font-mono">
+                          <Calendar className="h-4 w-4 text-blue-400 flex-shrink-0" />
+                          <span className="truncate">{new Date(hackathon.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(hackathon.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 text-sm text-gray-300 font-mono">
+                          <MapPin className="h-4 w-4 text-green-400 flex-shrink-0" />
+                          <span className="truncate">{hackathon.location}</span>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 text-sm text-gray-300 font-mono">
+                          <Clock className="h-4 w-4 text-orange-400 flex-shrink-0" />
+                          <span>{hackathon.timeLeft}</span>
+                        </div>
                       </div>
                       
-                      <div className="flex items-center gap-3 text-sm text-gray-400">
-                        <Clock className="h-4 w-4 text-orange-400" />
-                        <span>{hackathon.timeLeft}</span>
+                      {/* Prize Display */}
+                      <div className={`flex items-center justify-center gap-2 mb-4 p-3 bg-gradient-to-r ${theme.gradient} rounded-xl border-2 border-yellow-400 shadow-lg hover:shadow-yellow-400/50 transition-all`}>
+                        <Trophy className="h-5 w-5 text-yellow-300" />
+                        <span className="font-blackops text-lg text-white drop-shadow">{hackathon.prize}</span>
                       </div>
-                    </div>
-                    
-                    {/* Prize */}
-                    <div className={`flex items-center justify-center gap-3 mb-4 p-3 bg-yellow-400/10 border-2 border-yellow-500 shadow-xl transition-all hover:animate-pulse hover:shadow-yellow-400 rounded-lg`}>
-                      <Trophy className="h-5 w-5 text-yellow-400" />
-                      <span className="font-bold text-lg text-yellow-400">{hackathon.prize}</span>
-                    </div>
-                    
-                    {/* Tags */}
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {hackathon.tags.slice(0, 3).map((tag) => (
-                        <span 
-                          key={tag} 
-                          className="px-3 py-1 bg-gray-800 text-gray-300 rounded-full text-xs font-medium border border-gray-700"
+                      
+                      {/* Tags */}
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {hackathon.tags.slice(0, 3).map((tag) => (
+                          <span 
+                            key={tag} 
+                            className="px-2.5 py-1 bg-gray-800/50 backdrop-blur text-gray-300 rounded-md text-xs font-mono font-semibold border-2 border-yellow-400"
+                          >
+                            {tag.charAt(0).toUpperCase() + tag.slice(1)}
+                          </span>
+                        ))}
+                      </div>
+                      
+                      {/* Progress Bar */}
+                      <div className="mb-5">
+                        <div className="flex justify-between text-xs font-mono text-gray-400 mb-2">
+                          <span>Registration</span>
+                          <span className="font-bold">{hackathon.participants}/{hackathon.maxParticipants}</span>
+                        </div>
+                        <div className="w-full bg-gray-800 rounded-full h-2.5 overflow-hidden border border-gray-700">
+                          <div 
+                            className={`h-full bg-gradient-to-r ${theme.gradient} transition-all duration-500 relative`}
+                            style={{ width: `${Math.min((hackathon.participants / hackathon.maxParticipants) * 100, 100)}%` }}
+                          >
+                            <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Action Buttons */}
+                      <div className="flex gap-2">
+                        <button className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-sm font-mono font-bold transition-all border-2 border-gray-700 hover:border-gray-600">
+                          <ExternalLink className="h-4 w-4" />
+                          View Details
+                        </button>
+                        <button 
+                          disabled={hackathon.status === "Full"}
+                          className={`flex-1 inline-flex items-center font-blackops justify-center gap-2 px-4 py-2.5 rounded-md text-sm transition-all border-2 ${
+                            hackathon.status === "Full" 
+                              ? "bg-gray-800 text-gray-500 cursor-not-allowed border-gray-700" 
+                              : `bg-gradient-to-r ${theme.gradient} shadow-yellow-400 hover:shadow-lg ${theme.glow} text-white border-transparent`
+                          }`}
                         >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                    
-                    {/* Progress Bar */}
-                    <div className="mb-6">
-                      <div className="flex justify-between text-sm text-gray-400 mb-2">
-                        <span>Participants</span>
-                        <span>{hackathon.participants}/{hackathon.maxParticipants}</span>
-                      </div>
-                      <div className="w-full bg-gray-800 rounded-full h-2">
-                        <div 
-                          className={`h-2 rounded-full transition-all duration-300 ${theme.gradient}`}
-                          style={{ width: `${(hackathon.participants / hackathon.maxParticipants) * 100}%` }}
-                        ></div>
+                          {hackathon.status === "Full" ? "FULL" : "JOIN NOW"}
+                          {hackathon.status !== "Full" && <ChevronRight className="h-4 w-4" />}
+                        </button>
                       </div>
                     </div>
-                    
-                    {/* Action Buttons */}
-                    <div className="flex gap-3">
-                      <button className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-sm font-medium transition-colors duration-200 border border-gray-700">
-                        <ExternalLink className="h-4 w-4" />
-                        Details
-                      </button>
-                      <button 
-                        disabled={hackathon.status === "Full"}
-                        className={`flex-1 inline-flex items-center font-bold justify-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors duration-200 ${
-                          hackathon.status === "Full" 
-                            ? "bg-gray-700 text-gray-500 cursor-not-allowed border border-gray-600" 
-                            : `${theme.gradient} hover:bg-white hover:text-black text-white hover:italic`
-                        }`}
-                      >
-                        {hackathon.status === "Full" ? "Full" : "Join Now"}
-                        {hackathon.status !== "Full" && <ChevronRight className="h-4 w-4" />}
-                      </button>
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
-        </div>
-        
-        {filteredHackathons.length === 0 && (
-          <div className="text-center py-20">
-            <div className="text-6xl mb-4 opacity-50">🔍</div>
-            <h3 className="text-2xl font-bold text-white mb-2">No hackathons found</h3>
-            <p className="text-gray-400">Try adjusting your filters or search terms</p>
-          </div>
+                  </Link>
+                );
+              })}
+            </div>
+            
+            {filteredHackathons.length === 0 && (
+              <div className="text-center py-20">
+                <div className="text-6xl mb-4 opacity-50">🔍</div>
+                <h3 className="text-2xl font-blackops text-white mb-2">No hackathons found</h3>
+                <p className="text-gray-400 font-mono">Try adjusting your filters or search terms</p>
+                <button 
+                  onClick={clearAllFilters}
+                  className="mt-6 bg-teal-600 hover:bg-teal-500 text-white px-6 py-3 rounded-lg font-mono font-bold transition-all"
+                >
+                  Clear All Filters
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

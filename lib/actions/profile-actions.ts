@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache'
 // Types
 export interface HackerProfileData {
   fullName: string
+  profileImage?: string
   bio?: string
   profileType: string
   city: string
@@ -55,6 +56,7 @@ export interface HackerProfileData {
 export interface OrganizerProfileData {
   fullName: string
   bio?: string
+  profileImage?: string
   organizationType: string
   
   // Organization details
@@ -207,7 +209,9 @@ export async function saveHackerProfile(formData: HackerProfileData) {
 
     const profileData = {
       user_id: user.id,
-      user_primary_typeary_type: 'hacker',
+      email: user.email,
+      profile_image: formData.profileImage || null,
+      user_primary_type: 'hacker',
       full_name: formData.fullName,
       bio: formData.bio || null,
       city: formData.city,
@@ -286,6 +290,7 @@ export async function saveOrganizerProfile(profileData: OrganizerProfileData) {
     const dbData = {
       user_id: user.id,
       user_primary_type: 'organizer',
+      profile_image: profileData.profileImage || null,
       full_name: profileData.fullName,
       bio: profileData.bio,
       city: profileData.city,
@@ -531,4 +536,79 @@ export async function saveGitHubIntegrationData(
   }
   
   return { success: true };
+}
+
+
+// Upload Profile Image
+export async function uploadProfileImage(file: File) {
+  try {
+    const supabase = await createClient();
+    
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      return { success: false, error: 'User not authenticated' };
+    }
+
+    // Validate file
+    if (!file.type.startsWith('image/')) {
+      return { success: false, error: 'Please upload an image file (PNG/JPG/GIF)' };
+    }
+
+    if (file.size > 5 * 1024 * 1024) { // 5MB
+      return { success: false, error: 'Image size must be less than 5MB' };
+    }
+
+    // Delete old profile image if exists
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('profile_image')
+      .eq('user_id', user.id)
+      .single();
+
+    if (profile?.profile_image) {
+      // Extract file path from URL
+      const oldImagePath = profile.profile_image.split('/').slice(-2).join('/');
+      await supabase.storage
+        .from('profile-images')
+        .remove([oldImagePath]);
+    }
+
+    // Upload new image
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${user.id}/profile.${fileExt}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('profile-images')
+      .upload(fileName, file, {
+        upsert: true, // Replace if exists
+        contentType: file.type
+      });
+
+    if (uploadError) {
+      console.error('Upload error:', uploadError);
+      return { success: false, error: `Failed to upload image: ${uploadError.message}` };
+    }
+
+    // Get public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('profile-images')
+      .getPublicUrl(fileName);
+
+    // Update user profile with new image URL
+    const { error: updateError } = await supabase
+      .from('user_profiles')
+      .update({ profile_image: publicUrl })
+      .eq('user_id', user.id);
+
+    if (updateError) {
+      console.error('Profile update error:', updateError);
+      return { success: false, error: 'Failed to update profile with new image' };
+    }
+
+    revalidatePath('/profile');
+    return { success: true, url: publicUrl };
+  } catch (error) {
+    console.error('Upload error:', error);
+    return { success: false, error: 'An unexpected error occurred' };
+  }
 }

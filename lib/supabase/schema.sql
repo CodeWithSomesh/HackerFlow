@@ -286,3 +286,100 @@ GROUP BY
 
 -- Grant access to the view
 GRANT SELECT ON user_dashboard TO authenticated;
+
+CREATE TABLE IF NOT EXISTS hackathons (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  title TEXT NOT NULL,
+  organization TEXT NOT NULL,
+  website_url TEXT,
+  visibility TEXT NOT NULL CHECK (visibility IN ('public', 'invite')),
+  mode TEXT NOT NULL CHECK (mode IN ('online', 'offline')),
+  categories TEXT[] NOT NULL,
+  about TEXT NOT NULL,
+  created_by UUID REFERENCES auth.users(id) NOT NULL,
+  step INTEGER DEFAULT 1,
+  status TEXT DEFAULT 'draft',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE hackathons ENABLE ROW LEVEL SECURITY;
+
+-- Policy for users to insert their own hackathons
+CREATE POLICY "Users can insert own hackathons" ON hackathons
+  FOR INSERT WITH CHECK (auth.uid() = created_by);
+
+-- Policy for users to view their own hackathons
+CREATE POLICY "Users can view own hackathons" ON hackathons
+  FOR SELECT USING (auth.uid() = created_by);
+
+-- Policy for users to update their own hackathons
+CREATE POLICY "Users can update own hackathons" ON hackathons
+  FOR UPDATE USING (auth.uid() = created_by);
+
+ALTER TABLE hackathons ADD COLUMN participation_type TEXT CHECK (participation_type IN ('individual', 'team'));
+ALTER TABLE hackathons ADD COLUMN team_size_min INTEGER DEFAULT 1;
+ALTER TABLE hackathons ADD COLUMN team_size_max INTEGER DEFAULT 400;
+ALTER TABLE hackathons ADD COLUMN registration_start_date TIMESTAMP WITH TIME ZONE;
+ALTER TABLE hackathons ADD COLUMN registration_end_date TIMESTAMP WITH TIME ZONE;
+ALTER TABLE hackathons ADD COLUMN max_registrations INTEGER;
+
+ALTER TABLE hackathons ADD COLUMN logo_url TEXT;
+
+CREATE POLICY "Authenticated users can upload logos"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (bucket_id = 'hackathons' AND (storage.foldername(name))[1] = 'hackathon-logos');
+
+CREATE POLICY "Public can view logos"
+ON storage.objects FOR SELECT
+TO public
+USING (bucket_id = 'hackathons');
+
+CREATE POLICY "Authenticated users can upload hackathon files"
+ON storage.objects
+FOR INSERT
+TO authenticated
+WITH CHECK (bucket_id = 'hackathons');
+
+CREATE POLICY "Public can view hackathon files"
+ON storage.objects
+FOR SELECT
+TO public
+USING (bucket_id = 'hackathons');
+
+
+-- Migration script to rename user_type to user_primary_type in auth.users metadata
+-- This updates the raw_user_meta_data and user_metadata columns
+
+-- Update raw_user_meta_data (this is the primary metadata storage)
+UPDATE auth.users
+SET raw_user_meta_data = 
+  raw_user_meta_data - 'user_type' || 
+  jsonb_build_object('user_primary_type', raw_user_meta_data->>'user_type')
+WHERE raw_user_meta_data ? 'user_type';
+
+-- Verify the changes
+SELECT 
+  id, 
+  email, 
+  raw_user_meta_data->>'user_primary_type' as user_primary_type,
+  raw_user_meta_data
+FROM auth.users
+WHERE raw_user_meta_data ? 'user_primary_type';
+
+-- Optional: Check if any users still have the old field (should return 0 rows)
+SELECT 
+  id, 
+  email, 
+  raw_user_meta_data->>'user_type' as old_user_type
+FROM auth.users
+WHERE raw_user_meta_data ? 'user_type';
+
+-- Add location column to hackathons table
+ALTER TABLE hackathons 
+ADD COLUMN location TEXT;
+
+-- Optional: Add a comment to document the column
+COMMENT ON COLUMN hackathons.location IS 'Physical location for offline/hybrid events';

@@ -1,21 +1,10 @@
-// components/toasts-notification.tsx
 import { toast } from 'react-hot-toast';
-import {
-  CheckCircleIcon,
-  XCircleIcon,
-  InformationCircleIcon,
-  ExclamationTriangleIcon,
-} from '@heroicons/react/24/solid';
+import { CheckCircleIcon, XCircleIcon, InformationCircleIcon, ExclamationTriangleIcon, } from '@heroicons/react/24/solid';
 import { JSX } from 'react';
 
 type ToastType = 'success' | 'error' | 'info' | 'warning';
 
-const toastTypes: Record<ToastType, {
-  icon: JSX.Element;
-  title: string;
-  defaultMessage: string;
-  color: string;
-}> = {
+const toastTypes: Record<ToastType, { icon: JSX.Element; title: string; defaultMessage: string; color: string; }> = {
   success: {
     icon: <CheckCircleIcon className="h-10 w-10 text-green-500" />,
     title: 'Success',
@@ -50,7 +39,7 @@ export function showCustomToast(type: ToastType = 'success', customMessage = '')
     <div
       className={`${
         t.visible ? 'animate-enter' : 'animate-leave'
-      } max-w-sm w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5 border-l-8 ${color}`}
+      } max-w-sm w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5 border-l-8 ${color} !z-[100] relative`}
     >
       <div className="flex p-4 w-full items-center">
         <div className="flex-shrink-0">{icon}</div>
@@ -66,5 +55,8 @@ export function showCustomToast(type: ToastType = 'success', customMessage = '')
         </button>
       </div>
     </div>
-  ));
+  ), {
+    duration: 4000,
+    position: 'top-right',
+  });
 }
