@@ -226,33 +226,57 @@ export function Navbar() {
             <div className="hidden md:flex">
               {userEmail ? (
                 <DropdownMenu>
-                  <DropdownMenuTrigger className="focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-primary rounded-full bg-black border border-gray-400">
-                    <Avatar className="h-10 w-10 bg-teal-400">
-                      <AvatarFallback className="font-bol font-blackops">{initials(userEmail)}</AvatarFallback>
-                    </Avatar>
+                  <DropdownMenuTrigger className="focus:outline-none focus:ring-2 focus:ring-teal-400 focus:ring-offset-2 focus:ring-offset-black rounded-full transition-all">
+                    <div className="relative">
+                      <Avatar className="h-10 w-10 bg-gradient-to-br from-teal-400 to-cyan-500 ring-2 ring-teal-400/20 hover:ring-teal-400/50 transition-all">
+                        <AvatarFallback className="font-blackops bg-gradient-to-br from-teal-400 to-cyan-500 text-black">
+                          {initials(userEmail)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-green-500 rounded-full ring-2 ring-black"></div>
+                    </div>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent className="bg-black">
-                    <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                    <DropdownMenuSeparator className="bg-white" />
-                    <DropdownMenuItem className="hover:bg-gray-600">
-                      <User className="h-4 w-4" /> Profile
+                  <DropdownMenuContent 
+                    className="w-64 bg-gradient-to-b from-gray-900 to-black border border-gray-800 shadow-2xl rounded-xl p-2"
+                    align="end"
+                    sideOffset={8}
+                  >
+                    {/* User Info Header */}
+                    <div className="px-3 py-3 mb-2 rounded-lg bg-gradient-to-r from-teal-500/10 to-cyan-500/10 border border-teal-500/20">
+                      <p className="text-xs font-geist text-gray-300 mb-1">Signed in as</p>
+                      <p className="text-sm font-semibold font-geist text-white truncate">{userEmail}</p>
+                    </div>
+                    
+                    <DropdownMenuSeparator className="bg-gray-800 my-2" />
+                    
+                    <DropdownMenuItem className="rounded-md px-3 py-2.5 hover:bg-gray-800 focus:bg-gray-800 cursor-pointer transition-colors group">
+                      <User className="h-4 w-4 mr-3 text-gray-400 group-hover:text-teal-400 transition-colors" />
+                      <span className="text-sm">Profile</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="hover:bg-gray-600">
-                      <User className="h-4 w-4" /> Dashboard
+                    
+                    <DropdownMenuItem className="rounded-md px-3 py-2.5 hover:bg-gray-800 focus:bg-gray-800 cursor-pointer transition-colors group">
+                      <User className="h-4 w-4 mr-3 text-gray-400 group-hover:text-cyan-400 transition-colors" />
+                      <span className="text-sm">Dashboard</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="hover:bg-gray-600">
-                      <Settings className="h-4 w-4" /> Settings
+                    
+                    <DropdownMenuItem className="rounded-md px-3 py-2.5 hover:bg-gray-800 focus:bg-gray-800 cursor-pointer transition-colors group">
+                      <Settings className="h-4 w-4 mr-3 text-gray-400 group-hover:text-blue-400 transition-colors" />
+                      <span className="text-sm">Settings</span>
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator className="bg-white" />
+                    
+                    <DropdownMenuSeparator className="bg-gray-800 my-2" />
+                    
                     <DropdownMenuItem asChild>
-                      <form action={signOut} 
-                        className="w-full hover:bg-gray-700 hover:font-bold"
-                        onClick={() => { 
-                          setUserEmail(null)  
-                        }}
-                      >
-                        <LogOut className="h-4 w-4 text-red-500" />
-                        <button type="submit" className="w-full text-left text-red-500">Sign Out</button>
+                      <form action={signOut} className="w-full">
+                        <button 
+                          type="submit" 
+                          className="flex items-center w-full rounded-md px-3 py-2.5 hover:bg-red-500/90 focus:bg-red-500/10 transition-colors group cursor-pointer"
+                        >
+                          <LogOut className="h-4 w-4 mr-3 text-red-400 group-hover:text-white transition-colors" />
+                          <span className="text-sm text-red-400 group-hover:text-white font-medium transition-colors">
+                            Sign Out
+                          </span>
+                        </button>
                       </form>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -261,13 +285,13 @@ export function Navbar() {
                 <div className="flex gap-2 font-geist">
                   <Button
                     asChild
-                    className="bg-yellow-400 text-black rounded-sm font-bold hover:text-yellow-500 hover:bg-black border-4 hover:border-yellow-400  shadow-lg hover:shadow-xl transition-all"
+                    className="bg-yellow-400 text-black rounded-sm font-bold hover:text-yellow-500 hover:bg-black border-4 hover:border-yellow-400 shadow-lg hover:shadow-xl transition-all"
                   >
                     <Link href="/onboarding/user-type">Join HackerFlow</Link>
                   </Button>
                   <Button
                     asChild
-                    className="bg-teal-300 text-black font-bold rounded-sm  hover:text-teal-300 hover:bg-black border-4 hover:border-teal-300  shadow-lg hover:shadow-xl transition-all"
+                    className="bg-teal-300 text-black font-bold rounded-sm hover:text-teal-300 hover:bg-black border-4 hover:border-teal-300 shadow-lg hover:shadow-xl transition-all"
                   >
                     <Link href="/auth/login">Login</Link>
                   </Button>

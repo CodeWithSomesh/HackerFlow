@@ -32,6 +32,8 @@ import {
   Upload
 } from "lucide-react"
 import { showCustomToast } from "@/components/toast-notification"
+import { connectGitHub, fetchGitHubRepositories, fetchGitHubStats, disconnectGitHub } from "@/lib/actions/github-actions"
+
 
 export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false)
@@ -153,81 +155,63 @@ export default function ProfilePage() {
         if (profile.github_username) {
           await loadGitHubData()
         }
-      } else {
-        // Try organizer profile
-        const organizerResult = await getUserProfile('organizer')
+        } else {
+            // Try organizer profile
+            const organizerResult = await getUserProfile('organizer')
 
-        if (organizerResult.success && organizerResult.profile) {
-        setUserType('organizer')
-        const profile = organizerResult.profile
-        setUserData({
-            fullName: profile.full_name || "",
-            email: profile.email || "",
-            bio: profile.bio || "",
-            city: profile.city || "",
-            state: profile.state || "",
-            country: profile.country || "Malaysia",
-            profileImage: profile.profile_image || "/api/placeholder/150/150",
-            organizationType: profile.organization_type || "",
-            organizationName: profile.organization_name || "",
-            position: profile.position || "",
-            organizationSize: profile.organization_size || "",
-            organizationWebsite: profile.organization_website || "",
-            organizationDescription: profile.organization_description || "",
-            eventOrganizingExperience: profile.event_organizing_experience || "",
-            previousEvents: profile.previous_events || [],
-            typicalBudgetRange: profile.typical_budget_range || "",
-            hasVenue: profile.has_venue || false,
-            venueDetails: profile.venue_details || "",
-            hasSponsorConnections: profile.has_sponsor_connections || false,
-            sponsorDetails: profile.sponsor_details || "",
-            techSetupCapability: profile.tech_setup_capability || "",
-            livestreamCapability: profile.livestream_capability || false,
-            photographyCapability: profile.photography_capability || false,
-            marketingCapability: profile.marketing_capability || false,
-            linkedinUrl: profile.linkedin_url || "",
-            twitterUsername: profile.twitter_username || "",
-            portfolioUrl: profile.website_url || "",
-            instagramUsername: profile.instagram_username || "",
-            // Set unused hacker fields to empty/default
-            profileType: "",
-            university: "",
-            course: "",
-            yearOfStudy: "",
-            graduationYear: "",
-            programmingLanguages: [],
-            frameworks: [],
-            otherSkills: [],
-            experienceLevel: "",
-            githubUsername: "",
-            openToRecruitment: false,
-            githubConnected: false,
-            workExperiences: []
-        })
+            if (organizerResult.success && organizerResult.profile) {
+            setUserType('organizer')
+            const profile = organizerResult.profile
+            setUserData({
+                fullName: profile.full_name || "",
+                email: profile.email || "",
+                bio: profile.bio || "",
+                city: profile.city || "",
+                state: profile.state || "",
+                country: profile.country || "Malaysia",
+                profileImage: profile.profile_image || "/api/placeholder/150/150",
+                organizationType: profile.organization_type || "",
+                organizationName: profile.organization_name || "",
+                position: profile.position || "",
+                organizationSize: profile.organization_size || "",
+                organizationWebsite: profile.organization_website || "",
+                organizationDescription: profile.organization_description || "",
+                eventOrganizingExperience: profile.event_organizing_experience || "",
+                previousEvents: profile.previous_events || [],
+                typicalBudgetRange: profile.typical_budget_range || "",
+                hasVenue: profile.has_venue || false,
+                venueDetails: profile.venue_details || "",
+                hasSponsorConnections: profile.has_sponsor_connections || false,
+                sponsorDetails: profile.sponsor_details || "",
+                techSetupCapability: profile.tech_setup_capability || "",
+                livestreamCapability: profile.livestream_capability || false,
+                photographyCapability: profile.photography_capability || false,
+                marketingCapability: profile.marketing_capability || false,
+                linkedinUrl: profile.linkedin_url || "",
+                twitterUsername: profile.twitter_username || "",
+                portfolioUrl: profile.website_url || "",
+                instagramUsername: profile.instagram_username || "",
+                // Set unused hacker fields to empty/default
+                profileType: "",
+                university: "",
+                course: "",
+                yearOfStudy: "",
+                graduationYear: "",
+                programmingLanguages: [],
+                frameworks: [],
+                otherSkills: [],
+                experienceLevel: "",
+                githubUsername: "",
+                openToRecruitment: false,
+                githubConnected: false,
+                workExperiences: []
+            })
         }
       }
     } catch (error) {
       console.error('Error loading profile:', error)
     } finally {
       setLoading(false)
-    }
-  }
-
-  const loadGitHubData = async () => {
-    try {
-      const result = await getUserGitHubProjects()
-      if (result.success && result.projects) {
-        setPinnedProjects(result.projects.filter((p: any) => p.is_selected).slice(0, 3).map((p: any) => ({
-          name: p.name,
-          description: p.description || "",
-          language: p.language || "Unknown",
-          stars: p.stars_count,
-          forks: p.forks_count,
-          url: p.html_url
-        })))
-      }
-    } catch (error) {
-      console.error('Error loading GitHub data:', error)
     }
   }
 
@@ -378,6 +362,60 @@ export default function ProfilePage() {
       } finally {
         setSaving(false)
       }
+    }
+  }
+
+  const handleConnectGitHub = async () => {
+    const result = await connectGitHub()
+    if (result.success && result.authUrl) {
+      window.location.href = result.authUrl
+    } else {
+      showCustomToast('error', result.error || 'Failed to connect GitHub')
+    }
+  }
+  
+  // Update the loadGitHubData function
+  const loadGitHubData = async () => {
+    try {
+        // Fetch GitHub projects
+        const projectsResult = await getUserGitHubProjects()
+        if (projectsResult.success && projectsResult.projects) {
+        setPinnedProjects(projectsResult.projects.slice(0, 3).map((p: any) => ({
+            name: p.name,
+            description: p.description || "No description",
+            language: p.language || "Unknown",
+            stars: p.stars_count,
+            forks: p.forks_count,
+            url: p.html_url
+        })))
+        } else {
+        console.error('Failed to fetch projects:', projectsResult.error)
+        }
+
+        // Fetch repositories
+        const reposResult = await fetchGitHubRepositories()
+        if (reposResult.success && reposResult.repositories) {
+            const pinned = reposResult.repositories
+            .sort((a, b) => b.stars_count - a.stars_count)
+            .slice(0, 3)
+            .map((repo) => ({
+                name: repo.name,
+                description: repo.description || "",
+                language: repo.language || "Unknown",
+                stars: repo.stars_count,
+                forks: repo.forks_count,
+                url: repo.html_url
+            }))
+            setPinnedProjects(pinned)
+        }
+  
+      // Fetch stats
+      const statsResult = await fetchGitHubStats()
+      if (statsResult.success && statsResult.stats) {
+        setGithubStats(statsResult.stats)
+      }
+    } catch (error) {
+      console.error('Error loading GitHub data:', error)
     }
   }
 
@@ -1205,6 +1243,37 @@ export default function ProfilePage() {
 
                 {/* Sidebar */}
                 <div className="space-y-6">
+                    {/* <div className="bg-red-500/20 border-2 border-red-500 rounded-xl p-4">
+                        <p className="text-white font-mono mb-2">Debug: GitHub Status</p>
+                        <p className="text-gray-300 text-sm font-mono mb-2">
+                            Connected: {userData.githubConnected ? 'Yes' : 'No'}
+                        </p>
+                        <p className="text-gray-300 text-sm font-mono mb-4">
+                            Username: {userData.githubUsername || 'Not set'}
+                        </p>
+                        <button
+                            onClick={handleConnectGitHub}
+                            className="w-full bg-purple-500 text-white font-mono px-4 py-2 rounded-lg"
+                        >
+                            Force Connect GitHub
+                        </button>
+                    </div>
+
+                    <button
+                        onClick={async () => {
+                            // First disconnect
+                            await disconnectGitHub()
+                            // Then reconnect
+                            const result = await connectGitHub()
+                            if (result.success && result.authUrl) {
+                            window.location.href = result.authUrl
+                            }
+                        }}
+                        className="w-full bg-purple-500 text-white font-mono px-4 py-2 rounded-lg"
+                        >
+                        {userData.githubConnected ? 'Reconnect GitHub' : 'Connect GitHub'}
+                    </button> */}
+
                     {/* Quick Stats */}
                     <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-6">
                     <h3 className="text-xl font-blackops text-white mb-4">QUICK STATS</h3>
@@ -1271,18 +1340,21 @@ export default function ProfilePage() {
 
                     {/* GitHub Integration */}
                     {!userData.githubConnected && (
-                    <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-6">
-                        <div className="text-center space-y-4">
-                        <Github className="w-12 h-12 text-gray-400 mx-auto" />
-                        <h3 className="text-xl font-blackops text-white">CONNECT GITHUB</h3>
-                        <p className="text-gray-400 font-mono text-sm">
-                            Showcase your repositories and contributions
-                        </p>
-                        <button className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-mono font-bold px-6 py-3 rounded-xl hover:opacity-90 transition-all">
-                            Connect GitHub
-                        </button>
+                        <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-6">
+                            <div className="text-center space-y-4">
+                            <Github className="w-12 h-12 text-gray-400 mx-auto" />
+                            <h3 className="text-xl font-blackops text-white">CONNECT GITHUB</h3>
+                            <p className="text-gray-400 font-mono text-sm">
+                                Showcase your repositories and contributions
+                            </p>
+                            <button 
+                                onClick={handleConnectGitHub}
+                                className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-mono font-bold px-6 py-3 rounded-xl hover:opacity-90 transition-all"
+                            >
+                                Connect GitHub
+                            </button>
+                            </div>
                         </div>
-                    </div>
                     )}
 
                     {/* Contact Card */}

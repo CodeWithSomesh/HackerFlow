@@ -233,6 +233,8 @@ export function HackerProfileSetup() {
       console.log('Processing GitHub OAuth code:', code);
       handleOAuthCallback(code).then((data) => {
         console.log('GitHub integration successful:', data);
+
+        
         
         // Update form with GitHub data
         setFormData(prev => ({
@@ -460,34 +462,47 @@ export function HackerProfileSetup() {
     console.log('Submitting form data:', formData); // Debug log
   
     try {
-      // Save profile data to database
-      const result = await saveHackerProfile(formData)
+      // Get GitHub data from localStorage
+      const githubToken = localStorage.getItem('github_access_token');
+      const githubUserData = localStorage.getItem('github_user');
       
-      console.log('Profile save result:', result); // Debug log
+      // Save profile data to database (pass GitHub data as parameters)
+      const result = await saveHackerProfile(
+        formData,
+        githubToken || undefined,
+        githubUserData ? JSON.parse(githubUserData) : undefined
+      )
+      
+      console.log('Profile save result:', result);
       
       if (!result.success) {
-        showCustomToast('error', "Failed To Create Your Profile") //Show Error Toast
+        showCustomToast('error', "Failed To Create Your Profile")
         throw new Error(result.error || 'Failed to save profile')
       }
 
-      setIsProfileComplete(true) // Allow navigation
-  
+      setIsProfileComplete(true)
+
       // Save GitHub projects if connected
       if (githubConnected && githubRepositories.length > 0) {
         const githubResult = await saveGitHubProjects(githubRepositories, [])
         
         if (!githubResult.success) {
           console.error('Failed to save GitHub projects:', githubResult.error)
-          // Don't throw error here, profile is already saved
         }
       }
       
-      showCustomToast('success', "Successfully Created Your Profile!") //Show Success Toast
-      triggerSideCannons(); //Trigger Confetti
-      router.push("/hackathons") //Redirect to Hackathon Page
+      // Clear localStorage after successful save
+      if (githubToken) {
+        localStorage.removeItem('github_access_token');
+        localStorage.removeItem('github_user');
+      }
+      
+      showCustomToast('success', "Successfully Created Your Profile!")
+      triggerSideCannons();
+      router.push("/hackathons")
     } catch (err) {
       console.error('Error saving profile:', err)
-      showCustomToast('error', "Failed To Create Your Profile") //Show Error Toast
+      showCustomToast('error', "Failed To Create Your Profile")
       setError(err instanceof Error ? err.message : 'Failed to save profile')
     } finally {
       setIsLoading(false)

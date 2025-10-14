@@ -187,15 +187,15 @@ export async function testDatabaseConnection() {
 //               Database checks UNIQUE constraint
 //                           ↓
 //          INSERT (new user) or UPDATE (existing user)
-export async function saveHackerProfile(formData: HackerProfileData) {
+export async function saveHackerProfile(
+  formData: HackerProfileData, 
+  githubToken?: string, 
+  githubUserData?: any
+) {
   try {
     const supabase = await createClient();
-    // Add this debug line to check if supabase is properly created
-    console.log('Supabase client created:', !!supabase, !!supabase.auth);
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
-    //Retrieves the currently authenticated user. 
-    //If there's an authentication error or no user is found, the function returns early with an error message.
     if (authError) {
       console.error('Auth error:', authError);
       return { success: false, error: `Authentication error: ${authError.message}` };
@@ -248,13 +248,17 @@ export async function saveHackerProfile(formData: HackerProfileData) {
       
       // Preferences
       open_to_recruitment: formData.openToRecruitment || false,
+      
+      // GitHub integration (ADD THESE)
+      github_access_token: githubToken || null,
+      github_connected_at: githubToken ? new Date().toISOString() : null,
     };
 
     console.log('Profile data to save:', JSON.stringify(profileData, null, 2));
 
     const { data, error } = await supabase
-      .from('user_profiles') //Uses upsert to either insert a new profile or update an existing one
-      .upsert(profileData, { onConflict: 'user_id' }) //The onConflict: 'user_id' means if a profile already exists for this user, it updates it instead of creating a duplicate
+      .from('user_profiles')
+      .upsert(profileData, { onConflict: 'user_id' })
       .select();
 
     if (error) {
@@ -274,6 +278,7 @@ export async function saveHackerProfile(formData: HackerProfileData) {
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error occurred' };
   }
 }
+
 
 // Save Organizer Profile
 export async function saveOrganizerProfile(profileData: OrganizerProfileData) {
@@ -449,25 +454,52 @@ export async function saveGitHubProjects(projects: GitHubProject[], selectedProj
 export async function getUserGitHubProjects() {
   try {
     const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
     
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    if (userError || !user) {
-      throw new Error('User not authenticated')
+    if (!user) {
+      throw new Error('Not authenticated')
     }
 
-    const { data: projects, error } = await supabase
-      .from('github_projects')
-      .select('*')
+    // Get GitHub token from profile
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('github_access_token, github_username')
       .eq('user_id', user.id)
-      .order('updated_at', { ascending: false })
+      .single()
 
-    if (error) {
-      throw new Error('Failed to fetch GitHub projects')
+    if (!profile?.github_access_token) {
+      return { success: false, error: 'GitHub not connected with token' }
     }
+
+    // Fetch repositories
+    const response = await fetch('https://api.github.com/user/repos?per_page=100&sort=updated', {
+      headers: {
+        'Authorization': `Bearer ${profile.github_access_token}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'HackerFlow-App'
+      }
+    })
+
+    if (!response.ok) {
+      throw new Error(`GitHub API error: ${response.status}`)
+    }
+
+    const repos = await response.json()
+    
+    // Map to your project format
+    const projects = repos.slice(0, 10).map((repo: any) => ({
+      name: repo.name,
+      description: repo.description,
+      language: repo.language,
+      stars_count: repo.stargazers_count,
+      forks_count: repo.forks_count,
+      html_url: repo.html_url,
+      is_selected: false // You can add logic to select pinned repos
+    }))
 
     return { success: true, projects }
   } catch (error) {
-    console.error('Error in getUserGitHubProjects:', error)
+    console.error('Error fetching GitHub projects:', error)
     return { 
       success: false, 
       error: error instanceof Error ? error.message : 'Unknown error' 
@@ -525,8 +557,8 @@ export async function saveGitHubIntegrationData(
   const { error } = await supabase
     .from('user_profiles')
     .update({
-      github_integration_data: githubData,
-      github_access_token: accessToken, // Encrypt in production
+      github_username: githubData.login,
+      github_access_token: accessToken,
       github_connected_at: new Date().toISOString(),
     })
     .eq('user_id', userId);
@@ -537,7 +569,6 @@ export async function saveGitHubIntegrationData(
   
   return { success: true };
 }
-
 
 // Upload Profile Image
 export async function uploadProfileImage(file: File) {
