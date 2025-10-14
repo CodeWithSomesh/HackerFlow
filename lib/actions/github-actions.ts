@@ -37,6 +37,18 @@ export interface GitHubStats {
   contributionGraph: number[][]
 }
 
+export interface LanguageStats {
+  name: string
+  percentage: number
+  color: string
+}
+
+export interface ContributionStreak {
+  current: number
+  longest: number
+  total: number
+}
+
 // Initiate GitHub OAuth flow
 export async function connectGitHub() {
   try {
@@ -79,8 +91,8 @@ export async function fetchGitHubRepositories() {
         'Accept': 'application/vnd.github.v3+json',
         'User-Agent': 'HackerFlow-App'
       },
-      next: { revalidate: 3600 } // Cache for 1 hour
-    })
+      cache: 'no-store'
+    })    
 
     if (!response.ok) {
       throw new Error(`GitHub API error: ${response.status}`)
@@ -125,8 +137,196 @@ export async function fetchGitHubRepositories() {
   }
 }
 
-// Fetch GitHub user stats
-export async function fetchGitHubStats(): Promise<{ success: boolean; stats?: GitHubStats; error?: string }> {
+export async function fetchPinnedRepositories() {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      throw new Error('Not authenticated')
+    }
+
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('github_access_token, github_username')
+      .eq('user_id', user.id)
+      .single()
+
+    if (!profile?.github_access_token || !profile?.github_username) {
+      throw new Error('GitHub not connected')
+    }
+
+    // GraphQL query for pinned repositories
+    const query = `
+      query {
+        user(login: "${profile.github_username}") {
+          pinnedItems(first: 6, types: REPOSITORY) {
+            nodes {
+              ... on Repository {
+                name
+                description
+                url
+                stargazerCount
+                forkCount
+                primaryLanguage {
+                  name
+                  color
+                }
+              }
+            }
+          }
+        }
+      }
+    `
+
+    const response = await fetch('https://api.github.com/graphql', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${profile.github_access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query }),
+      cache: 'no-store'
+    })
+
+    const result = await response.json()
+
+    if (result.errors) {
+      console.error('GraphQL errors:', result.errors)
+      throw new Error(result.errors[0].message)
+    }
+
+    const pinnedRepos = result.data?.user?.pinnedItems?.nodes || []
+
+    return {
+      success: true,
+      repositories: pinnedRepos.map((repo: any) => ({
+        name: repo.name,
+        description: repo.description || 'No description',
+        language: repo.primaryLanguage?.name || 'Unknown',
+        languageColor: repo.primaryLanguage?.color || '#gray',
+        stars: repo.stargazerCount,
+        forks: repo.forkCount,
+        url: repo.url
+      }))
+    }
+  } catch (error) {
+    console.error('Error fetching pinned repositories:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }
+  }
+}
+
+// Fetch top languages
+export async function fetchTopLanguages() {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      throw new Error('Not authenticated')
+    }
+
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('github_access_token, github_username')
+      .eq('user_id', user.id)
+      .single()
+
+    if (!profile?.github_access_token || !profile?.github_username) {
+      throw new Error('GitHub not connected')
+    }
+
+    // Fetch all user repositories
+    const reposResponse = await fetch(
+      `https://api.github.com/users/${profile.github_username}/repos?per_page=100&type=owner`,
+      {
+        headers: {
+          'Authorization': `Bearer ${profile.github_access_token}`,
+          'Accept': 'application/vnd.github.v3+json',
+        },
+        cache: 'no-store'
+      }
+    )
+
+    const repos = await reposResponse.json()
+
+    // Calculate language statistics
+    const languageBytes: { [key: string]: { bytes: number; color: string } } = {}
+    let totalBytes = 0
+
+    // Fetch languages for each repo
+    for (const repo of repos) {
+      if (repo.fork) continue // Skip forked repos
+
+      const langResponse = await fetch(repo.languages_url, {
+        headers: {
+          'Authorization': `Bearer ${profile.github_access_token}`,
+          'Accept': 'application/vnd.github.v3+json',
+        },
+        cache: 'no-store'
+      })
+
+      const languages = await langResponse.json()
+
+      for (const [lang, bytes] of Object.entries(languages)) {
+        const byteCount = bytes as number
+        if (!languageBytes[lang]) {
+          // Get language color from GitHub's linguist colors
+          const colorMap: { [key: string]: string } = {
+            'TypeScript': '#3178c6',
+            'JavaScript': '#f1e05a',
+            'Python': '#3572A5',
+            'Java': '#b07219',
+            'C++': '#f34b7d',
+            'C#': '#178600',
+            'Go': '#00ADD8',
+            'Rust': '#dea584',
+            'PHP': '#4F5D95',
+            'Ruby': '#701516',
+            'Swift': '#F05138',
+            'Kotlin': '#A97BFF',
+            'Dart': '#00B4AB',
+            'HTML': '#e34c26',
+            'CSS': '#563d7c',
+          }
+          languageBytes[lang] = { 
+            bytes: 0, 
+            color: colorMap[lang] || '#gray' 
+          }
+        }
+        languageBytes[lang].bytes += byteCount
+        totalBytes += byteCount
+      }
+    }
+
+    // Convert to percentages and sort
+    const languageStats: LanguageStats[] = Object.entries(languageBytes)
+      .map(([name, data]) => ({
+        name,
+        percentage: (data.bytes / totalBytes) * 100,
+        color: data.color
+      }))
+      .sort((a, b) => b.percentage - a.percentage)
+      .slice(0, 10) // Top 10 languages
+
+    return {
+      success: true,
+      languages: languageStats
+    }
+  } catch (error) {
+    console.error('Error fetching top languages:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }
+  }
+}
+
+// Fetch Github Stats using GraphQL for contribution data
+export async function fetchGitHubStats(): Promise<{ success: boolean; stats?: GitHubStats & { streak?: ContributionStreak }; error?: string }> {
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -151,29 +351,130 @@ export async function fetchGitHubStats(): Promise<{ success: boolean; stats?: Gi
         'Authorization': `Bearer ${profile.github_access_token}`,
         'Accept': 'application/vnd.github.v3+json',
       },
-      next: { revalidate: 3600 }
+      cache: 'no-store'
     })
+
+    if (!userResponse.ok) {
+      throw new Error(`GitHub API error: ${userResponse.status}`)
+    }
 
     const userData = await userResponse.json()
 
     // Fetch repositories for star count
-    const reposResponse = await fetch(`https://api.github.com/users/${profile.github_username}/repos?per_page=100`, {
-      headers: {
-        'Authorization': `Bearer ${profile.github_access_token}`,
-        'Accept': 'application/vnd.github.v3+json',
-      },
-      next: { revalidate: 3600 }
-    })
-
-    const repos = await reposResponse.json()
-    const totalStars = repos.reduce((sum: number, repo: any) => sum + repo.stargazers_count, 0)
-
-    // Fetch contribution data (simplified - actual contribution graph requires scraping)
-    const contributionGraph = Array(52).fill(0).map(() => 
-      Array(7).fill(0).map(() => Math.floor(Math.random() * 5))
+    const reposResponse = await fetch(
+      `https://api.github.com/users/${profile.github_username}/repos?per_page=100&type=owner`,
+      {
+        headers: {
+          'Authorization': `Bearer ${profile.github_access_token}`,
+          'Accept': 'application/vnd.github.v3+json',
+        },
+        cache: 'no-store'
+      }
     )
 
-    const totalContributions = contributionGraph.flat().reduce((a, b) => a + b, 0)
+    if (!reposResponse.ok) {
+      throw new Error(`GitHub API error: ${reposResponse.status}`)
+    }
+
+    const repos = await reposResponse.json()
+    const totalStars = repos
+      .filter((repo: any) => !repo.fork)
+      .reduce((sum: number, repo: any) => sum + repo.stargazers_count, 0)
+
+    // Get current year and last year for comprehensive data
+    const currentYear = new Date().getFullYear()
+    const lastYear = currentYear - 1
+    
+    // GraphQL query for contribution calendar (last 52 weeks)
+    const query = `
+      query {
+        user(login: "${profile.github_username}") {
+          contributionsCollection {
+            contributionCalendar {
+              totalContributions
+              weeks {
+                contributionDays {
+                  contributionCount
+                  date
+                }
+              }
+            }
+          }
+        }
+      }
+    `
+
+    const graphqlResponse = await fetch('https://api.github.com/graphql', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${profile.github_access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query }),
+      cache: 'no-store'
+    })
+
+    if (!graphqlResponse.ok) {
+      throw new Error(`GitHub GraphQL API error: ${graphqlResponse.status}`)
+    }
+
+    const graphqlResult = await graphqlResponse.json()
+    
+    let contributionGraph: number[][] = []
+    let totalContributions = 0
+    let streakData: ContributionStreak = { current: 0, longest: 0, total: 0 }
+
+    if (graphqlResult.data?.user?.contributionsCollection) {
+      const calendar = graphqlResult.data.user.contributionsCollection.contributionCalendar
+      totalContributions = calendar.totalContributions
+
+      // Convert weeks to contribution graph
+      const allWeeks = calendar.weeks
+      contributionGraph = allWeeks.map((week: any) => 
+        week.contributionDays.map((day: any) => day.contributionCount)
+      )
+
+      // Calculate streaks
+      const allDays = allWeeks.flatMap((week: any) => week.contributionDays)
+      
+      let currentStreak = 0
+      let longestStreak = 0
+      let tempStreak = 0
+      
+      // Start from the most recent day (reverse order)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      
+      // Go through days from most recent to oldest
+      for (let i = allDays.length - 1; i >= 0; i--) {
+        const day = allDays[i]
+        const dayDate = new Date(day.date)
+        dayDate.setHours(0, 0, 0, 0)
+        
+        if (day.contributionCount > 0) {
+          tempStreak++
+          longestStreak = Math.max(longestStreak, tempStreak)
+          
+          // If this is today or yesterday (allowing for timezone differences), it counts for current streak
+          const daysDiff = Math.floor((today.getTime() - dayDate.getTime()) / (1000 * 60 * 60 * 24))
+          if (daysDiff <= 1 && currentStreak === 0) {
+            currentStreak = tempStreak
+          }
+        } else {
+          // Only break current streak if we've already started counting it
+          if (currentStreak > 0) {
+            break
+          }
+          tempStreak = 0
+        }
+      }
+
+      streakData = {
+        current: currentStreak,
+        longest: longestStreak,
+        total: totalContributions
+      }
+    }
 
     return {
       success: true,
@@ -183,7 +484,8 @@ export async function fetchGitHubStats(): Promise<{ success: boolean; stats?: Gi
         followers: userData.followers,
         following: userData.following,
         stars: totalStars,
-        contributionGraph
+        contributionGraph,
+        streak: streakData
       }
     }
   } catch (error) {

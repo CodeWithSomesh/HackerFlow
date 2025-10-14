@@ -233,8 +233,14 @@ export function HackerProfileSetup() {
       console.log('Processing GitHub OAuth code:', code);
       handleOAuthCallback(code).then((data) => {
         console.log('GitHub integration successful:', data);
-
         
+        // FIXED: Store in state AND localStorage for persistence
+        const githubToken = data.accessToken; // Make sure your handleOAuthCallback returns this
+        const githubUser = data.user;
+        
+        // Store in localStorage for handleSubmit to access
+        localStorage.setItem('github_access_token', githubToken);
+        localStorage.setItem('github_user', JSON.stringify(githubUser));
         
         // Update form with GitHub data
         setFormData(prev => ({
@@ -275,7 +281,6 @@ export function HackerProfileSetup() {
         
         setGithubRepositories(convertedRepos);
         setGithubConnected(true);
-        // setShowGithubProjects(true);
         
         console.log('GitHub data processed:', { 
           repositories: convertedRepos.length, 
@@ -459,29 +464,36 @@ export function HackerProfileSetup() {
       }
     }
   
-    console.log('Submitting form data:', formData); // Debug log
-  
     try {
       // Get GitHub data from localStorage
       const githubToken = localStorage.getItem('github_access_token');
-      const githubUserData = localStorage.getItem('github_user');
+      const githubUserDataStr = localStorage.getItem('github_user');
+      const githubUserData = githubUserDataStr ? JSON.parse(githubUserDataStr) : null;
       
-      // Save profile data to database (pass GitHub data as parameters)
+      // ADD THIS DEBUGGING
+      console.log('=== GITHUB DATA DEBUG ===');
+      console.log('Token from localStorage:', githubToken);
+      console.log('User data from localStorage:', githubUserData);
+      console.log('GitHub connected state:', githubConnected);
+      console.log('Form githubUsername:', formData.githubUsername);
+      console.log('========================');
+      
+      // Save profile data - pass GitHub token if available
       const result = await saveHackerProfile(
         formData,
-        githubToken || undefined,
-        githubUserData ? JSON.parse(githubUserData) : undefined
       )
       
-      console.log('Profile save result:', result);
+      console.log('=== SAVE RESULT ===');
+      console.log('Result:', result);
+      console.log('==================');
       
       if (!result.success) {
         showCustomToast('error', "Failed To Create Your Profile")
         throw new Error(result.error || 'Failed to save profile')
       }
-
+  
       setIsProfileComplete(true)
-
+  
       // Save GitHub projects if connected
       if (githubConnected && githubRepositories.length > 0) {
         const githubResult = await saveGitHubProjects(githubRepositories, [])
@@ -507,7 +519,7 @@ export function HackerProfileSetup() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }        
 
   return (
     <div className="min-h-screen">

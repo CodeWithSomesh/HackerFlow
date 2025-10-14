@@ -32,8 +32,16 @@ import {
   Upload
 } from "lucide-react"
 import { showCustomToast } from "@/components/toast-notification"
-import { connectGitHub, fetchGitHubRepositories, fetchGitHubStats, disconnectGitHub } from "@/lib/actions/github-actions"
-
+import { 
+    connectGitHub, 
+    fetchGitHubRepositories, 
+    fetchGitHubStats, 
+    disconnectGitHub, 
+    fetchPinnedRepositories,
+    fetchTopLanguages,
+    type LanguageStats,
+    type ContributionStreak 
+} from "@/lib/actions/github-actions"
 
 export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false)
@@ -42,6 +50,7 @@ export default function ProfilePage() {
   const [showImageUpload, setShowImageUpload] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+const [loadingGithub, setLoadingGithub] = useState(false)
 
   // Mock user data - replace with real data from your backend
   const [userData, setUserData] = useState({
@@ -219,38 +228,48 @@ export default function ProfilePage() {
     setSaving(true)
     try {
       if (userType === 'hacker') {
-        const result = await saveHackerProfile({
-          fullName: userData.fullName,
-          bio: userData.bio,
-          profileType: userData.profileType,
-          city: userData.city,
-          state: userData.state,
-          country: userData.country,
-          university: userData.university,
-          course: userData.course,
-          yearOfStudy: userData.yearOfStudy,
-          graduationYear: userData.graduationYear,
-          programmingLanguages: userData.programmingLanguages,
-          frameworks: userData.frameworks,
-          otherSkills: userData.otherSkills,
-          experienceLevel: userData.experienceLevel,
-          hasWorkExperience: userData.workExperiences.length > 0,
-          workExperiences: userData.workExperiences,
-          githubUsername: userData.githubUsername,
-          linkedinUrl: userData.linkedinUrl,
-          twitterUsername: userData.twitterUsername,
-          portfolioUrl: userData.portfolioUrl,
-          instagramUsername: userData.instagramUsername,
-          openToRecruitment: userData.openToRecruitment
-        })
+        const result = await saveHackerProfile(
+          {
+            fullName: userData.fullName,
+            bio: userData.bio,
+            profileType: userData.profileType,
+            city: userData.city,
+            state: userData.state,
+            country: userData.country,
+            university: userData.university,
+            course: userData.course,
+            yearOfStudy: userData.yearOfStudy,
+            graduationYear: userData.graduationYear,
+            programmingLanguages: userData.programmingLanguages,
+            frameworks: userData.frameworks,
+            otherSkills: userData.otherSkills,
+            experienceLevel: userData.experienceLevel,
+            hasWorkExperience: userData.workExperiences.length > 0,
+            workExperiences: userData.workExperiences,
+            githubUsername: userData.githubUsername,
+            linkedinUrl: userData.linkedinUrl,
+            twitterUsername: userData.twitterUsername,
+            portfolioUrl: userData.portfolioUrl,
+            instagramUsername: userData.instagramUsername,
+            openToRecruitment: userData.openToRecruitment
+          },
+          // ✅ FIX: Don't pass any GitHub parameters when editing
+          // The function will automatically preserve existing GitHub data from database
+          undefined,  // githubToken - not needed when editing
+          undefined   // githubUserData - not needed when editing
+        )
         
         if (result.success) {
           setIsEditing(false)
           showCustomToast('success', 'Profile updated successfully!')
+          
+          // ✅ Reload profile to ensure UI matches database
+          await loadUserProfile()
         } else {
           showCustomToast('error', 'Failed to update profile: ' + result.error)
         }
       } else if (userType === 'organizer') {
+        // ... organizer save logic stays the same ...
         const result = await saveOrganizerProfile({
           fullName: userData.fullName,
           bio: userData.bio,
@@ -290,6 +309,7 @@ export default function ProfilePage() {
         if (result.success) {
           setIsEditing(false)
           showCustomToast('success', 'Profile updated successfully!')
+          await loadUserProfile()
         } else {
           showCustomToast('error', 'Failed to update profile: ' + result.error)
         }
@@ -302,19 +322,28 @@ export default function ProfilePage() {
     }
   }
 
-  // Mock GitHub data
+  // GitHub data
   const [githubStats, setGithubStats] = useState({
     contributions: 0,
     repositories: 0,
     followers: 0,
     following: 0,
     stars: 0,
-    contributionGraph: Array(52).fill(0).map(() => 
-      Array(7).fill(0).map(() => 0)
-    )
+    contributionGraph: Array(52).fill(0).map(() => Array(7).fill(0)),
+    streak: { current: 0, longest: 0, total: 0 } as ContributionStreak
   })
 
   const [pinnedProjects, setPinnedProjects] = useState<Array<{
+    name: string
+    description: string
+    language: string
+    languageColor: string
+    stars: number
+    forks: number
+    url: string
+  }>>([])
+
+  const [topStarredProjects, setTopStarredProjects] = useState<Array<{
     name: string
     description: string
     language: string
@@ -322,13 +351,14 @@ export default function ProfilePage() {
     forks: number
     url: string
   }>>([])
+  
+  const [topLanguages, setTopLanguages] = useState<LanguageStats[]>([])
 
-  const badges = [
-    { name: "Arctic Code Vault Contributor", icon: "🏔️" },
-    { name: "Pull Shark", icon: "🦈" },
-    { name: "Quickdraw", icon: "⚡" },
-    { name: "YOLO", icon: "🎯" }
-  ]
+  useEffect(() => {
+    if (activeTab === "github" && userData.githubConnected && userType === "hacker") {
+      loadGitHubData()
+    }
+  }, [activeTab, userData.githubConnected, userType])
 
   const getContributionColor = (count: number) => {
     if (count === 0) return "bg-gray-800"
@@ -376,46 +406,51 @@ export default function ProfilePage() {
   
   // Update the loadGitHubData function
   const loadGitHubData = async () => {
+    setLoadingGithub(true)
     try {
-        // Fetch GitHub projects
-        const projectsResult = await getUserGitHubProjects()
-        if (projectsResult.success && projectsResult.projects) {
-        setPinnedProjects(projectsResult.projects.slice(0, 3).map((p: any) => ({
-            name: p.name,
-            description: p.description || "No description",
-            language: p.language || "Unknown",
-            stars: p.stars_count,
-            forks: p.forks_count,
-            url: p.html_url
-        })))
-        } else {
-        console.error('Failed to fetch projects:', projectsResult.error)
-        }
-
-        // Fetch repositories
-        const reposResult = await fetchGitHubRepositories()
-        if (reposResult.success && reposResult.repositories) {
-            const pinned = reposResult.repositories
-            .sort((a, b) => b.stars_count - a.stars_count)
-            .slice(0, 3)
-            .map((repo) => ({
+      // Fetch pinned repositories
+      const pinnedResult = await fetchPinnedRepositories()
+      if (pinnedResult.success && pinnedResult.repositories) {
+        setPinnedProjects(pinnedResult.repositories)
+      }
+  
+      // Fetch all repositories for top starred
+      const reposResult = await fetchGitHubRepositories()
+      if (reposResult.success && reposResult.repositories) {
+        const topStarred = reposResult.repositories
+            .filter((repo: any) => !repo.is_fork)
+            .sort((a: { stars_count: number }, b: { stars_count: number }) => b.stars_count - a.stars_count)
+            .slice(0, 6)
+            .map((repo: any) => ({
                 name: repo.name,
-                description: repo.description || "",
+                description: repo.description || "No description",
                 language: repo.language || "Unknown",
                 stars: repo.stars_count,
                 forks: repo.forks_count,
                 url: repo.html_url
             }))
-            setPinnedProjects(pinned)
-        }
+        setTopStarredProjects(topStarred)
+      }
   
-      // Fetch stats
+      // Fetch stats with real contribution data
       const statsResult = await fetchGitHubStats()
-      if (statsResult.success && statsResult.stats) {
-        setGithubStats(statsResult.stats)
+        if (statsResult.success && statsResult.stats) {
+        setGithubStats({
+            ...statsResult.stats,
+            streak: statsResult.stats.streak || { current: 0, longest: 0, total: 0 }
+        })
+      }
+  
+      // Fetch top languages
+      const languagesResult = await fetchTopLanguages()
+      if (languagesResult.success && languagesResult.languages) {
+        setTopLanguages(languagesResult.languages)
       }
     } catch (error) {
       console.error('Error loading GitHub data:', error)
+      showCustomToast('error', 'Failed to load GitHub data')
+    } finally {
+      setLoadingGithub(false)
     }
   }
 
@@ -1086,127 +1121,232 @@ export default function ProfilePage() {
 
                     {activeTab === "github" && userData.githubConnected && (
                     <div className="space-y-6">
-                        {/* GitHub Stats */}
-                        <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-8">
-                        <div className="flex items-center gap-3 mb-6">
-                            <Github className="w-7 h-7 text-white" />
-                            <h2 className="text-3xl font-blackops text-white">GITHUB STATISTICS</h2>
+                        {loadingGithub ? (
+                        <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-16">
+                            <div className="text-center">
+                            <div className="w-16 h-16 border-4 border-teal-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                            <p className="text-white text-xl font-mono">Loading GitHub data...</p>
+                            </div>
                         </div>
+                        ) : (
+                        <>
+                            {/* Contribution Streak Stats Bar */}
+                            <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-8">
+                            <div className="grid grid-cols-3 gap-6">
+                                <div className="text-center">
+                                <div className="text-4xl font-blackops text-teal-400 mb-2">
+                                    {githubStats.streak?.total?.toLocaleString() || 0}
+                                </div>
+                                <div className="text-gray-400 font-mono text-sm">Total Contributions</div>
+                                <div className="text-gray-500 font-mono text-xs mt-1">
+                                    Jan {new Date().getFullYear() - 1} - Present
+                                </div>
+                                </div>
+                                <div className="text-center border-x border-gray-700">
+                                <div className="text-4xl font-blackops text-teal-400 mb-2">
+                                    {githubStats.streak?.current || 0}
+                                </div>
+                                <div className="text-gray-400 font-mono text-sm">Current Streak</div>
+                                <div className="text-gray-500 font-mono text-xs mt-1">
+                                    {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                </div>
+                                </div>
+                                <div className="text-center">
+                                <div className="text-4xl font-blackops text-teal-400 mb-2">
+                                    {githubStats.streak?.longest || 0}
+                                </div>
+                                <div className="text-gray-400 font-mono text-sm">Longest Streak</div>
+                                <div className="text-gray-500 font-mono text-xs mt-1">Days</div>
+                                </div>
+                            </div>
+                            </div>
 
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                            <div className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border border-blue-500/30 rounded-xl p-4 text-center">
-                            <div className="text-3xl font-blackops text-blue-400">{githubStats.contributions}</div>
-                            <div className="text-sm text-gray-400 font-mono mt-1">Contributions</div>
+                            {/* GitHub Stats */}
+                            <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-8">
+                            <div className="flex items-center gap-3 mb-6">
+                                <Github className="w-7 h-7 text-white" />
+                                <h2 className="text-3xl font-blackops text-white">GITHUB STATISTICS</h2>
                             </div>
-                            <div className="bg-gradient-to-br from-green-500/10 to-green-500/5 border border-green-500/30 rounded-xl p-4 text-center">
-                            <div className="text-3xl font-blackops text-green-400">{githubStats.repositories}</div>
-                            <div className="text-sm text-gray-400 font-mono mt-1">Repositories</div>
-                            </div>
-                            <div className="bg-gradient-to-br from-purple-500/10 to-purple-500/5 border border-purple-500/30 rounded-xl p-4 text-center">
-                            <div className="text-3xl font-blackops text-purple-400">{githubStats.followers}</div>
-                            <div className="text-sm text-gray-400 font-mono mt-1">Followers</div>
-                            </div>
-                            <div className="bg-gradient-to-br from-pink-500/10 to-pink-500/5 border border-pink-500/30 rounded-xl p-4 text-center">
-                            <div className="text-3xl font-blackops text-pink-400">{githubStats.following}</div>
-                            <div className="text-sm text-gray-400 font-mono mt-1">Following</div>
-                            </div>
-                            <div className="bg-gradient-to-br from-yellow-500/10 to-yellow-500/5 border border-yellow-500/30 rounded-xl p-4 text-center">
-                            <div className="text-3xl font-blackops text-yellow-400">{githubStats.stars}</div>
-                            <div className="text-sm text-gray-400 font-mono mt-1">Stars</div>
-                            </div>
-                        </div>
-                        </div>
 
-                        {/* Contribution Graph */}
-                        <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-8">
-                        <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-2xl font-blackops text-white">CONTRIBUTION GRAPH</h3>
-                            <span className="text-gray-400 font-mono text-sm">{githubStats.contributions} contributions in the last year</span>
-                        </div>
-                        
-                        <div className="overflow-x-auto">
-                            <div className="inline-flex gap-1">
-                            {githubStats.contributionGraph.map((week, weekIdx) => (
-                                <div key={weekIdx} className="flex flex-col gap-1">
-                                {week.map((day, dayIdx) => (
-                                    <div
-                                    key={dayIdx}
-                                    className={`w-3 h-3 rounded-sm ${getContributionColor(day)} transition-all hover:scale-125 cursor-pointer`}
-                                    title={`${day} contributions`}
-                                    />
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                                <div className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border border-blue-500/30 rounded-xl p-4 text-center">
+                                <div className="text-3xl font-blackops text-blue-400">{githubStats.contributions}</div>
+                                <div className="text-sm text-gray-400 font-mono mt-1">Contributions</div>
+                                </div>
+                                <div className="bg-gradient-to-br from-green-500/10 to-green-500/5 border border-green-500/30 rounded-xl p-4 text-center">
+                                <div className="text-3xl font-blackops text-green-400">{githubStats.repositories}</div>
+                                <div className="text-sm text-gray-400 font-mono mt-1">Repositories</div>
+                                </div>
+                                <div className="bg-gradient-to-br from-purple-500/10 to-purple-500/5 border border-purple-500/30 rounded-xl p-4 text-center">
+                                <div className="text-3xl font-blackops text-purple-400">{githubStats.followers}</div>
+                                <div className="text-sm text-gray-400 font-mono mt-1">Followers</div>
+                                </div>
+                                <div className="bg-gradient-to-br from-pink-500/10 to-pink-500/5 border border-pink-500/30 rounded-xl p-4 text-center">
+                                <div className="text-3xl font-blackops text-pink-400">{githubStats.following}</div>
+                                <div className="text-sm text-gray-400 font-mono mt-1">Following</div>
+                                </div>
+                                <div className="bg-gradient-to-br from-yellow-500/10 to-yellow-500/5 border border-yellow-500/30 rounded-xl p-4 text-center">
+                                <div className="text-3xl font-blackops text-yellow-400">{githubStats.stars}</div>
+                                <div className="text-sm text-gray-400 font-mono mt-1">Stars Earned</div>
+                                </div>
+                            </div>
+                            </div>
+
+                            {/* Contribution Graph */}
+                            <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-8">
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-2xl font-blackops text-white">CONTRIBUTION ACTIVITY</h3>
+                                <span className="text-gray-400 font-mono text-sm">
+                                {githubStats.contributions} contributions in the last year
+                                </span>
+                            </div>
+                            
+                            <div className="overflow-x-auto pb-4">
+                                <div className="inline-flex gap-1 min-w-full">
+                                {githubStats.contributionGraph.map((week, weekIdx) => (
+                                    <div key={weekIdx} className="flex flex-col gap-1">
+                                    {week.map((day, dayIdx) => (
+                                        <div
+                                        key={dayIdx}
+                                        className={`w-3 h-3 rounded-sm ${getContributionColor(day)} transition-all hover:scale-125 hover:ring-2 hover:ring-teal-400 cursor-pointer`}
+                                        title={`${day} contributions`}
+                                        />
+                                    ))}
+                                    </div>
                                 ))}
                                 </div>
-                            ))}
                             </div>
-                        </div>
 
-                        <div className="flex items-center gap-4 mt-6 text-sm font-mono">
-                            <span className="text-gray-400">Less</span>
-                            <div className="flex gap-1">
-                            {[0, 1, 2, 3, 4].map((level) => (
-                                <div key={level} className={`w-3 h-3 rounded-sm ${getContributionColor(level)}`} />
-                            ))}
+                            <div className="flex items-center gap-4 mt-4 text-sm font-mono">
+                                <span className="text-gray-400">Less</span>
+                                <div className="flex gap-1">
+                                {[0, 1, 2, 3, 4].map((level) => (
+                                    <div key={level} className={`w-3 h-3 rounded-sm ${getContributionColor(level)}`} />
+                                ))}
+                                </div>
+                                <span className="text-gray-400">More</span>
                             </div>
-                            <span className="text-gray-400">More</span>
-                        </div>
-                        </div>
-
-                        {/* Pinned Projects */}
-                        <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-8">
-                        <div className="flex items-center gap-3 mb-6">
-                            <Star className="w-7 h-7 text-yellow-400" />
-                            <h2 className="text-3xl font-blackops text-white">PINNED REPOSITORIES</h2>
-                        </div>
-
-                        <div className="grid gap-4">
-                            {pinnedProjects.map((project, idx) => (
-                            <a
-                                key={idx}
-                                href={project.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="group p-6 bg-gradient-to-r from-gray-800/50 to-gray-700/30 border-2 border-gray-700/50 rounded-xl hover:border-blue-500/50 transition-all"
-                            >
-                                <div className="flex items-start justify-between mb-3">
-                                <h3 className="text-xl font-blackops text-white group-hover:text-blue-400 transition-colors">
-                                    {project.name}
-                                </h3>
-                                <span className="px-3 py-1 bg-gray-700 text-gray-300 rounded-lg font-mono text-sm">
-                                    {project.language}
-                                </span>
-                                </div>
-                                <p className="text-gray-300 font-geist mb-4">{project.description}</p>
-                                <div className="flex items-center gap-4 text-sm font-mono text-gray-400">
-                                <div className="flex items-center gap-1">
-                                    <Star className="w-4 h-4" />
-                                    <span>{project.stars}</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                    <GitFork className="w-4 h-4" />
-                                    <span>{project.forks}</span>
-                                </div>
-                                </div>
-                            </a>
-                            ))}
-                        </div>
-                        </div>
-
-                        {/* GitHub Badges */}
-                        <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-8">
-                        <div className="flex items-center gap-3 mb-6">
-                            <Award className="w-7 h-7 text-pink-400" />
-                            <h2 className="text-3xl font-blackops text-white">ACHIEVEMENTS</h2>
-                        </div>
-
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            {badges.map((badge, idx) => (
-                            <div key={idx} className="p-6 bg-gradient-to-br from-gray-800/50 to-gray-700/30 border-2 border-gray-700/50 rounded-xl text-center hover:border-pink-500/50 hover:scale-105 transition-all">
-                                <div className="text-4xl mb-3">{badge.icon}</div>
-                                <div className="text-sm font-mono text-white font-bold">{badge.name}</div>
                             </div>
-                            ))}
-                        </div>
-                        </div>
+
+                            {/* Top Languages */}
+                            {topLanguages.length > 0 && (
+                            <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-8">
+                                <div className="flex items-center gap-3 mb-6">
+                                <Code2 className="w-7 h-7 text-teal-400" />
+                                <h2 className="text-3xl font-blackops text-white">TOP LANGUAGES</h2>
+                                </div>
+
+                                <div className="space-y-4">
+                                {topLanguages.map((lang, idx) => (
+                                    <div key={idx}>
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className="text-gray-300 font-mono text-sm">{lang.name}</span>
+                                        <span className="text-gray-400 font-mono text-sm">{lang.percentage.toFixed(2)}%</span>
+                                    </div>
+                                    <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+                                        <div 
+                                        className="h-full rounded-full transition-all" 
+                                        style={{
+                                            width: `${lang.percentage}%`,
+                                            backgroundColor: lang.color
+                                        }}
+                                        />
+                                    </div>
+                                    </div>
+                                ))}
+                                </div>
+                            </div>
+                            )}
+
+                            {/* Pinned Repositories */}
+                            {pinnedProjects.length > 0 && (
+                            <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-8">
+                                <div className="flex items-center gap-3 mb-6">
+                                <Star className="w-7 h-7 text-yellow-400" />
+                                <h2 className="text-3xl font-blackops text-white">PINNED REPOSITORIES</h2>
+                                </div>
+
+                                <div className="grid md:grid-cols-2 gap-4">
+                                {pinnedProjects.map((project, idx) => (
+                                    <a
+                                    key={idx}
+                                    href={project.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="group p-6 bg-gradient-to-r from-gray-800/50 to-gray-700/30 border-2 border-gray-700/50 rounded-xl hover:border-blue-500/50 transition-all"
+                                    >
+                                    <div className="flex items-start justify-between mb-3">
+                                        <h3 className="text-lg font-blackops text-white group-hover:text-blue-400 transition-colors">
+                                        {project.name}
+                                        </h3>
+                                        <div className="flex items-center gap-1.5">
+                                        <div 
+                                            className="w-3 h-3 rounded-full" 
+                                            style={{ backgroundColor: project.languageColor }}
+                                        />
+                                        <span className="text-gray-400 font-mono text-xs">{project.language}</span>
+                                        </div>
+                                    </div>
+                                    <p className="text-gray-300 font-geist text-sm mb-4 line-clamp-2">{project.description}</p>
+                                    <div className="flex items-center gap-4 text-sm font-mono text-gray-400">
+                                        <div className="flex items-center gap-1">
+                                        <Star className="w-4 h-4" />
+                                        <span>{project.stars}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                        <GitFork className="w-4 h-4" />
+                                        <span>{project.forks}</span>
+                                        </div>
+                                    </div>
+                                    </a>
+                                ))}
+                                </div>
+                            </div>
+                            )}
+
+                            {/* Most Starred Repositories */}
+                            {topStarredProjects.length > 0 && (
+                            <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-8">
+                                <div className="flex items-center gap-3 mb-6">
+                                <Trophy className="w-7 h-7 text-yellow-400" />
+                                <h2 className="text-3xl font-blackops text-white">MOST STARRED REPOSITORIES</h2>
+                                </div>
+
+                                <div className="grid md:grid-cols-2 gap-4">
+                                {topStarredProjects.map((project, idx) => (
+                                    <a
+                                    key={idx}
+                                    href={project.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="group p-6 bg-gradient-to-r from-gray-800/50 to-gray-700/30 border-2 border-gray-700/50 rounded-xl hover:border-yellow-500/50 transition-all"
+                                    >
+                                    <div className="flex items-start justify-between mb-3">
+                                        <h3 className="text-lg font-blackops text-white group-hover:text-yellow-400 transition-colors">
+                                        {project.name}
+                                        </h3>
+                                        <span className="px-2 py-1 bg-gray-700 text-gray-300 rounded text-xs font-mono">
+                                        {project.language}
+                                        </span>
+                                    </div>
+                                    <p className="text-gray-300 font-geist text-sm mb-4 line-clamp-2">{project.description}</p>
+                                    <div className="flex items-center gap-4 text-sm font-mono text-gray-400">
+                                        <div className="flex items-center gap-1">
+                                        <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                                        <span>{project.stars}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                        <GitFork className="w-4 h-4" />
+                                        <span>{project.forks}</span>
+                                        </div>
+                                    </div>
+                                    </a>
+                                ))}
+                                </div>
+                            </div>
+                            )}
+                        </>
+                        )}
                     </div>
                     )}
 

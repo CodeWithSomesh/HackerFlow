@@ -189,23 +189,42 @@ export async function testDatabaseConnection() {
 //          INSERT (new user) or UPDATE (existing user)
 export async function saveHackerProfile(
   formData: HackerProfileData, 
-  githubToken?: string, 
+  githubToken?: string,
   githubUserData?: any
 ) {
   try {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
-    if (authError) {
-      console.error('Auth error:', authError);
-      return { success: false, error: `Authentication error: ${authError.message}` };
-    }
-    
-    if (!user) {
-      return { success: false, error: 'User not authenticated' };
+    if (authError || !user) {
+      return { success: false, error: `Authentication error: ${authError?.message}` };
     }
 
-    console.log('User authenticated:', user.id);
+    // ALWAYS fetch existing profile data to preserve GitHub credentials
+    const { data: existingProfile, error: profileError } = await supabase
+      .from('user_profiles')
+      .select('github_access_token, github_connected_at, github_username, programming_languages, frameworks, github_repos_count')
+      .eq('user_id', user.id)
+      .single();
+
+    console.log('=== FETCH EXISTING PROFILE ===');
+    console.log('Profile fetch error:', profileError);
+    console.log('Existing token:', existingProfile?.github_access_token ? 'EXISTS' : 'NULL');
+    console.log('==============================');
+
+    // ✅ CRITICAL: Determine which GitHub token to use
+    // Priority: existing DB token > new OAuth token > null
+    // This ensures we NEVER overwrite an existing token with null
+    const githubTokenToSave = existingProfile?.github_access_token || githubToken || null;
+    const githubUsernameToSave = formData.githubUsername || existingProfile?.github_username || null;
+    const githubConnectedAt = existingProfile?.github_connected_at || (githubToken ? new Date().toISOString() : null);
+    const githubReposCount = existingProfile?.github_repos_count || 0;
+
+    console.log('=== TOKEN PRESERVATION CHECK ===');
+    console.log('Existing token:', existingProfile?.github_access_token ? 'EXISTS' : 'NULL');
+    console.log('New token:', githubToken ? 'EXISTS' : 'NULL');
+    console.log('Token to save:', githubTokenToSave ? 'EXISTS' : 'NULL');
+    console.log('===============================');
 
     const profileData = {
       user_id: user.id,
@@ -230,17 +249,21 @@ export async function saveHackerProfile(
       position: formData.position || null,
       work_experience: formData.workExperience || null,
       
-      // Skills
-      programming_languages: formData.programmingLanguages || [],
-      frameworks: formData.frameworks || [],
+      // Skills - Prefer form data, fallback to existing GitHub-analyzed data
+      programming_languages: formData.programmingLanguages.length > 0 
+        ? formData.programmingLanguages 
+        : (existingProfile?.programming_languages || []),
+      frameworks: formData.frameworks.length > 0 
+        ? formData.frameworks 
+        : (existingProfile?.frameworks || []),
       other_skills: formData.otherSkills || [],
       
       // Work experience
       has_work_experience: formData.hasWorkExperience || false,
       work_experiences: formData.workExperiences || [],
       
-      // Social links
-      github_username: formData.githubUsername || null,
+      // Social links - Prefer form data, fallback to existing GitHub username
+      github_username: githubUsernameToSave,
       linkedin_url: formData.linkedinUrl || null,
       twitter_username: formData.twitterUsername || null,
       portfolio_url: formData.portfolioUrl || null,
@@ -249,12 +272,16 @@ export async function saveHackerProfile(
       // Preferences
       open_to_recruitment: formData.openToRecruitment || false,
       
-      // GitHub integration (ADD THESE)
-      github_access_token: githubToken || null,
-      github_connected_at: githubToken ? new Date().toISOString() : null,
+      // ✅ CRITICAL: Always preserve existing GitHub token
+      github_access_token: githubTokenToSave,
+      github_connected_at: githubConnectedAt,
+      github_repos_count: githubReposCount,
     };
 
-    console.log('Profile data to save:', JSON.stringify(profileData, null, 2));
+    console.log('=== SAVING PROFILE DATA ===');
+    console.log('GitHub token being saved:', profileData.github_access_token ? 'EXISTS' : 'NULL');
+    console.log('GitHub username being saved:', profileData.github_username);
+    console.log('==========================');
 
     const { data, error } = await supabase
       .from('user_profiles')
@@ -262,19 +289,14 @@ export async function saveHackerProfile(
       .select();
 
     if (error) {
-      console.error('Database error details:', {
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code
-      });
+      console.error('Database error:', error);
       return { success: false, error: `Database error: ${error.message}` };
     }
 
-    console.log('Profile saved successfully:', data);
+    console.log('✅ Profile saved successfully with GitHub data preserved');
     return { success: true, data };
   } catch (error) {
-    console.error('Caught error in saveHackerProfile:', error);
+    console.error('Unexpected error:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error occurred' };
   }
 }

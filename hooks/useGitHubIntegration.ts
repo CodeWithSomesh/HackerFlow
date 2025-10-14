@@ -8,6 +8,7 @@ export interface GitHubIntegrationData {
     programmingLanguages: string[];
     frameworks: string[];
   };
+  accessToken: string; // ADD THIS
 }
 
 export function useGitHubIntegration() {
@@ -42,9 +43,7 @@ export function useGitHubIntegration() {
       const user = await GitHubOAuthService.getUserProfile(accessToken);
       
       // Get user repositories
-      const repositories = await GitHubOAuthService.getUserRepositories(accessToken, 
-        //user.login
-      );
+      const repositories = await GitHubOAuthService.getUserRepositories(accessToken);
       
       // Analyze repositories for skills
       const skills = await analyzeRepositoriesForSkills(accessToken, repositories);
@@ -59,6 +58,7 @@ export function useGitHubIntegration() {
         user,
         repositories,
         skills,
+        accessToken, // ← ADDED THIS
       };
       
       setData(integrationData);

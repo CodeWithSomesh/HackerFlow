@@ -120,47 +120,6 @@ export function HackerAuth() {
     }
   }
 
-
-  // const handleEmailSignup = async (e: React.FormEvent) => {
-  //   e.preventDefault()
-  //   setError("")
-
-  //   // Basic validation
-  //   if (formData.password !== formData.confirmPassword) {
-  //     setError("Passwords do not match")
-  //     showCustomToast('error', 'Passwords do not match')
-  //     return
-  //   }
-
-  //   if (formData.password.length < 8) {
-  //     setError("Password must be at least 8 characters long")
-  //     showCustomToast('error', 'Password must be at least 8 characters long')
-  //     return
-  //   }
-
-  //   setIsLoading(true)
-
-  //   try {
-  //     const supabase = createClient()
-  //     const { error } = await supabase.auth.signUp({
-  //       email: formData.email,
-  //       password: formData.password,
-  //       options: {
-  //         emailRedirectTo: `${window.location.origin}/auth/callback?user_primary_type=hacker`,
-  //         data: { user_primary_type: "hacker" },
-  //       },
-  //     })
-  //     if (error) throw error
-
-  //     router.push(`/onboarding/`)
-  //   } catch (err: unknown) {
-  //     setError(err instanceof Error ? err.message : "An error occurred during sign up")
-  //     showCustomToast('error', 'An error occurred during sign up')
-  //   } finally {
-  //     setIsLoading(false)
-  //   }
-  // }
-
   const getPasswordStrength = (password: string) => {
     if (password.length < 6) return { strength: "weak", color: "bg-red-500" }
     if (password.length < 10) return { strength: "medium", color: "bg-yellow-500" }
