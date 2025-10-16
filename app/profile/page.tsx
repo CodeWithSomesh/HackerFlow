@@ -42,6 +42,8 @@ import {
     type LanguageStats,
     type ContributionStreak 
 } from "@/lib/actions/github-actions"
+import { HackerProfileSchema, OrganizerProfileSchema } from "@/lib/validations/profile"
+import z from "zod"
 
 export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false)
@@ -228,49 +230,58 @@ const [loadingGithub, setLoadingGithub] = useState(false)
     setSaving(true)
     try {
       if (userType === 'hacker') {
+        const validationResult = HackerProfileSchema.safeParse({
+          fullName: userData.fullName,
+          bio: userData.bio,
+          profileType: userData.profileType,
+          city: userData.city,
+          state: userData.state,
+          country: userData.country,
+          university: userData.university,
+          course: userData.course,
+          yearOfStudy: userData.yearOfStudy,
+          graduationYear: userData.graduationYear,
+          programmingLanguages: userData.programmingLanguages,
+          frameworks: userData.frameworks,
+          otherSkills: userData.otherSkills,
+          experienceLevel: userData.experienceLevel,
+          hasWorkExperience: userData.workExperiences.length > 0,
+          workExperiences: userData.workExperiences,
+          githubUsername: userData.githubUsername,
+          linkedinUrl: userData.linkedinUrl,
+          twitterUsername: userData.twitterUsername,
+          portfolioUrl: userData.portfolioUrl,
+          instagramUsername: userData.instagramUsername,
+          openToRecruitment: userData.openToRecruitment
+        });
+  
+        if (!validationResult.success) {
+          const firstError = validationResult.error.issues[0];
+          const fieldName = firstError.path.join('.');
+          showCustomToast('error', `${fieldName}: ${firstError.message}`);
+          setSaving(false);
+          return;
+        }
+  
+        // ✅ ADD profileImage to the data being saved
         const result = await saveHackerProfile(
           {
-            fullName: userData.fullName,
-            bio: userData.bio,
-            profileType: userData.profileType,
-            city: userData.city,
-            state: userData.state,
-            country: userData.country,
-            university: userData.university,
-            course: userData.course,
-            yearOfStudy: userData.yearOfStudy,
-            graduationYear: userData.graduationYear,
-            programmingLanguages: userData.programmingLanguages,
-            frameworks: userData.frameworks,
-            otherSkills: userData.otherSkills,
-            experienceLevel: userData.experienceLevel,
-            hasWorkExperience: userData.workExperiences.length > 0,
-            workExperiences: userData.workExperiences,
-            githubUsername: userData.githubUsername,
-            linkedinUrl: userData.linkedinUrl,
-            twitterUsername: userData.twitterUsername,
-            portfolioUrl: userData.portfolioUrl,
-            instagramUsername: userData.instagramUsername,
-            openToRecruitment: userData.openToRecruitment
+            ...validationResult.data,
+            profileImage: userData.profileImage
           },
-          // ✅ FIX: Don't pass any GitHub parameters when editing
-          // The function will automatically preserve existing GitHub data from database
-          undefined,  // githubToken - not needed when editing
-          undefined   // githubUserData - not needed when editing
-        )
+          undefined,
+          undefined
+        );
         
         if (result.success) {
           setIsEditing(false)
           showCustomToast('success', 'Profile updated successfully!')
-          
-          // ✅ Reload profile to ensure UI matches database
           await loadUserProfile()
         } else {
           showCustomToast('error', 'Failed to update profile: ' + result.error)
         }
       } else if (userType === 'organizer') {
-        // ... organizer save logic stays the same ...
-        const result = await saveOrganizerProfile({
+        const validationResult = OrganizerProfileSchema.safeParse({
           fullName: userData.fullName,
           bio: userData.bio,
           organizationType: userData.organizationType,
@@ -304,7 +315,21 @@ const [loadingGithub, setLoadingGithub] = useState(false)
           lookingForCoOrganizers: false,
           willingToMentor: false,
           availableForConsulting: false
-        })
+        });
+  
+        if (!validationResult.success) {
+          const firstError = validationResult.error.issues[0];
+          const fieldName = firstError.path.join('.');
+          showCustomToast('error', `${fieldName}: ${firstError.message}`);
+          setSaving(false);
+          return;
+        }
+  
+        // ✅ ADD profileImage to the data being saved
+        const result = await saveOrganizerProfile({
+          ...validationResult.data,
+          profileImage: userData.profileImage
+        });
         
         if (result.success) {
           setIsEditing(false)
@@ -656,7 +681,7 @@ const [loadingGithub, setLoadingGithub] = useState(false)
                             className="w-full bg-black border border-gray-700 text-gray-100 rounded-lg px-4 py-3 focus:outline-none focus:border-pink-500 resize-none"
                             />
                         ) : (
-                            <p className="text-gray-300 font-geist text-lg leading-relaxed max-w-3xl">
+                            <p className="text-gray-300 font-geist text-lg leading-relaxed max-w-full">
                             {userData.bio}
                             </p>
                         )}
@@ -990,110 +1015,114 @@ const [loadingGithub, setLoadingGithub] = useState(false)
                         </div>
                         )}
 
-                        {/* Work Experience */}
+                        {/* Work Experience - Only show when not empty OR when editing */}
+                        {(userData.workExperiences.length > 0 || isEditing) && (
                         <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-8">
-                        <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-3">
-                            <Briefcase className="w-7 h-7 text-yellow-400" />
-                            <h2 className="text-3xl font-blackops text-white">WORK EXPERIENCE</h2>
+                                <Briefcase className="w-7 h-7 text-yellow-400" />
+                                <h2 className="text-3xl font-blackops text-white">WORK EXPERIENCE</h2>
                             </div>
                             {isEditing && (
-                            <button
+                                <button
                                 type="button"
                                 onClick={addWorkExperience}
                                 className="px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-500 text-white font-mono font-bold rounded-lg hover:opacity-90"
-                            >
+                                >
                                 + Add Experience
-                            </button>
+                                </button>
                             )}
-                        </div>
-                        
-                        <div className="space-y-4">
+                            </div>
+                            
+                            <div className="space-y-4">
                             {userData.workExperiences.length === 0 ? (
-                            <p className="text-gray-400 text-center py-8 font-mono italic">
-                                {isEditing ? "Click 'Add Experience' to add work history" : "No work experience added"}
-                            </p>
+                                isEditing && (
+                                <p className="text-gray-400 text-center py-8 font-mono italic">
+                                    Click 'Add Experience' to add work history
+                                </p>
+                                )
                             ) : (
-                            userData.workExperiences.map((exp) => (
+                                userData.workExperiences.map((exp) => (
                                 <div key={exp.id} className="p-4 bg-gray-800/30 border border-gray-700/50 rounded-lg">
-                                {isEditing ? (
+                                    {isEditing ? (
                                     <div className="space-y-4">
-                                    <div className="flex justify-between">
+                                        <div className="flex justify-between">
                                         <h4 className="text-white font-mono font-bold">Experience</h4>
                                         <button
-                                        type="button"
-                                        onClick={() => removeWorkExperience(exp.id)}
-                                        className="text-red-400 hover:text-red-300 text-sm font-mono"
+                                            type="button"
+                                            onClick={() => removeWorkExperience(exp.id)}
+                                            className="text-red-400 hover:text-red-300 text-sm font-mono"
                                         >
-                                        Remove
+                                            Remove
                                         </button>
-                                    </div>
-                                    
-                                    <div className="grid md:grid-cols-2 gap-4">
+                                        </div>
+                                        
+                                        <div className="grid md:grid-cols-2 gap-4">
                                         <input
-                                        type="text"
-                                        value={exp.company}
-                                        onChange={(e) => updateWorkExperience(exp.id, "company", e.target.value)}
-                                        placeholder="Company"
-                                        className="w-full bg-gray-900 border border-gray-600 text-gray-100 rounded-md px-3 py-2 text-sm"
+                                            type="text"
+                                            value={exp.company}
+                                            onChange={(e) => updateWorkExperience(exp.id, "company", e.target.value)}
+                                            placeholder="Company"
+                                            className="w-full bg-gray-900 border border-gray-600 text-gray-100 rounded-md px-3 py-2 text-sm"
                                         />
                                         <input
-                                        type="text"
-                                        value={exp.position}
-                                        onChange={(e) => updateWorkExperience(exp.id, "position", e.target.value)}
-                                        placeholder="Position"
-                                        className="w-full bg-gray-900 border border-gray-600 text-gray-100 rounded-md px-3 py-2 text-sm"
+                                            type="text"
+                                            value={exp.position}
+                                            onChange={(e) => updateWorkExperience(exp.id, "position", e.target.value)}
+                                            placeholder="Position"
+                                            className="w-full bg-gray-900 border border-gray-600 text-gray-100 rounded-md px-3 py-2 text-sm"
                                         />
-                                    </div>
-                                    
-                                    <input
+                                        </div>
+                                        
+                                        <input
                                         type="text"
                                         value={exp.duration}
                                         onChange={(e) => updateWorkExperience(exp.id, "duration", e.target.value)}
                                         placeholder="Duration (e.g., Jun 2023 - Aug 2023)"
                                         className="w-full bg-gray-900 border border-gray-600 text-gray-100 rounded-md px-3 py-2 text-sm"
-                                    />
-                                    
-                                    <textarea
+                                        />
+                                        
+                                        <textarea
                                         value={exp.description}
                                         onChange={(e) => updateWorkExperience(exp.id, "description", e.target.value)}
                                         placeholder="Description"
                                         className="w-full bg-gray-900 border border-gray-600 text-gray-100 rounded-md px-3 py-2 text-sm resize-none"
                                         rows={3}
-                                    />
-                                    
-                                    <label className="flex items-center gap-3 cursor-pointer">
+                                        />
+                                        
+                                        <label className="flex items-center gap-3 cursor-pointer">
                                         <input
-                                        type="checkbox"
-                                        checked={exp.isInternship}
-                                        onChange={(e) => updateWorkExperience(exp.id, "isInternship", e.target.checked)}
-                                        className="w-4 h-4 text-pink-500 bg-gray-900 border-gray-600 rounded"
+                                            type="checkbox"
+                                            checked={exp.isInternship}
+                                            onChange={(e) => updateWorkExperience(exp.id, "isInternship", e.target.checked)}
+                                            className="w-4 h-4 text-pink-500 bg-gray-900 border-gray-600 rounded"
                                         />
                                         <span className="text-gray-300 text-sm font-mono">This was an internship</span>
-                                    </label>
+                                        </label>
                                     </div>
-                                ) : (
+                                    ) : (
                                     <>
-                                    <div className="flex items-start justify-between mb-2">
+                                        <div className="flex items-start justify-between mb-2">
                                         <div>
-                                        <h4 className="text-white font-mono font-bold text-lg">{exp.position}</h4>
-                                        <p className="text-gray-400 font-mono">{exp.company}</p>
+                                            <h4 className="text-white font-mono font-bold text-lg">{exp.position}</h4>
+                                            <p className="text-gray-400 font-mono">{exp.company}</p>
                                         </div>
                                         {exp.isInternship && (
-                                        <span className="px-2 py-1 bg-blue-500/20 border border-blue-400 text-blue-300 rounded text-xs font-mono font-bold">
+                                            <span className="px-2 py-1 bg-blue-500/20 border border-blue-400 text-blue-300 rounded text-xs font-mono font-bold">
                                             INTERNSHIP
-                                        </span>
+                                            </span>
                                         )}
-                                    </div>
-                                    <p className="text-gray-500 font-mono text-sm mb-3">{exp.duration}</p>
-                                    <p className="text-gray-300 font-geist leading-relaxed">{exp.description}</p>
+                                        </div>
+                                        <p className="text-gray-500 font-mono text-sm mb-3">{exp.duration}</p>
+                                        <p className="text-gray-300 font-geist leading-relaxed">{exp.description}</p>
                                     </>
-                                )}
+                                    )}
                                 </div>
-                            ))
+                                ))
                             )}
+                            </div>
                         </div>
-                        </div>
+                        )}
 
                         {/* Social Links Section */}
                         {/* <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-8">
@@ -1556,11 +1585,11 @@ const [loadingGithub, setLoadingGithub] = useState(false)
                                     <p className="text-gray-300 font-geist text-sm mb-4 line-clamp-2">{project.description}</p>
                                     <div className="flex items-center gap-4 text-sm font-mono text-gray-400">
                                         <div className="flex items-center gap-1">
-                                        <Star className="w-4 h-4" />
+                                        <Star className={`w-4 h-4 ${project.stars > 0 ? "fill-yellow-400 text-yellow-400" : ""} `}/>
                                         <span>{project.stars}</span>
                                         </div>
                                         <div className="flex items-center gap-1">
-                                        <GitFork className="w-4 h-4" />
+                                        <GitFork className={`w-4 h-4 ${project.forks > 0 ? "text-cyan-400" : ""} `} />
                                         <span>{project.forks}</span>
                                         </div>
                                     </div>
@@ -1602,7 +1631,7 @@ const [loadingGithub, setLoadingGithub] = useState(false)
                                         <span>{project.stars}</span>
                                         </div>
                                         <div className="flex items-center gap-1">
-                                        <GitFork className="w-4 h-4" />
+                                        <GitFork className={`w-4 h-4 ${project.forks > 0 ? "text-cyan-400" : ""} `} />
                                         <span>{project.forks}</span>
                                         </div>
                                     </div>

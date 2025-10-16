@@ -5,7 +5,7 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 // import { ModeToggle } from "@/components/ui/mode-toggle"
-import { Menu, LogOut, Settings, User, ChevronDown} from "lucide-react"
+import { Menu, LogOut, Settings, User, ChevronDown, LayoutDashboard} from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { createClient } from "@/lib/supabase/client"
@@ -250,12 +250,14 @@ export function Navbar() {
                     <DropdownMenuSeparator className="bg-gray-800 my-2" />
                     
                     <DropdownMenuItem className="rounded-md px-3 py-2.5 hover:bg-gray-800 focus:bg-gray-800 cursor-pointer transition-colors group">
-                      <User className="h-4 w-4 mr-3 text-gray-400 group-hover:text-teal-400 transition-colors" />
-                      <span className="text-sm">Profile</span>
+                      <Link href={"/profile"} className="flex items-center gap-2">
+                        <User className="h-4 w-4 mr-3 text-gray-400 group-hover:text-teal-400 transition-colors" />
+                        <span className="text-sm">Profile</span>
+                      </Link>
                     </DropdownMenuItem>
                     
                     <DropdownMenuItem className="rounded-md px-3 py-2.5 hover:bg-gray-800 focus:bg-gray-800 cursor-pointer transition-colors group">
-                      <User className="h-4 w-4 mr-3 text-gray-400 group-hover:text-cyan-400 transition-colors" />
+                      <LayoutDashboard className="h-4 w-4 mr-3 text-gray-400 group-hover:text-cyan-400 transition-colors" />
                       <span className="text-sm">Dashboard</span>
                     </DropdownMenuItem>
                     
