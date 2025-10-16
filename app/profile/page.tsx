@@ -42,6 +42,8 @@ import {
     type LanguageStats,
     type ContributionStreak 
 } from "@/lib/actions/github-actions"
+import { HackerProfileSchema, OrganizerProfileSchema } from "@/lib/validations/profile"
+import z from "zod"
 
 export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false)
@@ -228,49 +230,58 @@ const [loadingGithub, setLoadingGithub] = useState(false)
     setSaving(true)
     try {
       if (userType === 'hacker') {
+        const validationResult = HackerProfileSchema.safeParse({
+          fullName: userData.fullName,
+          bio: userData.bio,
+          profileType: userData.profileType,
+          city: userData.city,
+          state: userData.state,
+          country: userData.country,
+          university: userData.university,
+          course: userData.course,
+          yearOfStudy: userData.yearOfStudy,
+          graduationYear: userData.graduationYear,
+          programmingLanguages: userData.programmingLanguages,
+          frameworks: userData.frameworks,
+          otherSkills: userData.otherSkills,
+          experienceLevel: userData.experienceLevel,
+          hasWorkExperience: userData.workExperiences.length > 0,
+          workExperiences: userData.workExperiences,
+          githubUsername: userData.githubUsername,
+          linkedinUrl: userData.linkedinUrl,
+          twitterUsername: userData.twitterUsername,
+          portfolioUrl: userData.portfolioUrl,
+          instagramUsername: userData.instagramUsername,
+          openToRecruitment: userData.openToRecruitment
+        });
+  
+        if (!validationResult.success) {
+          const firstError = validationResult.error.issues[0];
+          const fieldName = firstError.path.join('.');
+          showCustomToast('error', `${fieldName}: ${firstError.message}`);
+          setSaving(false);
+          return;
+        }
+  
+        // ✅ ADD profileImage to the data being saved
         const result = await saveHackerProfile(
           {
-            fullName: userData.fullName,
-            bio: userData.bio,
-            profileType: userData.profileType,
-            city: userData.city,
-            state: userData.state,
-            country: userData.country,
-            university: userData.university,
-            course: userData.course,
-            yearOfStudy: userData.yearOfStudy,
-            graduationYear: userData.graduationYear,
-            programmingLanguages: userData.programmingLanguages,
-            frameworks: userData.frameworks,
-            otherSkills: userData.otherSkills,
-            experienceLevel: userData.experienceLevel,
-            hasWorkExperience: userData.workExperiences.length > 0,
-            workExperiences: userData.workExperiences,
-            githubUsername: userData.githubUsername,
-            linkedinUrl: userData.linkedinUrl,
-            twitterUsername: userData.twitterUsername,
-            portfolioUrl: userData.portfolioUrl,
-            instagramUsername: userData.instagramUsername,
-            openToRecruitment: userData.openToRecruitment
+            ...validationResult.data,
+            profileImage: userData.profileImage
           },
-          // ✅ FIX: Don't pass any GitHub parameters when editing
-          // The function will automatically preserve existing GitHub data from database
-          undefined,  // githubToken - not needed when editing
-          undefined   // githubUserData - not needed when editing
-        )
+          undefined,
+          undefined
+        );
         
         if (result.success) {
           setIsEditing(false)
           showCustomToast('success', 'Profile updated successfully!')
-          
-          // ✅ Reload profile to ensure UI matches database
           await loadUserProfile()
         } else {
           showCustomToast('error', 'Failed to update profile: ' + result.error)
         }
       } else if (userType === 'organizer') {
-        // ... organizer save logic stays the same ...
-        const result = await saveOrganizerProfile({
+        const validationResult = OrganizerProfileSchema.safeParse({
           fullName: userData.fullName,
           bio: userData.bio,
           organizationType: userData.organizationType,
@@ -304,7 +315,21 @@ const [loadingGithub, setLoadingGithub] = useState(false)
           lookingForCoOrganizers: false,
           willingToMentor: false,
           availableForConsulting: false
-        })
+        });
+  
+        if (!validationResult.success) {
+          const firstError = validationResult.error.issues[0];
+          const fieldName = firstError.path.join('.');
+          showCustomToast('error', `${fieldName}: ${firstError.message}`);
+          setSaving(false);
+          return;
+        }
+  
+        // ✅ ADD profileImage to the data being saved
+        const result = await saveOrganizerProfile({
+          ...validationResult.data,
+          profileImage: userData.profileImage
+        });
         
         if (result.success) {
           setIsEditing(false)
@@ -454,8 +479,38 @@ const [loadingGithub, setLoadingGithub] = useState(false)
     }
   }
 
+  const addWorkExperience = () => {
+    setUserData(prev => ({
+      ...prev,
+      workExperiences: [...prev.workExperiences, {
+        id: Date.now().toString(),
+        company: "",
+        position: "",
+        duration: "",
+        description: "",
+        isInternship: false
+      }]
+    }));
+  };
+
+  const updateWorkExperience = (id: string, field: string, value: string | boolean) => {
+    setUserData(prev => ({
+      ...prev,
+      workExperiences: prev.workExperiences.map(exp => 
+        exp.id === id ? { ...exp, [field]: value } : exp
+      )
+    }));
+  };
+
+  const removeWorkExperience = (id: string) => {
+    setUserData(prev => ({
+      ...prev,
+      workExperiences: prev.workExperiences.filter(exp => exp.id !== id)
+    }));
+  };
+
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-black/25">
       {loading ? (
         <div className="min-h-screen flex items-center justify-center">
           <div className="text-center">
@@ -478,132 +533,263 @@ const [loadingGithub, setLoadingGithub] = useState(false)
                 <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-pink-500/10 to-purple-500/10 rounded-full blur-3xl"></div>
             </div>
 
-            <div className="max-w-7xl mx-auto px-6 py-8">
+            <div className="max-w-[1500px] mx-auto px-6 py-8">
                 {/* Profile Header */}
                 <div className="relative bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 overflow-hidden mb-6">
-                <div className="relative px-8 py-8">
-                    {/* Profile Image */}
-                    <div className="flex flex-col md:flex-row md:items-start md:justify-between mb-6">
-                    <div className="flex flex-col md:flex-row md:items-end gap-6">
-                        <div className="relative group">
-                        <div className="w-36 h-36 rounded-2xl border-4 border-gray-700 overflow-hidden bg-gray-800 shadow-2xl">
-                            <img 
-                            src={userData.profileImage} 
-                            alt={userData.fullName}
-                            className="w-full h-full object-cover"
+                    <div className="relative px-8 py-8">
+                        <div className="flex flex-col md:flex-row md:items-start md:justify-between mb-6">
+                        <div className="flex flex-col md:flex-row md:items-end gap-6">
+                            <div className="relative group">
+                            <div className="w-40 h-40 rounded-2xl border-4 border-gray-700 overflow-hidden bg-gray-800 shadow-2xl">
+                                <img 
+                                src={userData.profileImage} 
+                                alt={userData.fullName}
+                                className="w-full h-full object-cover"
+                                />
+                            </div>
+                            <button 
+                                onClick={() => setShowImageUpload(true)}
+                                className="absolute bottom-2 right-2 p-2 bg-gradient-to-r from-pink-500 to-purple-500 rounded-lg text-white opacity-0 group-hover:opacity-100 transition-all hover:scale-110"
+                            >
+                                <Camera className="w-4 h-4" />
+                            </button>
+                            </div>
+
+                            <div className="space-y-3 mb-2">
+                            <div className="flex items-center gap-3">
+                                {isEditing ? (
+                                <input
+                                    type="text"
+                                    value={userData.fullName}
+                                    onChange={(e) => setUserData(prev => ({ ...prev, fullName: e.target.value }))}
+                                    className="text-4xl font-blackops text-white bg-black border border-gray-700 rounded-lg px-4 py-2"
+                                />
+                                ) : (
+                                <h1 className="text-4xl font-blackops text-white">{userData.fullName}</h1>
+                                )}
+                                {userData.openToRecruitment && (
+                                <span className="px-3 py-1.5 bg-green-500/30 border-2 border-green-400 text-green-300 rounded-lg text-sm font-mono font-bold">
+                                    OPEN TO WORK
+                                </span>
+                                )}
+                            </div>
+
+                            <div className="flex  items-center gap-2 font-mono">
+                                <Mail className="w-4 h-4 text-blue-400" />
+                                <span className="text-">{userData.email}</span>
+                            </div>
+                            
+                            <div className="flex flex-col gap-3 text-gray-300">
+                                <div className="flex items-center gap-2 font-mono">
+                                    <MapPin className="w-4 h-4 text-pink-400" />
+                                    {isEditing ? (
+                                    <div className="flex gap-2">
+                                        <input
+                                        type="text"
+                                        value={userData.city}
+                                        onChange={(e) => setUserData(prev => ({ ...prev, city: e.target.value }))}
+                                        className="bg-black border border-gray-700 text-gray-100 rounded px-2 py-1 text-sm w-32"
+                                        />
+                                        <input
+                                        type="text"
+                                        value={userData.state}
+                                        onChange={(e) => setUserData(prev => ({ ...prev, state: e.target.value }))}
+                                        className="bg-black border border-gray-700 text-gray-100 rounded px-2 py-1 text-sm w-32"
+                                        />
+                                    </div>
+                                    ) : (
+                                    <span>{userData.city}, {userData.state}</span>
+                                    )}
+                                </div>
+                                
+                                
+                                {userType === "hacker" ? (
+                                    <div className="flex items-center gap-2 font-mono">
+                                    <GraduationCap className="w-4 h-4 text-purple-400" />
+                                    {isEditing ? (
+                                        <input
+                                        type="text"
+                                        value={userData.university}
+                                        onChange={(e) => setUserData(prev => ({ ...prev, university: e.target.value }))}
+                                        className="bg-black border border-gray-700 text-gray-100 rounded px-2 py-1 text-sm w-full"
+                                        />
+                                    ) : (
+                                        <span>{userData.university}</span>
+                                    )}
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2 font-mono">
+                                    <Building className="w-4 h-4 text-teal-400" />
+                                    <span>{userData.organizationName}</span>
+                                    </div>
+                                )}
+                                </div>
+                            </div>
+                        </div>
+
+                            <div className="flex items-center gap-3">
+                                {isEditing ? (
+                                    <>
+                                    <button
+                                        onClick={() => {
+                                        setIsEditing(false);
+                                        loadUserProfile(); // Reload original data to discard changes
+                                        }}
+                                        disabled={saving}
+                                        className="flex items-center gap-2 px-6 py-3 rounded-xl font-mono font-bold transition-all bg-gray-700 border-2 border-gray-600 text-gray-300 hover:bg-gray-600 disabled:opacity-50"
+                                    >
+                                        <X className="w-4 h-4" />
+                                        CANCEL
+                                    </button>
+                                    <button
+                                        onClick={handleSaveProfile}
+                                        disabled={saving}
+                                        className="flex items-center gap-2 px-6 py-3 rounded-xl font-mono font-bold transition-all bg-green-500/20 border-2 border-green-500 text-green-400 hover:bg-green-500/30 disabled:opacity-50"
+                                    >
+                                        {saving ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-green-400 border-t-transparent rounded-full animate-spin" />
+                                            SAVING...
+                                        </>
+                                        ) : (
+                                        <>
+                                            <Save className="w-4 h-4" />
+                                            SAVE CHANGES
+                                        </>
+                                        )}
+                                    </button>
+                                    </>
+                                ) : (
+                                    <button
+                                    onClick={() => setIsEditing(true)}
+                                    className="flex items-center gap-2 px-6 py-3 rounded-xl font-mono font-bold transition-all bg-gradient-to-r from-pink-500 to-purple-500 text-white hover:opacity-90"
+                                    >
+                                    <Edit2 className="w-4 h-4" />
+                                    EDIT PROFILE
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Bio */}
+                        <div className="mb-6">
+                        {isEditing ? (
+                            <textarea
+                            value={userData.bio}
+                            onChange={(e) => setUserData(prev => ({ ...prev, bio: e.target.value }))}
+                            rows={3}
+                            className="w-full bg-black border border-gray-700 text-gray-100 rounded-lg px-4 py-3 focus:outline-none focus:border-pink-500 resize-none"
                             />
-                        </div>
-                        <button 
-                            onClick={() => setShowImageUpload(true)}
-                            className="absolute bottom-2 right-2 p-2 bg-gradient-to-r from-pink-500 to-purple-500 rounded-lg text-white opacity-0 group-hover:opacity-100 transition-all hover:scale-110"
-                        >
-                            <Camera className="w-4 h-4" />
-                        </button>
-                        </div>
-
-                        <div className="space-y-2 mb-2">
-                        <div className="flex items-center gap-3">
-                            <h1 className="text-4xl font-blackops text-white">{userData.fullName}</h1>
-                            {userData.openToRecruitment && (
-                            <span className="px-3 py-1.5 bg-green-500/30 border-2 border-green-400 text-green-300 rounded-lg text-sm font-mono font-bold">
-                                OPEN TO WORK
-                            </span>
-                            )}
-                        </div>
-                        
-                        <div className="flex flex-wrap gap-4 text-gray-300">
-                            <div className="flex items-center gap-2 font-mono">
-                            <MapPin className="w-4 h-4 text-pink-400" />
-                            <span>{userData.city}, {userData.state}</span>
-                            </div>
-                            {userType === "hacker" ? (
-                            <div className="flex items-center gap-2 font-mono">
-                                <GraduationCap className="w-4 h-4 text-purple-400" />
-                                <span>{userData.university}</span>
-                            </div>
-                            ) : (
-                            <div className="flex items-center gap-2 font-mono">
-                                <Building className="w-4 h-4 text-teal-400" />
-                                <span>{userData.organizationName}</span>
-                            </div>
-                            )}
-                        </div>
-                        </div>
-                    </div>
-
-                    <button
-                        onClick={() => isEditing ? handleSaveProfile() : setIsEditing(true)}
-                        disabled={saving}
-                        className={`mt-4 md:mt-0 flex items-center gap-2 px-6 py-3 rounded-xl font-mono font-bold transition-all ${
-                        isEditing 
-                            ? "bg-green-500/20 border-2 border-green-500 text-green-400 hover:bg-green-500/30" 
-                            : "bg-gradient-to-r from-pink-500 to-purple-500 text-white hover:opacity-90"
-                        }`}
-                    >
-                        {saving ? (
-                        <>
-                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                            SAVING...
-                        </>
-                        ) : isEditing ? (
-                        <>
-                            <Save className="w-4 h-4" />
-                            SAVE CHANGES
-                        </>
                         ) : (
-                        <>
-                            <Edit2 className="w-4 h-4" />
-                            EDIT PROFILE
-                        </>
+                            <p className="text-gray-300 font-geist text-lg leading-relaxed max-w-full">
+                            {userData.bio}
+                            </p>
                         )}
-                    </button>
-                    </div>
+                        </div>
 
-                    {/* Bio */}
-                    <p className="text-gray-300 font-geist text-lg leading-relaxed max-w-3xl mb-6">
-                    {userData.bio}
-                    </p>
-
-                    {/* Social Links */}
-                    <div className="flex flex-wrap gap-3">
-                    {userData.githubUsername && (
-                        <a href={`https://github.com/${userData.githubUsername}`} target="_blank" rel="noopener noreferrer" 
-                        className="flex items-center gap-2 px-4 py-2 bg-gray-800/50 border border-gray-700 rounded-lg text-gray-300 hover:text-white hover:border-gray-600 transition-all font-mono">
-                        <Github className="w-4 h-4" />
-                        <span>@{userData.githubUsername}</span>
-                        </a>
-                    )}
-                    {userData.linkedinUrl && (
-                        <a href={userData.linkedinUrl} target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-4 py-2 bg-gray-800/50 border border-gray-700 rounded-lg text-gray-300 hover:text-blue-400 hover:border-blue-500/50 transition-all font-mono">
-                        <Linkedin className="w-4 h-4" />
-                        <span>LinkedIn</span>
-                        </a>
-                    )}
-                    {userData.twitterUsername && (
-                        <a href={`https://twitter.com/${userData.twitterUsername.replace('@', '')}`} target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-4 py-2 bg-gray-800/50 border border-gray-700 rounded-lg text-gray-300 hover:text-blue-400 hover:border-blue-500/50 transition-all font-mono">
-                        <Twitter className="w-4 h-4" />
-                        <span>{userData.twitterUsername}</span>
-                        </a>
-                    )}
-                    {userData.portfolioUrl && (
-                        <a href={userData.portfolioUrl} target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-4 py-2 bg-gray-800/50 border border-gray-700 rounded-lg text-gray-300 hover:text-pink-400 hover:border-pink-500/50 transition-all font-mono">
-                        <Globe className="w-4 h-4" />
-                        <span>Portfolio</span>
-                        </a>
-                    )}
-                    {userData.instagramUsername && (
-                        <a href={`https://instagram.com/${userData.instagramUsername}`} target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-4 py-2 bg-gray-800/50 border border-gray-700 rounded-lg text-gray-300 hover:text-pink-400 hover:border-pink-500/50 transition-all font-mono">
-                        <Instagram className="w-4 h-4" />
-                        <span>@{userData.instagramUsername}</span>
-                        </a>
-                    )}
+                        {/* Social Links */}
+                        <div className="flex flex-wrap gap-3">
+                        {isEditing ? (
+                            <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-800/30 rounded-lg border border-gray-700">
+                            <div className="space-y-2">
+                                <label className="text-gray-400 text-sm font-mono">GitHub Username</label>
+                                <input
+                                type="text"
+                                value={userData.githubUsername}
+                                onChange={(e) => setUserData(prev => ({ ...prev, githubUsername: e.target.value }))}
+                                className="w-full bg-black border border-gray-700 text-gray-100 rounded-lg px-3 py-2 text-sm"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-gray-400 text-sm font-mono">LinkedIn URL</label>
+                                <input
+                                type="url"
+                                value={userData.linkedinUrl}
+                                onChange={(e) => setUserData(prev => ({ ...prev, linkedinUrl: e.target.value }))}
+                                className="w-full bg-black border border-gray-700 text-gray-100 rounded-lg px-3 py-2 text-sm"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-gray-400 text-sm font-mono">Twitter Username</label>
+                                <input
+                                type="text"
+                                value={userData.twitterUsername}
+                                onChange={(e) => setUserData(prev => ({ ...prev, twitterUsername: e.target.value }))}
+                                className="w-full bg-black border border-gray-700 text-gray-100 rounded-lg px-3 py-2 text-sm"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-gray-400 text-sm font-mono">Portfolio URL</label>
+                                <input
+                                type="url"
+                                value={userData.portfolioUrl}
+                                onChange={(e) => setUserData(prev => ({ ...prev, portfolioUrl: e.target.value }))}
+                                className="w-full bg-black border border-gray-700 text-gray-100 rounded-lg px-3 py-2 text-sm"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-gray-400 text-sm font-mono">Instagram</label>
+                                <input
+                                type="text"
+                                value={userData.instagramUsername}
+                                onChange={(e) => setUserData(prev => ({ ...prev, instagramUsername: e.target.value }))}
+                                className="w-full bg-black border border-gray-700 text-gray-100 rounded-lg px-3 py-2 text-sm"
+                                />
+                            </div>
+                            <div className="flex items-end">
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={userData.openToRecruitment}
+                                    onChange={(e) => setUserData(prev => ({ ...prev, openToRecruitment: e.target.checked }))}
+                                    className="w-5 h-5 text-pink-500 bg-gray-900 border-gray-600 rounded"
+                                />
+                                <span className="text-gray-300 font-mono text-sm">Open to recruitment</span>
+                                </label>
+                            </div>
+                            </div>
+                        ) : (
+                            <>
+                            {userData.githubUsername && (
+                                <a href={`https://github.com/${userData.githubUsername}`} target="_blank" rel="noopener noreferrer" 
+                                className="flex items-center gap-2 px-4 py-2 bg-gray-800/50 border border-gray-700 rounded-lg text-gray-300 hover:text-white hover:border-gray-600 transition-all font-mono">
+                                <Github className="w-4 h-4" />
+                                <span>@{userData.githubUsername}</span>
+                                </a>
+                            )}
+                            {userData.linkedinUrl && (
+                                <a href={userData.linkedinUrl} target="_blank" rel="noopener noreferrer"
+                                className="flex items-center gap-2 px-4 py-2 bg-gray-800/50 border border-gray-700 rounded-lg text-gray-300 hover:text-blue-400 hover:border-blue-500/50 transition-all font-mono">
+                                <Linkedin className="w-4 h-4" />
+                                <span>LinkedIn</span>
+                                </a>
+                            )}
+                            {userData.twitterUsername && (
+                                <a href={`https://twitter.com/${userData.twitterUsername.replace('@', '')}`} target="_blank" rel="noopener noreferrer"
+                                className="flex items-center gap-2 px-4 py-2 bg-gray-800/50 border border-gray-700 rounded-lg text-gray-300 hover:text-blue-400 hover:border-blue-500/50 transition-all font-mono">
+                                <Twitter className="w-4 h-4" />
+                                <span>{userData.twitterUsername}</span>
+                                </a>
+                            )}
+                            {userData.portfolioUrl && (
+                                <a href={userData.portfolioUrl} target="_blank" rel="noopener noreferrer"
+                                className="flex items-center gap-2 px-4 py-2 bg-gray-800/50 border border-gray-700 rounded-lg text-gray-300 hover:text-pink-400 hover:border-pink-500/50 transition-all font-mono">
+                                <Globe className="w-4 h-4" />
+                                <span>Portfolio</span>
+                                </a>
+                            )}
+                            {userData.instagramUsername && (
+                                <a href={`https://instagram.com/${userData.instagramUsername}`} target="_blank" rel="noopener noreferrer"
+                                className="flex items-center gap-2 px-4 py-2 bg-gray-800/50 border border-gray-700 rounded-lg text-gray-300 hover:text-pink-400 hover:border-pink-500/50 transition-all font-mono">
+                                <Instagram className="w-4 h-4" />
+                                <span>@{userData.instagramUsername}</span>
+                                </a>
+                            )}
+                            </>
+                        )}
+                        </div>
                     </div>
-                </div>
-                </div>
+                    </div>
 
                 {/* Tabs */}
                 <div className="flex gap-2 mb-6 overflow-x-auto">
@@ -629,7 +815,7 @@ const [loadingGithub, setLoadingGithub] = useState(false)
                 {activeTab === "overview" && (
                     <>
                         {/* Profile Info */}
-                        <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-8">
+                        {/* <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-8">
                         <div className="flex items-center gap-3 mb-6">
                             <User className="w-7 h-7 text-pink-400" />
                             <h2 className="text-3xl font-blackops text-white">PROFILE INFORMATION</h2>
@@ -700,7 +886,7 @@ const [loadingGithub, setLoadingGithub] = useState(false)
                             <p className="text-gray-300 font-geist leading-relaxed">{userData.bio}</p>
                             )}
                         </div>
-                        </div>
+                        </div> */}
 
                         {/* Academic/Professional Info */}
                         {userType === "hacker" ? (
@@ -829,8 +1015,117 @@ const [loadingGithub, setLoadingGithub] = useState(false)
                         </div>
                         )}
 
-                        {/* Social Links Section */}
+                        {/* Work Experience - Only show when not empty OR when editing */}
+                        {(userData.workExperiences.length > 0 || isEditing) && (
                         <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-8">
+                            <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center gap-3">
+                                <Briefcase className="w-7 h-7 text-yellow-400" />
+                                <h2 className="text-3xl font-blackops text-white">WORK EXPERIENCE</h2>
+                            </div>
+                            {isEditing && (
+                                <button
+                                type="button"
+                                onClick={addWorkExperience}
+                                className="px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-500 text-white font-mono font-bold rounded-lg hover:opacity-90"
+                                >
+                                + Add Experience
+                                </button>
+                            )}
+                            </div>
+                            
+                            <div className="space-y-4">
+                            {userData.workExperiences.length === 0 ? (
+                                isEditing && (
+                                <p className="text-gray-400 text-center py-8 font-mono italic">
+                                    Click 'Add Experience' to add work history
+                                </p>
+                                )
+                            ) : (
+                                userData.workExperiences.map((exp) => (
+                                <div key={exp.id} className="p-4 bg-gray-800/30 border border-gray-700/50 rounded-lg">
+                                    {isEditing ? (
+                                    <div className="space-y-4">
+                                        <div className="flex justify-between">
+                                        <h4 className="text-white font-mono font-bold">Experience</h4>
+                                        <button
+                                            type="button"
+                                            onClick={() => removeWorkExperience(exp.id)}
+                                            className="text-red-400 hover:text-red-300 text-sm font-mono"
+                                        >
+                                            Remove
+                                        </button>
+                                        </div>
+                                        
+                                        <div className="grid md:grid-cols-2 gap-4">
+                                        <input
+                                            type="text"
+                                            value={exp.company}
+                                            onChange={(e) => updateWorkExperience(exp.id, "company", e.target.value)}
+                                            placeholder="Company"
+                                            className="w-full bg-gray-900 border border-gray-600 text-gray-100 rounded-md px-3 py-2 text-sm"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={exp.position}
+                                            onChange={(e) => updateWorkExperience(exp.id, "position", e.target.value)}
+                                            placeholder="Position"
+                                            className="w-full bg-gray-900 border border-gray-600 text-gray-100 rounded-md px-3 py-2 text-sm"
+                                        />
+                                        </div>
+                                        
+                                        <input
+                                        type="text"
+                                        value={exp.duration}
+                                        onChange={(e) => updateWorkExperience(exp.id, "duration", e.target.value)}
+                                        placeholder="Duration (e.g., Jun 2023 - Aug 2023)"
+                                        className="w-full bg-gray-900 border border-gray-600 text-gray-100 rounded-md px-3 py-2 text-sm"
+                                        />
+                                        
+                                        <textarea
+                                        value={exp.description}
+                                        onChange={(e) => updateWorkExperience(exp.id, "description", e.target.value)}
+                                        placeholder="Description"
+                                        className="w-full bg-gray-900 border border-gray-600 text-gray-100 rounded-md px-3 py-2 text-sm resize-none"
+                                        rows={3}
+                                        />
+                                        
+                                        <label className="flex items-center gap-3 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={exp.isInternship}
+                                            onChange={(e) => updateWorkExperience(exp.id, "isInternship", e.target.checked)}
+                                            className="w-4 h-4 text-pink-500 bg-gray-900 border-gray-600 rounded"
+                                        />
+                                        <span className="text-gray-300 text-sm font-mono">This was an internship</span>
+                                        </label>
+                                    </div>
+                                    ) : (
+                                    <>
+                                        <div className="flex items-start justify-between mb-2">
+                                        <div>
+                                            <h4 className="text-white font-mono font-bold text-lg">{exp.position}</h4>
+                                            <p className="text-gray-400 font-mono">{exp.company}</p>
+                                        </div>
+                                        {exp.isInternship && (
+                                            <span className="px-2 py-1 bg-blue-500/20 border border-blue-400 text-blue-300 rounded text-xs font-mono font-bold">
+                                            INTERNSHIP
+                                            </span>
+                                        )}
+                                        </div>
+                                        <p className="text-gray-500 font-mono text-sm mb-3">{exp.duration}</p>
+                                        <p className="text-gray-300 font-geist leading-relaxed">{exp.description}</p>
+                                    </>
+                                    )}
+                                </div>
+                                ))
+                            )}
+                            </div>
+                        </div>
+                        )}
+
+                        {/* Social Links Section */}
+                        {/* <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-8">
                         <div className="flex items-center gap-3 mb-6">
                             <LinkIcon className="w-7 h-7 text-blue-400" />
                             <h2 className="text-3xl font-blackops text-white">SOCIAL LINKS</h2>
@@ -931,7 +1226,7 @@ const [loadingGithub, setLoadingGithub] = useState(false)
                             </div>
                             )}
                         </div>
-                        </div>
+                        </div> */}
 
                         {/* Skills Section for Hackers */}
                         {userType === "hacker" && (
@@ -1290,11 +1585,11 @@ const [loadingGithub, setLoadingGithub] = useState(false)
                                     <p className="text-gray-300 font-geist text-sm mb-4 line-clamp-2">{project.description}</p>
                                     <div className="flex items-center gap-4 text-sm font-mono text-gray-400">
                                         <div className="flex items-center gap-1">
-                                        <Star className="w-4 h-4" />
+                                        <Star className={`w-4 h-4 ${project.stars > 0 ? "fill-yellow-400 text-yellow-400" : ""} `}/>
                                         <span>{project.stars}</span>
                                         </div>
                                         <div className="flex items-center gap-1">
-                                        <GitFork className="w-4 h-4" />
+                                        <GitFork className={`w-4 h-4 ${project.forks > 0 ? "text-cyan-400" : ""} `} />
                                         <span>{project.forks}</span>
                                         </div>
                                     </div>
@@ -1336,7 +1631,7 @@ const [loadingGithub, setLoadingGithub] = useState(false)
                                         <span>{project.stars}</span>
                                         </div>
                                         <div className="flex items-center gap-1">
-                                        <GitFork className="w-4 h-4" />
+                                        <GitFork className={`w-4 h-4 ${project.forks > 0 ? "text-cyan-400" : ""} `} />
                                         <span>{project.forks}</span>
                                         </div>
                                     </div>
@@ -1383,37 +1678,6 @@ const [loadingGithub, setLoadingGithub] = useState(false)
 
                 {/* Sidebar */}
                 <div className="space-y-6">
-                    {/* <div className="bg-red-500/20 border-2 border-red-500 rounded-xl p-4">
-                        <p className="text-white font-mono mb-2">Debug: GitHub Status</p>
-                        <p className="text-gray-300 text-sm font-mono mb-2">
-                            Connected: {userData.githubConnected ? 'Yes' : 'No'}
-                        </p>
-                        <p className="text-gray-300 text-sm font-mono mb-4">
-                            Username: {userData.githubUsername || 'Not set'}
-                        </p>
-                        <button
-                            onClick={handleConnectGitHub}
-                            className="w-full bg-purple-500 text-white font-mono px-4 py-2 rounded-lg"
-                        >
-                            Force Connect GitHub
-                        </button>
-                    </div>
-
-                    <button
-                        onClick={async () => {
-                            // First disconnect
-                            await disconnectGitHub()
-                            // Then reconnect
-                            const result = await connectGitHub()
-                            if (result.success && result.authUrl) {
-                            window.location.href = result.authUrl
-                            }
-                        }}
-                        className="w-full bg-purple-500 text-white font-mono px-4 py-2 rounded-lg"
-                        >
-                        {userData.githubConnected ? 'Reconnect GitHub' : 'Connect GitHub'}
-                    </button> */}
-
                     {/* Quick Stats */}
                     <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-6">
                     <h3 className="text-xl font-blackops text-white mb-4">QUICK STATS</h3>
@@ -1497,8 +1761,68 @@ const [loadingGithub, setLoadingGithub] = useState(false)
                         </div>
                     )}
 
+                    {/* GitHub Stats */}
+                    {userData.githubConnected && (
+                        <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-6">
+                        <h3 className="text-xl font-blackops text-white mb-4 flex items-center gap-2">
+                            <Github className="w-5 h-5" />
+                            GITHUB STATS
+                        </h3>
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between pb-3 border-b border-gray-700/50">
+                            <span className="text-gray-400 font-mono text-sm">Contributions</span>
+                            <span className="text-white font-blackops text-lg">{githubStats.contributions.toLocaleString()}</span>
+                            </div>
+                            <div className="flex items-center justify-between pb-3 border-b border-gray-700/50">
+                            <span className="text-gray-400 font-mono text-sm">Repositories</span>
+                            <span className="text-white font-blackops text-lg">{githubStats.repositories}</span>
+                            </div>
+                            <div className="flex items-center justify-between pb-3 border-b border-gray-700/50">
+                            <span className="text-gray-400 font-mono text-sm">Stars</span>
+                            <span className="text-yellow-400 font-blackops text-lg">{githubStats.stars}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                            <span className="text-gray-400 font-mono text-sm">Streak</span>
+                            <span className="text-green-400 font-blackops text-lg">{githubStats.streak.current} days</span>
+                            </div>
+                        </div>
+                        </div>
+                    )}
+
+                    {/* Top Languages */}
+                    {topLanguages.length > 0 && (
+                        <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-6">
+                        <h3 className="text-xl font-blackops text-white mb-4 flex items-center gap-2">
+                            <Code2 className="w-5 h-5 text-teal-400" />
+                            TOP LANGUAGES
+                        </h3>
+                        <div className="space-y-3">
+                            {topLanguages.slice(0, 5).map((lang, idx) => (
+                            <div key={idx}>
+                                <div className="flex items-center justify-between mb-1">
+                                <span className="text-gray-300 font-mono text-sm">{lang.name}</span>
+                                <span className="text-gray-400 font-mono text-sm">{lang.percentage.toFixed(1)}%</span>
+                                </div>
+                                <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+                                <div 
+                                    className="h-full rounded-full" 
+                                    style={{
+                                    width: `${lang.percentage}%`,
+                                    backgroundColor: lang.color
+                                    }}
+                                />
+                                </div>
+                            </div>
+                            ))}
+                        </div>
+                        </div>
+                    )}
+
+
+                    
+
                     {/* Contact Card */}
-                    <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-6">
+                    {/* <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-6">
                     <h3 className="text-xl font-blackops text-white mb-4">CONTACT INFO</h3>
                     
                     <div className="space-y-4">
@@ -1528,10 +1852,10 @@ const [loadingGithub, setLoadingGithub] = useState(false)
                         <div className="pt-0"></div>
                         )}
                     </div>
-                    </div>
+                    </div> */}
 
                     {/* Skills Summary for Hackers */}
-                    {userType === "hacker" && (
+                    {/* {userType === "hacker" && (
                     <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-6">
                         <h3 className="text-xl font-blackops text-white mb-4">SKILLS SUMMARY</h3>
                         
@@ -1565,7 +1889,7 @@ const [loadingGithub, setLoadingGithub] = useState(false)
                         </div>
                         </div>
                     </div>
-                    )}
+                    )} */}
 
                     {/* Capabilities for Organizers */}
                     {userType === "organizer" && (

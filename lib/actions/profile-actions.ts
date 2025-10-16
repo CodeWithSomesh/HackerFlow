@@ -620,10 +620,14 @@ export async function uploadProfileImage(file: File) {
 
     if (profile?.profile_image) {
       // Extract file path from URL
-      const oldImagePath = profile.profile_image.split('/').slice(-2).join('/');
-      await supabase.storage
-        .from('profile-images')
-        .remove([oldImagePath]);
+      const urlParts = profile.profile_image.split('/');
+      const bucketIndex = urlParts.indexOf('profile-images');
+      if (bucketIndex !== -1) {
+        const oldImagePath = urlParts.slice(bucketIndex + 1).join('/');
+        await supabase.storage
+          .from('profile-images')
+          .remove([oldImagePath]);
+      }
     }
 
     // Upload new image
@@ -633,7 +637,7 @@ export async function uploadProfileImage(file: File) {
     const { error: uploadError } = await supabase.storage
       .from('profile-images')
       .upload(fileName, file, {
-        upsert: true, // Replace if exists
+        upsert: true,
         contentType: file.type
       });
 
@@ -647,7 +651,7 @@ export async function uploadProfileImage(file: File) {
       .from('profile-images')
       .getPublicUrl(fileName);
 
-    // Update user profile with new image URL
+    // ✅ CRITICAL FIX: Update user profile with new image URL
     const { error: updateError } = await supabase
       .from('user_profiles')
       .update({ profile_image: publicUrl })
