@@ -69,33 +69,80 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
           title: dbResult.data.title,
           description: dbResult.data.about || 'No description available',
           detailedDescription: dbResult.data.about,
-          organizer: dbResult.data.organizer, // Changed from organization
-          startDate: dbResult.data.registrationStartDate, // Changed from registration_start_date
-          endDate: dbResult.data.registrationEndDate, // Changed from registration_end_date
+          organizer: dbResult.data.organization, // DB uses 'organization'
+          websiteUrl: dbResult.data.website_url || null, 
+          startDate: dbResult.data.registration_start_date, // DB uses snake_case
+          endDate: dbResult.data.registration_end_date,
           location: dbResult.data.location || 'Online',
           mode: dbResult.data.mode as "Online" | "Hybrid" | "Physical",
           participants: dbResult.data.participants || 0,
-          maxParticipants: dbResult.data.maxParticipants || 1000, // Changed from max_participants
-          totalPrizePool: dbResult.data.totalPrizePool || '$0', // Changed from total_prize_pool
+          maxParticipants: dbResult.data.max_registrations, // DB uses 'max_registrations'
+          totalPrizePool: dbResult.data.total_prize_pool || '$0',
           tags: dbResult.data.categories || [],
-          image: dbResult.data.banner || '/api/placeholder/400/200', // Banner from DB
-          logo: dbResult.data.logo || '/api/placeholder/100/100', // Add logo field
+          image: dbResult.data.banner_url || '/api/placeholder/400/200', // DB uses 'banner_url'
+          logo: dbResult.data.logo_url || '/api/placeholder/100/100', // DB uses 'logo_url'
           status: calculateStatus(dbResult.data) as "Open" | "Closing Soon" | "Full",
-          timeLeft: calculateTimeLeft(dbResult.data.registrationEndDate), // Changed
+          timeLeft: calculateTimeLeft(dbResult.data.registration_start_date, dbResult.data.registration_end_date).text,
           featured: false,
           colorTheme: getRandomTheme(),
           category: dbResult.data.categories?.[0] || 'General',
           level: dbResult.data.eligibility?.includes('Professionals') ? 'Advanced' : 
                  dbResult.data.eligibility?.includes('Students') ? 'Intermediate' : 'Beginner',
-          prizeValue: parsePrizeValue(dbResult.data.totalPrizePool), // Changed
+          prizeValue: parsePrizeValue(dbResult.data.total_prize_pool),
           eligibility: dbResult.data.eligibility || [],
           requirements: dbResult.data.requirements || [],
-          prizes: dbResult.data.prizes || [],
-          timeline: dbResult.data.timeline || [],
-          importantDates: dbResult.data.importantDates || [], // Changed from important_dates
-          faq: dbResult.data.faq || [],
-          organizers: dbResult.data.organizers || [],
-          sponsors: dbResult.data.sponsors || []
+          prizes: (() => {
+            const parsed = safeJSONParse(dbResult.data.prizes, []);
+            console.log('Parsed prizes:', parsed); // Debug log
+            return Array.isArray(parsed) ? parsed.map((prize: any) => ({
+              position: prize.position || '',
+              amount: prize.amount || '',
+              type: prize.type || 'cash',
+              description: prize.description || ''
+            })) : [];
+          })(),
+          timeline: safeJSONParse(dbResult.data.timeline, []),
+          importantDates: (() => {
+            const parsed = safeJSONParse(dbResult.data.important_dates, []);
+            console.log('Parsed important dates:', parsed); // Debug log
+            return Array.isArray(parsed) ? parsed.map((date: any) => ({
+              title: date.title || '',
+              date: date.date || '',
+              time: date.time || '',
+              description: date.description || ''
+            })) : [];
+          })(),
+          faq: (() => {
+            const parsed = safeJSONParse(dbResult.data.faq, []);
+            console.log('Parsed FAQ:', parsed); // Debug log
+            return Array.isArray(parsed) ? parsed.map((item: any) => ({
+              question: item.question || '',
+              answer: item.answer || ''
+            })) : [];
+          })(),        
+          organizers: (() => {
+            const parsed = safeJSONParse(dbResult.data.organizers, []);
+            console.log('Parsed Organizers:', parsed); // Debug log
+            return Array.isArray(parsed) ? parsed.map((org: any) => ({
+              name: org.name || '',
+              role: org.role || '',
+              email: org.email || '',
+              phone: org.phone || '',
+              photo: org.photo || '',
+              profileUrl: org.profileUrl || ''
+            })) : [];
+          })(),
+          sponsors: (() => {
+            const parsed = safeJSONParse(dbResult.data.sponsors, []);
+            console.log('Parsed Sponsors:', parsed); // Debug log
+            return Array.isArray(parsed) ? parsed.map((sponsor: any) => ({
+              name: sponsor.name || '',
+              logo: sponsor.logo || '',
+              website: sponsor.website || '',
+              tier: sponsor.tier || '', // Add tier field
+              description: sponsor.description || '' // Add description field
+            })) : [];
+          })(),
         };
         
         setHackathon(transformedData);
@@ -119,7 +166,7 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
     const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
     
     const currentParticipants = hack.participants || 0;
-    const maxParticipants = hack.max_participants || 1000;
+    const maxParticipants = hack.max_registrations || 1000; // Changed from max_participants
     
     if (currentParticipants >= maxParticipants) return "Full";
     if (daysLeft <= 3 && daysLeft > 0) return "Closing Soon";
@@ -127,18 +174,44 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
     return "Open";
   };
 
-  const calculateTimeLeft = (endDate: string): string => {
+  const safeJSONParse = (jsonString: string | null | undefined, fallback: any = []) => {
+    if (!jsonString) return fallback;
+    if (typeof jsonString === 'object') return jsonString; // Already parsed
+    try {
+      return JSON.parse(jsonString);
+    } catch (error) {
+      console.error('JSON parse error:', error);
+      return fallback;
+    }
+  };
+
+  const calculateTimeLeft = (startDate: string, endDate: string): { text: string; label: string } => {
     const now = new Date();
+    const start = new Date(startDate);
     const end = new Date(endDate);
+    
+    // If current date is before registration start
+    if (now < start) {
+      const diffTime = start.getTime() - now.getTime();
+      const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (daysLeft === 0) return { text: "Starts today", label: "Registration Opens" };
+      if (daysLeft === 1) return { text: "1 day", label: "Until Registration Opens" };
+      if (daysLeft < 7) return { text: `${daysLeft} days`, label: "Until Registration Opens" };
+      if (daysLeft < 30) return { text: `${Math.ceil(daysLeft / 7)} weeks`, label: "Until Registration Opens" };
+      return { text: `${Math.ceil(daysLeft / 30)} months`, label: "Until Registration Opens" };
+    }
+    
+    // If current date is after registration start, show time until end
     const diffTime = end.getTime() - now.getTime();
     const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
-    if (daysLeft < 0) return "Ended";
-    if (daysLeft === 0) return "Ends today";
-    if (daysLeft === 1) return "1 day left";
-    if (daysLeft < 7) return `${daysLeft} days left`;
-    if (daysLeft < 30) return `${Math.ceil(daysLeft / 7)} weeks left`;
-    return `${Math.ceil(daysLeft / 30)} months left`;
+    if (daysLeft < 0) return { text: "Ended", label: "Registration Closed" };
+    if (daysLeft === 0) return { text: "Ends today", label: "Registration Closes" };
+    if (daysLeft === 1) return { text: "1 day", label: "Until Registration Closes" };
+    if (daysLeft < 7) return { text: `${daysLeft} days`, label: "Until Registration Closes" };
+    if (daysLeft < 30) return { text: `${Math.ceil(daysLeft / 7)} weeks`, label: "Until Registration Closes" };
+    return { text: `${Math.ceil(daysLeft / 30)} months`, label: "Until Registration Closes" };
   };
 
   const getRandomTheme = () => {
@@ -405,13 +478,14 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
               
               <div className="relative z-10 p-8">
                 <div className="grid grid-cols-[15%_83%] gap-4 mb-6">
-                  <div className="rounded-xl overflow-hidden border-2 border-gray-700 shadow-lg hover:scale-105 transition-transform">
+                  <div className="rounded-xl max-h-[100px] overflow-hidden border-2 border-gray-700 shadow-lg hover:scale-105 transition-transform">
                     <Image
                       src={hackathon.image}
                       alt={hackathon.title}
                       width={100}
                       height={100}
-                      className="object-cover h-[110px] w-full"
+                      unoptimized
+                      className="object-cover h-[100px] w-full"
                     />
                   </div>
                   <h1 className="text-5xl lg:text-6xl font-blackops text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-blue-400 to-teal-400 leading-tight">
@@ -424,7 +498,19 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
                   <div className="flex gap-2 items-center text-gray-200 font-mono bg-gray-800/50 backdrop-blur rounded-xl px-4 py-3 border border-gray-700 hover:border-gray-600 transition-all w-full">
                     <Building className="w-5 h-5 text-blue-400" />
                     <p className="font-medium">Organized by{" "}
-                      <span className="underline hover:italic font-blackops text-lg text-blue-400">{hackathon.organizer}</span>
+                      {hackathon?.websiteUrl ? (
+                        <a 
+                          href={hackathon.websiteUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline hover:italic font-blackops text-lg text-blue-400 hover:text-blue-300 transition-colors inline-flex items-center gap-1"
+                        >
+                          {hackathon.organizer}
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      ) : (
+                        <span className="font-blackops text-lg text-blue-400">{hackathon.organizer}</span>
+                      )}
                     </p>
                   </div>
                   
@@ -438,9 +524,15 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                   {[
                     { icon: Users, value: hackathon.participants, label: 'Participants', color: 'from-blue-500 to-blue-700', glow: 'shadow-blue-500/30' },
-                    { icon: Trophy, value: hackathon.totalPrizePool.split(' ')[0], label: 'Prize Pool', color: 'from-yellow-500 to-yellow-700', glow: 'shadow-yellow-500/30' },
-                    { icon: Clock, value: hackathon.timeLeft.split(' ')[0], label: 'Days Left', color: 'from-green-500 to-green-700', glow: 'shadow-green-500/30' },
-                    { icon: MapPin, value: hackathon.mode, label: hackathon.location.split(',')[0], color: 'from-purple-500 to-purple-700', glow: 'shadow-purple-500/30' }
+                    { icon: Trophy, value: hackathon.totalPrizePool, label: 'Prize Pool', color: 'from-yellow-500 to-yellow-700', glow: 'shadow-yellow-500/30' },
+                    { 
+                      icon: Clock, 
+                      value: calculateTimeLeft(hackathon.startDate, hackathon.endDate).text, 
+                      label: calculateTimeLeft(hackathon.startDate, hackathon.endDate).label, 
+                      color: 'from-green-500 to-green-700', 
+                      glow: 'shadow-green-500/30' 
+                    },
+                    { icon: MapPin, value: hackathon.mode.charAt(0).toUpperCase() + hackathon.mode.slice(1), label: hackathon.location.split(',')[0], color: 'from-purple-500 to-purple-700', glow: 'shadow-purple-500/30' }
                   ].map((stat, idx) => (
                     <div key={idx} className={`bg-gradient-to-br ${stat.color} backdrop-blur border-2 border-white/10 rounded-2xl p-5 text-center hover:scale-105 transition-all ${stat.glow} shadow-xl group`}>
                       <stat.icon className="w-7 h-7 text-white mx-auto mb-3 group-hover:scale-110 transition-transform" />
@@ -507,7 +599,7 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
                     key={index}
                     className="px-5 py-2.5 rounded-xl text-sm font-blackops bg-gradient-to-r from-purple-500 via-blue-500 to-teal-500 text-white border-2 border-white/20 hover:scale-110 hover:shadow-lg hover:shadow-purple-500/50 transition-all cursor-pointer"
                   >
-                    {tag}
+                    {tag.charAt(0).toUpperCase() + tag.slice(1)}
                   </span>
                 ))}
               </div>
@@ -582,77 +674,79 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
             )}
 
             {/* Important Dates & Deadlines */}
-            <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-md border border-gray-700 px-8 py-6">
-              <div className="flex items-center gap-3 mb-8">
-                <ClockAlert className={`w-9 h-9 ${theme.text}`} />
-                <h2 className="text-3xl font-bold text-white mt-1 font-blackops">IMPORTANT DATES & DEADLINES</h2>
-              </div>
+            {hackathon.importantDates && hackathon.importantDates.length > 0 && (
+              <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-md border border-gray-700 px-8 py-6">
+                <div className="flex items-center gap-3 mb-8">
+                  <ClockAlert className={`w-9 h-9 ${theme.text}`} />
+                  <h2 className="text-3xl font-bold text-white mt-1 font-blackops">IMPORTANT DATES & DEADLINES</h2>
+                </div>
 
-              <div className="grid gap-4">
-                {hackathon.importantDates?.map((date, index) => {
-                  const status = getDateStatus(date.date, hackathon.importantDates);
-                  const styling = getDateStyling(status);
-                  
-                  return (
-                    <div
-                      key={index}
-                      className={`p-6 border rounded-xl transition-all hover:bg-gray-700/30 hover:scale-[1.02] ${styling.border} ${styling.glow} shadow-lg`}
-                    >
-                      <div className="flex items-start gap-4">
-                        <div className={`p-3 rounded-lg relative ${styling.icon}`}>
-                          {/* Animated ring for urgent/ongoing items */}
-                          {(status.type === 'urgent' || status.type === 'ongoing') && (
-                            <div className={`absolute inset-0 rounded-lg border-2 ${
-                              status.type === 'urgent' ? 'border-red-400/60' : 'border-green-400/60'
-                            } animate-ping`}></div>
-                          )}
-                          
-                          {status.type === 'urgent' && <AlertCircle className="w-5 h-5 relative z-10" />}
-                          {status.type === 'ongoing' && <Clock className="w-5 h-5 relative z-10" />}
-                          {status.type === 'completed' && <CheckCircle className="w-5 h-5 relative z-10" />}
-                          {status.type === 'upcoming' && <Calendar className="w-5 h-5 relative z-10" />}
-                        </div>
-
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between">
-                            <h3 className="text-lg font-mono underline font-semibold text-white">{date.title}</h3>
-                            
-                            {/* Enhanced status badge */}
-                            <div className={`px-3 py-1.5 rounded-full border text-xs font-bold tracking-wide ${styling.badge}`}>
-                              <div className="flex items-center gap-1.5">
-                                {status.type === 'urgent' && <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"></div>}
-                                {status.type === 'ongoing' && <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></div>}
-                                {status.type === 'completed' && <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div>}
-                                {status.type === 'upcoming' && <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>}
-                                {status.label}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-6 text-sm mt-1">
-                            <div className="flex items-center gap-2 font-mono">
-                              <Calendar className="w-4 h-4 text-blue-400" />
-                              <span className="text-white font-medium">{date.date}</span>
-                            </div>
-                            {date.time && (
-                              <div className="flex items-center gap-2 font-mono">
-                                <Clock className="w-4 h-4 text-blue-400" />
-                                <span className="text-white font-medium">{date.time}</span>
-                              </div>
+                <div className="grid gap-4">
+                  {hackathon.importantDates?.map((date, index) => {
+                    const status = getDateStatus(date.date, hackathon.importantDates);
+                    const styling = getDateStyling(status);
+                    
+                    return (
+                      <div
+                        key={index}
+                        className={`p-6 border rounded-xl transition-all hover:bg-gray-700/30 hover:scale-[1.02] ${styling.border} ${styling.glow} shadow-lg`}
+                      >
+                        <div className="flex items-start gap-4">
+                          <div className={`p-3 rounded-lg relative ${styling.icon}`}>
+                            {/* Animated ring for urgent/ongoing items */}
+                            {(status.type === 'urgent' || status.type === 'ongoing') && (
+                              <div className={`absolute inset-0 rounded-lg border-2 ${
+                                status.type === 'urgent' ? 'border-red-400/60' : 'border-green-400/60'
+                              } animate-ping`}></div>
                             )}
+                            
+                            {status.type === 'urgent' && <AlertCircle className="w-5 h-5 relative z-10" />}
+                            {status.type === 'ongoing' && <Clock className="w-5 h-5 relative z-10" />}
+                            {status.type === 'completed' && <CheckCircle className="w-5 h-5 relative z-10" />}
+                            {status.type === 'upcoming' && <Calendar className="w-5 h-5 relative z-10" />}
                           </div>
 
-                          {date.description && <p className="text-gray-300 font-geist text- mt-4">{date.description}</p>}
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <h3 className="text-lg font-mono underline font-semibold text-white">{date.title}</h3>
+                              
+                              {/* Enhanced status badge */}
+                              <div className={`px-3 py-1.5 rounded-full border text-xs font-bold tracking-wide ${styling.badge}`}>
+                                <div className="flex items-center gap-1.5">
+                                  {status.type === 'urgent' && <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"></div>}
+                                  {status.type === 'ongoing' && <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></div>}
+                                  {status.type === 'completed' && <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div>}
+                                  {status.type === 'upcoming' && <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>}
+                                  {status.label}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-6 text-sm mt-1">
+                              <div className="flex items-center gap-2 font-mono">
+                                <Calendar className="w-4 h-4 text-blue-400" />
+                                <span className="text-white font-medium">{date.date}</span>
+                              </div>
+                              {date.time && (
+                                <div className="flex items-center gap-2 font-mono">
+                                  <Clock className="w-4 h-4 text-blue-400" />
+                                  <span className="text-white font-medium">{date.time}</span>
+                                </div>
+                              )}
+                            </div>
+
+                            {date.description && <p className="text-gray-300 font-geist text- mt-4">{date.description}</p>}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Prizes */}
-            {hackathon.prizes && (
+            {hackathon.prizes && hackathon.prizes.length > 0 && (
               <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-md border border-gray-700 p-8">
                 <div className="flex items-center gap-3 mb-4">
                   <Trophy className="w-8 h-8 text-yellow-400" />

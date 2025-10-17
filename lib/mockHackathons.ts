@@ -10,6 +10,7 @@ export interface Hackathon {
   title: string;
   description: string;
   detailedDescription?: string;
+  websiteUrl: string, 
   organizer: string;
   startDate: string;
   endDate: string;
@@ -44,6 +45,7 @@ export const mockHackathons: Hackathon[] = [
     title: "Genesis Season One Hackathon 2025",
     description: "Submit your web3 project, graduate, and compete for 1M $TKAI plus Pro Plans from Cursor, Vercel, and more.",
     detailedDescription: "Genesis Season One is the ultimate Web3 hackathon experience designed for builders who want to push the boundaries of decentralized technology...",
+    websiteUrl: "",
     organizer: "Genesis DAO",
     startDate: "2025-01-15",
     endDate: "2025-02-15",
@@ -203,6 +205,7 @@ export const mockHackathons: Hackathon[] = [
     description: "Building on the blockchain to house all of finance. Create innovative solutions for decentralized finance.",
     detailedDescription: "The Hyperliquid Community Hackathon is an intensive 3-day event focused on building the future of decentralized finance...",
     organizer: "Hyperliquid Labs",
+    websiteUrl: "",
     startDate: "2025-01-20",
     endDate: "2025-01-22",
     location: "Penang, Malaysia",
@@ -322,6 +325,7 @@ export const mockHackathons: Hackathon[] = [
     description: "Resolución de problemas en ALC sobre reducción del riesgo de desastres con datos de Copernicus.",
     detailedDescription: "Join the CopernicusLAC Panama Hackathon 2025, where technology meets environmental science to address critical disaster risk reduction challenges...",
     organizer: "ESA & Copernicus",
+    websiteUrl: "",
     startDate: "2025-02-01",
     endDate: "2025-02-05",
     location: "Selangor, Malaysia",
