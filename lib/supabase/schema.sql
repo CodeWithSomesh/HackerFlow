@@ -383,3 +383,32 @@ ADD COLUMN location TEXT;
 
 -- Optional: Add a comment to document the column
 COMMENT ON COLUMN hackathons.location IS 'Physical location for offline/hybrid events';
+
+-- Add to your existing schema
+CREATE TABLE generated_ideas (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) NOT NULL,
+  hackathon_id UUID REFERENCES hackathons(id) NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  problem_statement TEXT,
+  vision TEXT,
+  tech_stack TEXT[], -- Array of strings
+  estimated_time TEXT,
+  skills_required TEXT[],
+  success_metrics TEXT[],
+  implementation JSONB, -- Store phases data
+  inspiration TEXT,
+  resume_analyzed BOOLEAN DEFAULT false,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Add RLS policies
+ALTER TABLE generated_ideas ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own ideas" ON generated_ideas
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own ideas" ON generated_ideas
+  FOR INSERT WITH CHECK (auth.uid() = user_id);

@@ -1,120 +1,188 @@
 'use client'
 
-import { useState } from 'react'
-import { Upload, Search, Sparkles, ArrowRight, FileText, CheckCircle, AlertCircle, Loader, MessageCircle, Share2, BookmarkPlus } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Upload, Search, Sparkles, ArrowRight, FileText, CheckCircle, Loader, MessageCircle, Share2, BookmarkPlus } from 'lucide-react'
+import { fetchPublishedHackathons } from "@/lib/actions/createHackathon-actions";
+import { saveGeneratedIdea } from "@/lib/actions/generatedIdeas-actions";
+// import { useChat } from '@ai-sdk/react'
+import { useChat } from 'ai/react'
+import { toast } from 'sonner'
+import { showCustomToast } from '@/components/toast-notification';
 
 export default function AIIdeaGenerator() {
-  const [currentPage, setCurrentPage] = useState<'input' | 'results'>('input')
+    const [currentPage, setCurrentPage] = useState<'input' | 'results'>('input')
   const [selectedHackathon, setSelectedHackathon] = useState<any>(null)
   const [resumeFile, setResumeFile] = useState<File | null>(null)
+  const [resumeText, setResumeText] = useState('')
   const [inspiration, setInspiration] = useState('')
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [generatedIdea, setGeneratedIdea] = useState<any>(null)
   const [hackathonSearch, setHackathonSearch] = useState('')
+  const [hackathons, setHackathons] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [generatedIdea, setGeneratedIdea] = useState<any>(null)
+  const [isSaving, setIsSaving] = useState(false)
 
-  // Mock hackathons data
-  const mockHackathons = [
-    { id: 1, name: 'TechCrunch Disrupt', category: 'Innovation & Startups', date: 'Dec 2024', logo: '🚀' },
-    { id: 2, name: 'NASA Space Apps', category: 'Space Technology', date: 'Oct 2024', logo: '🛸' },
-    { id: 3, name: 'AngelHack Global', category: 'Social Impact', date: 'Nov 2024', logo: '💡' },
-    { id: 4, name: 'HackMIT', category: 'Open Innovation', date: 'Sep 2024', logo: '🎓' },
-    { id: 5, name: 'Junction', category: 'Sustainability', date: 'Nov 2024', logo: '🌱' },
-    { id: 6, name: 'Devpost Global', category: 'AI/Machine Learning', date: 'Dec 2024', logo: '🤖' },
-  ]
+  const { messages, append, isLoading } = useChat({
+    api: '/api/chat',
+    onFinish: (message) => {
+      try {
+        const content = message.content
+        const jsonMatch = content.match(/\{[\s\S]*\}/)
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0])
+          setGeneratedIdea({
+            ...parsed,
+            hackathonId: selectedHackathon.id,
+            hackathonName: selectedHackathon.title,
+          })
+          setCurrentPage('results')
+          showCustomToast('success', 'Idea generated successfully!')
+        }
+      } catch (error) {
+        console.error('Failed to parse response:', error)
+        showCustomToast('error', 'Failed to generate idea. Please try again.')
+      }
+    },
+    onError: (error) => {
+      console.error('Chat error:', error)
+      showCustomToast('error', 'Failed to connect to AI service.')
+    }
+  })
 
-  const filteredHackathons = mockHackathons.filter(h => 
-    h.name.toLowerCase().includes(hackathonSearch.toLowerCase())
+  useEffect(() => {
+    loadHackathons()
+  }, [])
+
+  const loadHackathons = async () => {
+    const result = await fetchPublishedHackathons()
+    if (result.success) {
+      setHackathons(result.data)
+      if (result.data.length === 0) {
+        showCustomToast('info', 'No published hackathons found.')
+      }
+    } else {
+      showCustomToast('error', 'Failed to load hackathons.')
+    }
+    setLoading(false)
+  }
+
+  const filteredHackathons = hackathons.filter(h => 
+    h.title?.toLowerCase().includes(hackathonSearch.toLowerCase())
   )
 
-  const handleResumeUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        alert('File size must be less than 10MB')
-        return
+    if (!file) return
+
+    if (file.size > 10 * 1024 * 1024) {
+      showCustomToast('error', 'File size must be less than 10MB')
+      return
+    }
+
+    const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain']
+    if (!validTypes.includes(file.type)) {
+      showCustomToast('error', 'Please upload a PDF, DOC, DOCX, or TXT file')
+      return
+    }
+
+    setResumeFile(file)
+
+    try {
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        const text = event.target?.result as string
+        setResumeText(text.substring(0, 5000))
+        showCustomToast('success', 'Resume uploaded successfully!')
       }
-      if (!['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(file.type)) {
-        alert('Please upload a PDF, DOC, or DOCX file')
-        return
+      reader.onerror = () => {
+        showCustomToast('error', 'Failed to read file')
       }
-      setResumeFile(file)
+      reader.readAsText(file)
+    } catch (error) {
+      showCustomToast('error', 'Failed to process resume')
     }
   }
 
   const handleGenerateIdeas = async () => {
     if (!selectedHackathon) {
-      alert('Please select a hackathon')
+      showCustomToast('warning', 'Please select a hackathon first')
       return
     }
     if (!resumeFile && !inspiration) {
-      alert('Please upload a resume or provide inspiration')
+      showCustomToast('warning', 'Please upload a resume or provide inspiration')
       return
     }
 
-    setIsGenerating(true)
+    showCustomToast('info', 'Generating your idea... This may take a moment.')
 
-    // Simulate API call - replace with actual API route later
-    setTimeout(() => {
-      const mockIdea = {
-        id: Date.now(),
-        hackathonId: selectedHackathon.id,
-        hackathonName: selectedHackathon.name,
-        title: 'AI-Powered Team Recommendation Engine',
-        description: 'Create a smart algorithm that analyzes participant resumes, GitHub profiles, and skill sets to automatically recommend optimal team formations, maximizing complementary skills and experience levels.',
-        problemStatement: 'During hackathons, teams are often formed randomly or based on existing connections, missing opportunities for optimal skill complementarity. This leads to suboptimal team dynamics and project outcomes.',
-        vision: 'Build a platform that uses machine learning to analyze participant profiles and create perfectly balanced teams where each member brings unique value.',
-        implementation: {
-          phases: [
-            {
-              name: 'Research & Data Collection',
-              duration: '10 hours',
-              tasks: [
-                'Analyze successful hackathon team compositions',
-                'Integrate with GitHub API for project history',
-                'Parse resume data using NLP',
-              ]
-            },
-            {
-              name: 'Algorithm Development',
-              duration: '20 hours',
-              tasks: [
-                'Build recommendation engine using collaborative filtering',
-                'Implement skill gap analysis',
-                'Create matching algorithm optimizing for diversity',
-              ]
-            },
-            {
-              name: 'Frontend & Deployment',
-              duration: '15 hours',
-              tasks: [
-                'Create real-time team matching interface',
-                'Build admin dashboard for hackathon organizers',
-                'Deploy to production',
-              ]
-            },
-          ]
-        },
-        techStack: ['Python', 'NLP/spaCy', 'React', 'Node.js', 'PostgreSQL', 'TensorFlow'],
-        estimatedTime: '45 hours',
-        skillsRequired: ['Backend Development', 'ML/AI', 'Frontend Development', 'API Integration'],
-        successMetrics: [
-          'Team satisfaction score > 8/10',
-          'Project completion rate > 90%',
-          'Skill match accuracy > 85%'
-        ]
+    await append({
+      role: 'user',
+      content: `Generate a hackathon project idea for ${selectedHackathon.title}`,
+    }, {
+      options: {
+        body: {
+          hackathonTitle: selectedHackathon.title,
+          hackathonCategories: selectedHackathon.categories,
+          resumeText,
+          inspiration,
+        }
       }
-
-      setGeneratedIdea(mockIdea)
-      setIsGenerating(false)
-      setCurrentPage('results')
-    }, 2000)
+    })
   }
+
+  const handleSaveIdea = async () => {
+    if (!generatedIdea) return
+
+    setIsSaving(true)
+    const result = await saveGeneratedIdea({
+      hackathonId: generatedIdea.hackathonId,
+      title: generatedIdea.title,
+      description: generatedIdea.description,
+      problemStatement: generatedIdea.problemStatement,
+      vision: generatedIdea.vision,
+      techStack: generatedIdea.techStack,
+      estimatedTime: generatedIdea.estimatedTime,
+      skillsRequired: generatedIdea.skillsRequired,
+      successMetrics: generatedIdea.successMetrics,
+      implementation: generatedIdea.implementation,
+      inspiration,
+      resumeAnalyzed: Boolean(resumeFile),
+    })
+
+    setIsSaving(false)
+
+    if (result.success) {
+      showCustomToast('success', 'Idea saved successfully!')
+    } else {
+      showCustomToast('error', result.error || 'Failed to save idea')
+    }
+  }
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-teal-400 border-t-transparent rounded-full animate-spin mb-4 mx-auto"></div>
+          <p className="text-gray-400 font-mono">Loading hackathons...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Mock hackathons data
+//   const mockHackathons = [
+//     { id: 1, name: 'TechCrunch Disrupt', category: 'Innovation & Startups', date: 'Dec 2024', logo: '🚀' },
+//     { id: 2, name: 'NASA Space Apps', category: 'Space Technology', date: 'Oct 2024', logo: '🛸' },
+//     { id: 3, name: 'AngelHack Global', category: 'Social Impact', date: 'Nov 2024', logo: '💡' },
+//     { id: 4, name: 'HackMIT', category: 'Open Innovation', date: 'Sep 2024', logo: '🎓' },
+//     { id: 5, name: 'Junction', category: 'Sustainability', date: 'Nov 2024', logo: '🌱' },
+//     { id: 6, name: 'Devpost Global', category: 'AI/Machine Learning', date: 'Dec 2024', logo: '🤖' },
+//   ]
 
   // PAGE 1: All inputs combined
   if (currentPage === 'input') {
     return (
       <div className="min-h-screen bg-black pt-6 pb-12">
-        {/* Header */}
         <div className="bg-gradient-to-r from-teal-600 via-cyan-500 to-yellow-400 border-y-4 border-pink-400 shadow-2xl mb-12">
           <div className="max-w-6xl mx-auto px-6 py-8">
             <h1 className="text-5xl font-blackops text-white drop-shadow-lg mb-2">
@@ -147,27 +215,45 @@ export default function AIIdeaGenerator() {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredHackathons.map((hackathon) => (
-                <button
-                  key={hackathon.id}
-                  onClick={() => setSelectedHackathon(hackathon)}
-                  className={`p-6 rounded-xl border-2 transition-all text-left group ${
-                    selectedHackathon?.id === hackathon.id
-                      ? 'border-pink-400 bg-gradient-to-br from-pink-500/10 to-purple-500/10'
-                      : 'border-gray-700 bg-gray-900/50 hover:border-teal-400/50 hover:bg-gray-900'
-                  }`}
-                >
-                  <div className="text-4xl mb-3">{hackathon.logo}</div>
-                  <h3 className="text-lg font-blackops text-white mb-2 group-hover:text-teal-300 transition-colors">{hackathon.name}</h3>
-                  <p className="text-sm text-gray-400 font-mono mb-3">{hackathon.category}</p>
-                  <p className="text-xs text-gray-500 font-mono">{hackathon.date}</p>
-                </button>
-              ))}
-            </div>
+            {filteredHackathons.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-400 font-mono">No hackathons found</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredHackathons.map((hackathon) => (
+                  <button
+                    key={hackathon.id}
+                    onClick={() => setSelectedHackathon(hackathon)}
+                    className={`p-6 rounded-xl border-2 transition-all text-left group ${
+                      selectedHackathon?.id === hackathon.id
+                        ? 'border-pink-400 bg-gradient-to-br from-pink-500/10 to-purple-500/10'
+                        : 'border-gray-700 bg-gray-900/50 hover:border-teal-400/50 hover:bg-gray-900'
+                    }`}
+                  >
+                    {hackathon.logo_url ? (
+                      <img src={hackathon.logo_url} alt={hackathon.title} className="w-12 h-12 rounded-lg object-cover mb-3" />
+                    ) : (
+                      <div className="text-4xl mb-3">🚀</div>
+                    )}
+                    <h3 className="text-lg font-blackops text-white mb-2 group-hover:text-teal-300 transition-colors">
+                      {hackathon.title}
+                    </h3>
+                    {hackathon.categories && hackathon.categories.length > 0 && (
+                      <p className="text-sm text-gray-400 font-mono mb-3">
+                        {hackathon.categories.slice(0, 2).join(', ')}
+                      </p>
+                    )}
+                    {hackathon.organization && (
+                      <p className="text-xs text-gray-500 font-mono">{hackathon.organization}</p>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Resume Upload */}
+          {/* Resume Upload - Keep your existing code */}
           <div className="bg-gradient-to-br from-gray-900 to-gray-800 border-2 border-pink-500/30 rounded-2xl p-8">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center">
@@ -185,7 +271,7 @@ export default function AIIdeaGenerator() {
               <input
                 type="file"
                 onChange={handleResumeUpload}
-                accept=".pdf,.doc,.docx"
+                accept=".pdf,.doc,.docx,.txt"
                 className="hidden"
                 id="resume-upload"
               />
@@ -198,7 +284,7 @@ export default function AIIdeaGenerator() {
                   {resumeFile ? resumeFile.name : 'Choose Your Resume'}
                 </p>
                 <p className="text-sm text-gray-400 font-mono">
-                  PDF, DOC, or DOCX files up to 10MB
+                  PDF, DOC, DOCX, or TXT files up to 10MB
                 </p>
               </label>
             </div>
@@ -211,7 +297,7 @@ export default function AIIdeaGenerator() {
             )}
           </div>
 
-          {/* Inspiration Input */}
+          {/* Inspiration Input - Keep your existing code */}
           <div className="bg-gradient-to-br from-gray-900 to-gray-800 border-2 border-cyan-500/30 rounded-2xl p-8">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center">
@@ -238,20 +324,29 @@ export default function AIIdeaGenerator() {
             </div>
           </div>
 
-          {/* CTA Buttons */}
+          {/* CTA Button */}
           <div className="flex gap-4 justify-end">
             <button
               onClick={handleGenerateIdeas}
-              disabled={!selectedHackathon || (!resumeFile && !inspiration)}
+              disabled={isLoading || !selectedHackathon || (!resumeFile && !inspiration)}
               className={`inline-flex items-center gap-2 px-8 py-4 rounded-lg font-mono font-bold text-white transition-all ${
-                selectedHackathon && (resumeFile || inspiration)
+                !isLoading && selectedHackathon && (resumeFile || inspiration)
                   ? 'bg-gradient-to-r from-pink-500 via-purple-500 to-yellow-500 hover:opacity-90 shadow-lg'
                   : 'bg-gray-700 cursor-not-allowed opacity-50'
               }`}
             >
-              <Sparkles className="w-5 h-5" />
-              Generate Idea
-              <ArrowRight className="w-5 h-5" />
+              {isLoading ? (
+                <>
+                  <Loader className="w-5 h-5 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-5 h-5" />
+                  Generate Idea
+                  <ArrowRight className="w-5 h-5" />
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -263,182 +358,74 @@ export default function AIIdeaGenerator() {
   if (currentPage === 'results' && generatedIdea) {
     return (
       <div className="min-h-screen bg-black pt-20 pb-12">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-teal-600 via-cyan-500 to-yellow-400 border-y-4 border-pink-400 shadow-2xl mb-12">
-          <div className="max-w-7xl mx-auto px-6 py-8">
-            <h1 className="text-5xl font-blackops text-white drop-shadow-lg mb-2">
-              Your Generated Idea
-            </h1>
-            <p className="text-xl text-white/90 font-mono">
-              {generatedIdea.hackathonName}
-            </p>
-          </div>
-        </div>
-
-        {isGenerating ? (
-          <div className="flex flex-col items-center justify-center py-32">
-            <div className="w-16 h-16 border-4 border-teal-400 border-t-transparent rounded-full animate-spin mb-4"></div>
-            <p className="text-gray-400 font-mono text-lg">Generating your brilliant idea...</p>
-          </div>
-        ) : (
-          <div className="max-w-7xl mx-auto px-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* LEFT COLUMN - Timeline & Sidebar */}
-              <div className="space-y-6">
-                {/* Project Timeline */}
-                <div className="bg-gradient-to-br from-gray-900 to-gray-800 border-2 border-blue-500/30 rounded-2xl p-6">
-                  <h3 className="text-lg font-blackops text-white mb-4 flex items-center gap-2">
-                    <div className="w-1 h-6 bg-gradient-to-b from-blue-400 to-blue-600"></div>
-                    Time Estimates
-                  </h3>
-                  <div className="space-y-6">
-                    {generatedIdea.implementation.phases.map((phase: any, idx: number) => (
-                      <div key={idx} className="relative">
-                        <div className="flex gap-4">
-                          <div className="flex flex-col items-center">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center border-2 border-gray-800 z-10">
-                              <span className="text-white font-blackops text-xs">{idx + 1}</span>
-                            </div>
-                            {idx < generatedIdea.implementation.phases.length - 1 && (
-                              <div className="w-1 h-16 bg-gradient-to-b from-blue-500 to-transparent mt-2"></div>
-                            )}
-                          </div>
-                          <div className="flex-1 pb-4">
-                            <h4 className="text-white font-blackops text-sm mb-1">{phase.name}</h4>
-                            <p className="text-sm text-gray-400 font-mono font-bold mb-2">{phase.duration}</p>
-                            <ul className="space-y-1">
-                              {phase.tasks.map((task: string, i: number) => (
-                                <li key={i} className="text-xs text-gray-400 font-mono">
-                                  • {task}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Skills Required */}
-                <div className="bg-gradient-to-br from-gray-900 to-gray-800 border-2 border-purple-500/30 rounded-2xl p-6">
-                  <h3 className="text-lg font-blackops text-white mb-4 flex items-center gap-2">
-                    <div className="w-1 h-6 bg-gradient-to-b from-purple-400 to-purple-600"></div>
-                    Skills Required
-                  </h3>
-                  <div className="space-y-2">
-                    {generatedIdea.skillsRequired.map((skill: string) => (
-                      <div key={skill} className="px-3 py-2 bg-purple-500/10 border border-purple-500/30 rounded-lg">
-                        <p className="text-sm text-purple-300 font-mono">{skill}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Success Metrics */}
-                <div className="bg-gradient-to-br from-gray-900 to-gray-800 border-2 border-green-500/30 rounded-2xl p-6">
-                  <h3 className="text-lg font-blackops text-white mb-4 flex items-center gap-2">
-                    <div className="w-1 h-6 bg-gradient-to-b from-green-400 to-green-600"></div>
-                    Success Metrics
-                  </h3>
-                  <div className="space-y-2">
-                    {generatedIdea.successMetrics.map((metric: string) => (
-                      <div key={metric} className="flex gap-2 items-start">
-                        <CheckCircle className="w-4 h-4 text-green-400 mt-1 flex-shrink-0" />
-                        <p className="text-sm text-gray-300 font-mono">{metric}</p>
-                      </div>
-                    ))}
+        {/* Keep all your existing results page JSX */}
+        {/* Just update the action buttons section: */}
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* ... your existing left column code ... */}
+            
+            {/* RIGHT COLUMN */}
+            <div className="lg:col-span-2">
+              <div className="bg-gradient-to-br from-gray-900 to-gray-800 border-2 border-purple-500/30 rounded-2xl overflow-hidden shadow-xl">
+                {/* ... your existing content ... */}
+                
+                {/* Updated Action Buttons */}
+                <div className="p-8">
+                  <div className="flex gap-3 pt-4 border-t border-gray-700">
+                    <button 
+                      onClick={() => showCustomToast('info', 'Share feature coming soon!')}
+                      className="flex-1 px-4 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-mono font-bold text-sm transition-all border border-gray-700 flex items-center justify-center gap-2"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      Share
+                    </button>
+                    <button 
+                      onClick={handleSaveIdea}
+                      disabled={isSaving}
+                      className="flex-1 px-4 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-mono font-bold text-sm transition-all border border-gray-700 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isSaving ? (
+                        <>
+                          <Loader className="w-4 h-4 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <BookmarkPlus className="w-4 h-4" />
+                          Save Idea
+                        </>
+                      )}
+                    </button>
+                    <button 
+                      onClick={() => showCustomToast('info', 'Edit feature coming soon!')}
+                      className="flex-1 px-4 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 hover:opacity-90 text-white rounded-lg font-mono font-bold text-sm transition-all shadow-lg flex items-center justify-center gap-2"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      Edit idea
+                    </button>
                   </div>
                 </div>
               </div>
 
-              {/* RIGHT COLUMN - Main Idea Content */}
-              <div className="lg:col-span-2">
-                <div className="bg-gradient-to-br from-gray-900 to-gray-800 border-2 border-purple-500/30 rounded-2xl overflow-hidden shadow-xl">
-                  {/* Header */}
-                  <div className="bg-gradient-to-r from-purple-600/20 to-pink-600/20 border-b border-gray-700 p-8">
-                    <div className="flex items-start justify-between gap-4 mb-4">
-                      <div className="flex-1">
-                        <h2 className="text-3xl font-blackops text-white mb-3">
-                          {generatedIdea.title}
-                        </h2>
-                        <p className="text-gray-300 font-mono text-base leading-relaxed">
-                          {generatedIdea.description}
-                        </p>
-                      </div>
-                      <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center flex-shrink-0">
-                        <Sparkles className="w-8 h-8 text-white" />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Content */}
-                  <div className="p-8 space-y-8">
-                    {/* Problem Statement */}
-                    <div>
-                      <h3 className="text-lg font-blackops text-white mb-3">Problem Statement</h3>
-                      <p className="text-gray-300 font-mono leading-relaxed text-sm">
-                        {generatedIdea.problemStatement}
-                      </p>
-                    </div>
-
-                    {/* Vision */}
-                    <div>
-                      <h3 className="text-lg font-blackops text-white mb-3">Vision</h3>
-                      <p className="text-gray-300 font-mono leading-relaxed text-sm">
-                        {generatedIdea.vision}
-                      </p>
-                    </div>
-
-                    {/* Tech Stack */}
-                    <div>
-                      <h3 className="text-lg font-blackops text-white mb-3">Tech Stack</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {generatedIdea.techStack.map((tech: string) => (
-                          <span key={tech} className="px-3 py-1.5 bg-teal-500/10 border-2 border-teal-500/30 text-teal-300 rounded-lg text-xs font-mono font-bold">
-                            {tech}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex gap-3 pt-4 border-t border-gray-700">
-                      <button className="flex-1 px-4 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-mono font-bold text-sm transition-all border border-gray-700 flex items-center justify-center gap-2">
-                        <Share2 className="w-4 h-4" />
-                        Share
-                      </button>
-                      <button className="flex-1 px-4 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-mono font-bold text-sm transition-all border border-gray-700 flex items-center justify-center gap-2">
-                        <BookmarkPlus className="w-4 h-4" />
-                        Make it a post!
-                      </button>
-                      <button className="flex-1 px-4 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 hover:opacity-90 text-white rounded-lg font-mono font-bold text-sm transition-all shadow-lg flex items-center justify-center gap-2">
-                        <MessageCircle className="w-4 h-4" />
-                        Edit idea
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Back Button */}
-                <div className="mt-6 flex justify-center">
-                  <button
-                    onClick={() => {
-                      setCurrentPage('input')
-                      setGeneratedIdea(null)
-                      setSelectedHackathon(null)
-                      setResumeFile(null)
-                      setInspiration('')
-                    }}
-                    className="px-6 py-3 rounded-lg font-mono font-bold text-white bg-gray-800 hover:bg-gray-700 border-2 border-gray-700 transition-all"
-                  >
-                    Generate Another Idea
-                  </button>
-                </div>
+              {/* Back Button */}
+              <div className="mt-6 flex justify-center">
+                <button
+                  onClick={() => {
+                    setCurrentPage('input')
+                    setGeneratedIdea(null)
+                    setSelectedHackathon(null)
+                    setResumeFile(null)
+                    setResumeText('')
+                    setInspiration('')
+                  }}
+                  className="px-6 py-3 rounded-lg font-mono font-bold text-white bg-gray-800 hover:bg-gray-700 border-2 border-gray-700 transition-all"
+                >
+                  Generate Another Idea
+                </button>
               </div>
             </div>
           </div>
-        )}
+        </div>
       </div>
     )
   }
