@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build:*)",
+      "Bash(npx tsc:*)",
+      "Bash(code:*)",
+      "Bash(Get-Content \"app\\ai-idea-generator\\page.tsx\")",
+      "Bash(Select-Object -Skip 266 -First 10)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

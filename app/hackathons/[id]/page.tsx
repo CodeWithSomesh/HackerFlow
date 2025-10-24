@@ -389,11 +389,11 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
     <div className="min-h-screen bg-black">
       {/* Enhanced Floating Register Button - Mobile */}
       <div className="fixed bottom-6 right-6 z-50 lg:hidden">
-        <button 
-          disabled={hackathon.status === "Full"}
-          className={`group relative px-8 py-4 rounded-2xl font-blackops text-lg shadow-2xl transition-all duration-300 ${
-            hackathon.status === "Full" 
-              ? "bg-gray-700 text-gray-400 cursor-not-allowed border-2 border-gray-600" 
+        <Link
+          href={hackathon.status === "Full" ? "#" : `/hackathons/${hackathon.id}/register`}
+          className={`group relative px-8 py-4 rounded-2xl font-blackops text-lg shadow-2xl transition-all duration-300 inline-block ${
+            hackathon.status === "Full"
+              ? "bg-gray-700 text-gray-400 cursor-not-allowed border-2 border-gray-600 pointer-events-none"
               : "bg-gradient-to-r from-purple-500 via-blue-500 to-teal-500 text-white hover:scale-110 hover:shadow-purple-500/50 border-2 border-transparent hover:border-white/20"
           }`}
         >
@@ -406,7 +406,7 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
               <div className="absolute inset-0 bg-gradient-to-r from-purple-500 via-blue-500 to-teal-500 blur-xl opacity-50 group-hover:opacity-75 transition-opacity"></div>
             </>
           )}
-        </button>
+        </Link>
       </div>
 
       {/* Enhanced Header Navigation */}
@@ -1084,18 +1084,18 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
                     {hackathon.status !== "Full" && (
                       <div className="absolute inset-0 bg-gradient-to-r from-purple-500 via-blue-500 to-teal-500 blur-md opacity-30 animate-pulse"></div>
                     )}
-                    <button 
-                      disabled={hackathon.status === "Full"}
-                      className={`w-full py-4 px-6 rounded-xl font-bold text-lg transition-all duration-300 relative ${
-                        hackathon.status === "Full" 
-                          ? "bg-gray-700 text-gray-400 cursor-not-allowed border border-gray-600" 
+                    <Link
+                      href={hackathon.status === "Full" ? "#" : `/hackathons/${hackathon.id}/register`}
+                      className={`w-full py-4 px-6 rounded-xl font-bold text-lg transition-all duration-300 relative block text-center ${
+                        hackathon.status === "Full"
+                          ? "bg-gray-700 text-gray-400 cursor-not-allowed border border-gray-600 pointer-events-none"
                           : "bg-gradient-to-r from-purple-500 via-blue-500 to-teal-500 text-white hover:scale-105 hover:shadow-2xl shadow-lg border-0"
                       }`}
                     >
                       <span className="relative z-10 font-geist">
                         {hackathon.status === "Full" ? "Registration Closed" : "Register Now"}
                       </span>
-                    </button>
+                    </Link>
                   </div>
 
                   {/* Stats Grid - Non-repetitive data */}

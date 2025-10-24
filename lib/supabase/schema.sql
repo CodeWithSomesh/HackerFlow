@@ -412,3 +412,172 @@ CREATE POLICY "Users can view own ideas" ON generated_ideas
 
 CREATE POLICY "Users can insert own ideas" ON generated_ideas
   FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Hackathon Registrations and Teams
+CREATE TABLE hackathon_teams (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  hackathon_id UUID REFERENCES hackathons(id) ON DELETE CASCADE NOT NULL,
+  team_name TEXT NOT NULL,
+  team_leader_id UUID REFERENCES auth.users(id) NOT NULL,
+  looking_for_teammates BOOLEAN DEFAULT true,
+  team_size_current INTEGER DEFAULT 1,
+  team_size_max INTEGER NOT NULL,
+  status TEXT DEFAULT 'forming' CHECK (status IN ('forming', 'complete', 'registered')),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  CONSTRAINT unique_team_name_per_hackathon UNIQUE(hackathon_id, team_name)
+);
+
+CREATE TABLE hackathon_team_members (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  team_id UUID REFERENCES hackathon_teams(id) ON DELETE CASCADE NOT NULL,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  mobile TEXT NOT NULL,
+  first_name TEXT NOT NULL,
+  last_name TEXT,
+  organization_name TEXT,
+  participant_type TEXT NOT NULL CHECK (participant_type IN ('College Students', 'Professional', 'High School / Primary School Student', 'Fresher')),
+  passout_year TEXT,
+  domain TEXT,
+  location TEXT NOT NULL,
+  is_leader BOOLEAN DEFAULT false,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'rejected')),
+  invited_by UUID REFERENCES auth.users(id),
+  joined_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  CONSTRAINT unique_user_per_team UNIQUE(team_id, user_id)
+);
+
+CREATE TABLE hackathon_registrations (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  hackathon_id UUID REFERENCES hackathons(id) ON DELETE CASCADE NOT NULL,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  team_id UUID REFERENCES hackathon_teams(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  mobile TEXT NOT NULL,
+  first_name TEXT NOT NULL,
+  last_name TEXT,
+  organization_name TEXT,
+  participant_type TEXT NOT NULL,
+  passout_year TEXT,
+  domain TEXT,
+  location TEXT NOT NULL,
+  registration_status TEXT DEFAULT 'registered' CHECK (registration_status IN ('registered', 'confirmed', 'cancelled')),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  CONSTRAINT unique_user_per_hackathon UNIQUE(hackathon_id, user_id)
+);
+
+CREATE TABLE hackathon_team_invitations (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  team_id UUID REFERENCES hackathon_teams(id) ON DELETE CASCADE NOT NULL,
+  inviter_id UUID REFERENCES auth.users(id) NOT NULL,
+  invitee_email TEXT NOT NULL,
+  invitee_user_id UUID REFERENCES auth.users(id),
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'rejected', 'expired')),
+  invitation_token TEXT UNIQUE NOT NULL,
+  expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  responded_at TIMESTAMP WITH TIME ZONE
+);
+
+-- Enable RLS
+ALTER TABLE hackathon_teams ENABLE ROW LEVEL SECURITY;
+ALTER TABLE hackathon_team_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE hackathon_registrations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE hackathon_team_invitations ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for hackathon_teams
+CREATE POLICY "Anyone can view teams looking for members" ON hackathon_teams
+  FOR SELECT USING (looking_for_teammates = true);
+
+CREATE POLICY "Team leaders can view their teams" ON hackathon_teams
+  FOR SELECT USING (auth.uid() = team_leader_id);
+
+CREATE POLICY "Authenticated users can create teams" ON hackathon_teams
+  FOR INSERT WITH CHECK (auth.uid() = team_leader_id);
+
+CREATE POLICY "Team leaders can update their teams" ON hackathon_teams
+  FOR UPDATE USING (auth.uid() = team_leader_id);
+
+-- RLS Policies for hackathon_team_members
+CREATE POLICY "Team members can view their team" ON hackathon_team_members
+  FOR SELECT USING (
+    auth.uid() = user_id OR
+    auth.uid() IN (SELECT team_leader_id FROM hackathon_teams WHERE id = team_id)
+  );
+
+CREATE POLICY "Team leaders can add members" ON hackathon_team_members
+  FOR INSERT WITH CHECK (
+    auth.uid() IN (SELECT team_leader_id FROM hackathon_teams WHERE id = team_id)
+  );
+
+CREATE POLICY "Team leaders can update members" ON hackathon_team_members
+  FOR UPDATE USING (
+    auth.uid() IN (SELECT team_leader_id FROM hackathon_teams WHERE id = team_id)
+  );
+
+-- RLS Policies for hackathon_registrations
+CREATE POLICY "Users can view their own registrations" ON hackathon_registrations
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can create their own registrations" ON hackathon_registrations
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own registrations" ON hackathon_registrations
+  FOR UPDATE USING (auth.uid() = user_id);
+
+-- RLS Policies for hackathon_team_invitations
+CREATE POLICY "Users can view invitations sent to them" ON hackathon_team_invitations
+  FOR SELECT USING (
+    auth.uid() = invitee_user_id OR
+    invitee_email IN (SELECT email FROM auth.users WHERE id = auth.uid()) OR
+    auth.uid() IN (SELECT team_leader_id FROM hackathon_teams WHERE id = team_id)
+  );
+
+CREATE POLICY "Team leaders can create invitations" ON hackathon_team_invitations
+  FOR INSERT WITH CHECK (
+    auth.uid() IN (SELECT team_leader_id FROM hackathon_teams WHERE id = team_id)
+  );
+
+CREATE POLICY "Invitees can update their invitations" ON hackathon_team_invitations
+  FOR UPDATE USING (
+    auth.uid() = invitee_user_id OR
+    invitee_email IN (SELECT email FROM auth.users WHERE id = auth.uid())
+  );
+
+-- Indexes for performance
+CREATE INDEX idx_hackathon_teams_hackathon_id ON hackathon_teams(hackathon_id);
+CREATE INDEX idx_hackathon_teams_leader_id ON hackathon_teams(team_leader_id);
+CREATE INDEX idx_hackathon_teams_looking_for_teammates ON hackathon_teams(hackathon_id, looking_for_teammates) WHERE looking_for_teammates = true;
+CREATE INDEX idx_hackathon_team_members_team_id ON hackathon_team_members(team_id);
+CREATE INDEX idx_hackathon_team_members_user_id ON hackathon_team_members(user_id);
+CREATE INDEX idx_hackathon_registrations_hackathon_id ON hackathon_registrations(hackathon_id);
+CREATE INDEX idx_hackathon_registrations_user_id ON hackathon_registrations(user_id);
+CREATE INDEX idx_hackathon_team_invitations_team_id ON hackathon_team_invitations(team_id);
+CREATE INDEX idx_hackathon_team_invitations_invitee_email ON hackathon_team_invitations(invitee_email);
+CREATE INDEX idx_hackathon_team_invitations_token ON hackathon_team_invitations(invitation_token);
+
+-- Trigger to update team size
+CREATE OR REPLACE FUNCTION update_team_size()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF TG_OP = 'INSERT' AND NEW.status = 'accepted' THEN
+    UPDATE hackathon_teams
+    SET team_size_current = team_size_current + 1,
+        updated_at = NOW()
+    WHERE id = NEW.team_id;
+  ELSIF TG_OP = 'DELETE' OR (TG_OP = 'UPDATE' AND OLD.status = 'accepted' AND NEW.status != 'accepted') THEN
+    UPDATE hackathon_teams
+    SET team_size_current = team_size_current - 1,
+        updated_at = NOW()
+    WHERE id = COALESCE(NEW.team_id, OLD.team_id);
+  END IF;
+  RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_update_team_size
+AFTER INSERT OR UPDATE OR DELETE ON hackathon_team_members
+FOR EACH ROW EXECUTE FUNCTION update_team_size();
