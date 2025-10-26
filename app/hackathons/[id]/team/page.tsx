@@ -4,7 +4,6 @@ import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
-  CheckCircle,
   AlertCircle,
   Loader2,
   Edit2,
@@ -15,17 +14,12 @@ import {
   Phone,
   MapPin,
   Building,
-  Calendar,
-  MessageCircle,
   Share2,
-  User,
   Trash2,
   Copy,
-  Twitter,
   Linkedin
 } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
 import { z } from "zod";
 import { TeamCreationSchema, TeamMemberSchema } from "@/lib/validations/hackathon-registration";
 import {
@@ -69,9 +63,12 @@ export default function TeamManagementPage({ params }: TeamPageProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [hackathon, setHackathon] = useState<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [team, setTeam] = useState<any>(null);
   const [isLeader, setIsLeader] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [teamsSeekingMembers, setTeamsSeekingMembers] = useState<any[]>([]);
   const [inviteLink, setInviteLink] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
@@ -191,6 +188,42 @@ export default function TeamManagementPage({ params }: TeamPageProps) {
       const result = await addTeamMember(team.id, memberFormData);
       if (result.success) {
         showCustomToast('success', 'Team member added successfully');
+
+        // Send email invitation to the added member
+        try {
+          const supabase = createClient();
+          const { data: { user } } = await supabase.auth.getUser();
+
+          const emailResponse = await fetch('/api/send-team-invite', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: memberFormData.email,
+              teamName: team.team_name,
+              hackathonName: hackathon.title,
+              hackathonId: resolvedParams.id,
+              teamId: team.id,
+              inviterName: user?.user_metadata?.full_name || 'Team Leader',
+            }),
+          });
+
+          const emailData = await emailResponse.json();
+          if (emailResponse.ok) {
+            if (emailData.devMode) {
+              showCustomToast('success', 'Invitation link created! (Dev mode: check console for email details)');
+              console.log('📧 Invite link:', emailData.inviteLink);
+            } else {
+              showCustomToast('success', 'Invitation email sent successfully!');
+            }
+          } else {
+            console.error('Email API error:', emailData);
+            showCustomToast('error', `Email not sent: ${emailData.error || 'Unknown error'}`);
+          }
+        } catch (emailError) {
+          console.error('Failed to send invitation email:', emailError);
+          showCustomToast('error', 'Failed to send invitation email');
+        }
+
         setShowAddMemberModal(false);
         setMemberFormData({
           email: '',
@@ -209,8 +242,9 @@ export default function TeamManagementPage({ params }: TeamPageProps) {
       }
     } catch (error) {
       if (error instanceof z.ZodError) {
+        const zodError = error as z.ZodError;
         const newErrors: any = {};
-        error.errors.forEach((err: any) => {
+        zodError.issues.forEach((err: any) => {
           if (err.path[0]) {
             newErrors[err.path[0]] = err.message;
           }
@@ -559,7 +593,7 @@ export default function TeamManagementPage({ params }: TeamPageProps) {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="grid lg:grid-cols-[60%_38%] gap-6">
+        <div className="grid lg:grid-cols-[60%_38%] gap-4">
           {/* Left Section - Team Management */}
           <div className="space-y-6">
             {/* Team Info Card */}
@@ -628,23 +662,23 @@ export default function TeamManagementPage({ params }: TeamPageProps) {
                           <p>{member.mobile}</p>
                         </div>
                       </div>
-                      {!member.is_leader && (
-                        <div className="flex gap-2">
+                      <div className="flex gap-2">
+                        {!member.is_leader && (
                           <button
                             onClick={() => handleRemoveMember(member.id)}
                             className="p-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-lg transition-all"
                           >
                             <Trash2 className="w-4 h-4 text-red-400" />
                           </button>
-                          <button
-                            onClick={() => handleEditMember(member)}
-                            className="p-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-lg transition-all"
-                            title="Edit member"
-                          >
-                            <Edit2 className="w-4 h-4 text-blue-400" />
-                          </button>
-                        </div>
-                      )}
+                        )}
+                        <button
+                          onClick={() => handleEditMember(member)}
+                          className="p-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-lg transition-all"
+                          title="Edit member details"
+                        >
+                          <Edit2 className="w-4 h-4 text-blue-400" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -774,6 +808,12 @@ export default function TeamManagementPage({ params }: TeamPageProps) {
           >
             Back
           </Link>
+          <button
+            onClick={() => setShowCancelDialog(true)}
+            className="px-8 py-4 bg-red-500/10 hover:bg-red-500/20 border-2 border-red-500/30 hover:border-red-500 text-red-400 hover:text-red-300 rounded-xl font-mono font-bold transition-all"
+          >
+            Cancel Registration
+          </button>
           <button className="flex-1 px-8 py-4 bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white rounded-xl font-mono font-bold transition-all">
             Next
           </button>
@@ -841,7 +881,21 @@ export default function TeamManagementPage({ params }: TeamPageProps) {
           <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-8 max-w-2xl w-full my-8">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-2xl font-blackops text-white">ADD TEAM MEMBER</h3>
-              <button onClick={() => setShowAddMemberModal(false)}>
+              <button onClick={() => {
+                setShowAddMemberModal(false);
+                setMemberFormData({
+                  email: '',
+                  mobile: '',
+                  firstName: '',
+                  lastName: '',
+                  organizationName: '',
+                  participantType: 'College Students',
+                  passoutYear: '',
+                  domain: '',
+                  location: '',
+                });
+                setErrors({});
+              }}>
                 <X className="w-6 h-6 text-gray-400 hover:text-white" />
               </button>
             </div>
@@ -901,16 +955,6 @@ export default function TeamManagementPage({ params }: TeamPageProps) {
               </div>
 
               <div>
-                <label className="block text-white font-mono font-bold mb-2">Organization Name</label>
-                <input
-                  type="text"
-                  value={memberFormData.organizationName}
-                  onChange={(e) => setMemberFormData(prev => ({ ...prev, organizationName: e.target.value }))}
-                  className="w-full px-4 py-3 bg-gray-800 border-2 border-gray-700 rounded-xl text-white font-mono focus:outline-none focus:border-teal-400"
-                />
-              </div>
-
-              <div>
                 <label className="block text-white font-mono font-bold mb-2">
                   Participant Type <span className="text-red-400">*</span>
                 </label>
@@ -921,10 +965,28 @@ export default function TeamManagementPage({ params }: TeamPageProps) {
                 >
                   <option value="College Students">College Students</option>
                   <option value="Professional">Professional</option>
-                  <option value="School Student">School Student</option>
+                  <option value="High School / Primary School Student">High School / Primary School Student</option>
                   <option value="Fresher">Fresher</option>
                 </select>
               </div>
+
+              {/* Organization Name - Conditional based on participant type */}
+              {(memberFormData.participantType === 'Professional' ||
+                memberFormData.participantType === 'College Students' ||
+                memberFormData.participantType === 'High School / Primary School Student') && (
+                <div>
+                  <label className="block text-white font-mono font-bold mb-2">
+                    {getOrganizationLabel(memberFormData.participantType)}
+                  </label>
+                  <input
+                    type="text"
+                    value={memberFormData.organizationName}
+                    onChange={(e) => setMemberFormData(prev => ({ ...prev, organizationName: e.target.value }))}
+                    className="w-full px-4 py-3 bg-gray-800 border-2 border-gray-700 rounded-xl text-white font-mono focus:outline-none focus:border-teal-400"
+                    placeholder={getOrganizationLabel(memberFormData.participantType)}
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="block text-white font-mono font-bold mb-2">
@@ -943,7 +1005,21 @@ export default function TeamManagementPage({ params }: TeamPageProps) {
               <div className="flex gap-4 pt-4">
                 <button
                   type="button"
-                  onClick={() => setShowAddMemberModal(false)}
+                  onClick={() => {
+                    setShowAddMemberModal(false);
+                    setMemberFormData({
+                      email: '',
+                      mobile: '',
+                      firstName: '',
+                      lastName: '',
+                      organizationName: '',
+                      participantType: 'College Students',
+                      passoutYear: '',
+                      domain: '',
+                      location: '',
+                    });
+                    setErrors({});
+                  }}
                   className="flex-1 px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-mono font-bold"
                 >
                   Cancel
@@ -954,12 +1030,6 @@ export default function TeamManagementPage({ params }: TeamPageProps) {
                   className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white rounded-xl font-mono font-bold disabled:opacity-50"
                 >
                   {submitting ? 'Adding...' : 'Add Member'}
-                </button>
-                <button
-                  onClick={() => setShowCancelDialog(true)}
-                  className="px-8 py-4 bg-red-500/10 hover:bg-red-500/20 border-2 border-red-500/30 text-red-400 rounded-xl font-mono font-bold transition-all"
-                >
-                  Cancel Registration
                 </button>
               </div>
             </form>
@@ -1111,8 +1181,106 @@ export default function TeamManagementPage({ params }: TeamPageProps) {
       </div>
 
       <form onSubmit={handleUpdateMember} className="space-y-4">
-        {/* Same form fields as Add Member Modal */}
-        {/* Copy from the Add Member modal but use handleUpdateMember */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-white font-mono font-bold mb-2">
+              Email <span className="text-red-400">*</span>
+            </label>
+            <input
+              type="email"
+              value={memberFormData.email}
+              onChange={(e) => setMemberFormData(prev => ({ ...prev, email: e.target.value }))}
+              className="w-full px-4 py-3 bg-gray-800 border-2 border-gray-700 rounded-xl text-white font-mono focus:outline-none focus:border-teal-400"
+            />
+            {errors.email && <p className="mt-1 text-red-400 text-sm font-mono">{errors.email}</p>}
+          </div>
+
+          <div>
+            <label className="block text-white font-mono font-bold mb-2">
+              Mobile <span className="text-red-400">*</span>
+            </label>
+            <input
+              type="tel"
+              value={memberFormData.mobile}
+              onChange={(e) => setMemberFormData(prev => ({ ...prev, mobile: e.target.value }))}
+              className="w-full px-4 py-3 bg-gray-800 border-2 border-gray-700 rounded-xl text-white font-mono focus:outline-none focus:border-teal-400"
+            />
+            {errors.mobile && <p className="mt-1 text-red-400 text-sm font-mono">{errors.mobile}</p>}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-white font-mono font-bold mb-2">
+              First Name <span className="text-red-400">*</span>
+            </label>
+            <input
+              type="text"
+              value={memberFormData.firstName}
+              onChange={(e) => setMemberFormData(prev => ({ ...prev, firstName: e.target.value }))}
+              className="w-full px-4 py-3 bg-gray-800 border-2 border-gray-700 rounded-xl text-white font-mono focus:outline-none focus:border-teal-400"
+            />
+            {errors.firstName && <p className="mt-1 text-red-400 text-sm font-mono">{errors.firstName}</p>}
+          </div>
+
+          <div>
+            <label className="block text-white font-mono font-bold mb-2">Last Name</label>
+            <input
+              type="text"
+              value={memberFormData.lastName}
+              onChange={(e) => setMemberFormData(prev => ({ ...prev, lastName: e.target.value }))}
+              className="w-full px-4 py-3 bg-gray-800 border-2 border-gray-700 rounded-xl text-white font-mono focus:outline-none focus:border-teal-400"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-white font-mono font-bold mb-2">
+            Participant Type <span className="text-red-400">*</span>
+          </label>
+          <select
+            value={memberFormData.participantType}
+            onChange={(e) => setMemberFormData(prev => ({ ...prev, participantType: e.target.value as any }))}
+            className="w-full px-4 py-3 bg-gray-800 border-2 border-gray-700 rounded-xl text-white font-mono focus:outline-none focus:border-teal-400"
+          >
+            <option value="College Students">College Students</option>
+            <option value="Professional">Professional</option>
+            <option value="High School / Primary School Student">High School / Primary School Student</option>
+            <option value="Fresher">Fresher</option>
+          </select>
+        </div>
+
+        {/* Organization Name - Conditional based on participant type */}
+        {(memberFormData.participantType === 'Professional' ||
+          memberFormData.participantType === 'College Students' ||
+          memberFormData.participantType === 'High School / Primary School Student') && (
+          <div>
+            <label className="block text-white font-mono font-bold mb-2">
+              {getOrganizationLabel(memberFormData.participantType)}
+            </label>
+            <input
+              type="text"
+              value={memberFormData.organizationName}
+              onChange={(e) => setMemberFormData(prev => ({ ...prev, organizationName: e.target.value }))}
+              className="w-full px-4 py-3 bg-gray-800 border-2 border-gray-700 rounded-xl text-white font-mono focus:outline-none focus:border-teal-400"
+              placeholder={getOrganizationLabel(memberFormData.participantType)}
+            />
+          </div>
+        )}
+
+        <div>
+          <label className="block text-white font-mono font-bold mb-2">
+            Location <span className="text-red-400">*</span>
+          </label>
+          <input
+            type="text"
+            value={memberFormData.location}
+            onChange={(e) => setMemberFormData(prev => ({ ...prev, location: e.target.value }))}
+            className="w-full px-4 py-3 bg-gray-800 border-2 border-gray-700 rounded-xl text-white font-mono focus:outline-none focus:border-teal-400"
+            placeholder="City, State, Country"
+          />
+          {errors.location && <p className="mt-1 text-red-400 text-sm font-mono">{errors.location}</p>}
+        </div>
 
         <div className="flex gap-4 pt-4">
           <button

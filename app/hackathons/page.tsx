@@ -1,25 +1,37 @@
 'use client'
 
 import { useEffect, useState } from "react";
-import { Search, Filter, MapPin, Calendar, Users, Trophy, Clock, Star, ExternalLink, ChevronRight, Globe, Building, X } from "lucide-react";
+import { Search, Filter, MapPin, Calendar, Users, Trophy, Clock, Star, ExternalLink, ChevronRight, Globe, Building, X, ChevronDown, PersonStanding, User } from "lucide-react";
 import Image, { StaticImageData } from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { mockHackathons, Hackathon } from "@/lib/mockHackathons2";
 import { fetchPublishedHackathons } from "@/lib/actions/createHackathon-actions";
+import { IconUserStar } from "@tabler/icons-react";
 
 
 
 const Hackathons = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedMode, setSelectedMode] = useState<string>("all");
-  const [selectedStatus, setSelectedStatus] = useState<string>("all");
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [selectedLevel, setSelectedLevel] = useState<string>("all");
-  const [prizeRange, setPrizeRange] = useState<string>("all");
+  const [selectedModes, setSelectedModes] = useState<string[]>([]);
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
+  const [selectedPrizeRanges, setSelectedPrizeRanges] = useState<string[]>([]);
+  const [sortBy, setSortBy] = useState<string>("deadline");
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [showFiltersModal, setShowFiltersModal] = useState(false);
+  const [activeFilterSection, setActiveFilterSection] = useState<string>("Status");
   const [dbHackathons, setDbHackathons] = useState<Hackathon[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [availableCategories, setAvailableCategories] = useState<string[]>([]);
+
+  // Temporary filter states (for modal)
+  const [tempSelectedModes, setTempSelectedModes] = useState<string[]>([]);
+  const [tempSelectedStatuses, setTempSelectedStatuses] = useState<string[]>([]);
+  const [tempSelectedCategories, setTempSelectedCategories] = useState<string[]>([]);
+  const [tempSelectedLevels, setTempSelectedLevels] = useState<string[]>([]);
+  const [tempSelectedPrizeRanges, setTempSelectedPrizeRanges] = useState<string[]>([]);
 
   useEffect(() => {
     loadHackathons();
@@ -51,12 +63,27 @@ const Hackathons = () => {
           featured: false,
           colorTheme: getRandomTheme(index),
           category: hack.categories?.[0] || 'General',
-          level: hack.eligibility?.includes('Professionals') ? 'Advanced' : 
-                 hack.eligibility?.includes('Students') ? 'Intermediate' : 'Beginner',
+          level: hack.eligibility?.[0] || 'Meow', // Use the first eligibility option
           prizeValue: parsePrizeValue(hack.total_prize_pool)
         }));
 
         setDbHackathons(transformedData);
+
+        // Extract unique categories from all hackathons
+        const categories = new Set<string>();
+        result.data.forEach((hack: any) => {
+          if (hack.categories && Array.isArray(hack.categories)) {
+            hack.categories.forEach((cat: string) => {
+              // Convert to proper camel case (each word capitalized)
+              const camelCase = cat.split(' ')
+                .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                .join(' ');
+              categories.add(camelCase);
+            });
+          }
+        });
+        console.log('Available categories:', Array.from(categories));
+        setAvailableCategories(Array.from(categories).sort());
       } else {
         console.error('Failed to fetch hackathons:', result.error);
       }
@@ -71,13 +98,20 @@ const Hackathons = () => {
     const now = new Date();
     const endDate = new Date(hack.registration_end_date);
     const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    
+
     const currentParticipants = hack.participants || 0;
     const maxParticipants = hack.max_participants || 1000;
-    
+
+    // Past dates should be Closed
+    if (daysLeft < 0) return "Full";
+
+    // Full capacity
     if (currentParticipants >= maxParticipants) return "Full";
-    if (daysLeft <= 3 && daysLeft > 0) return "Closing Soon";
-    if (daysLeft < 0) return "Full"; // Treat past deadline as full
+
+    // Less than 1 week (7 days) to expire should be Closing Soon
+    if (daysLeft <= 7 && daysLeft > 0) return "Closing Soon";
+
+    // More than 1 week should be Open
     return "Open";
   };
 
@@ -113,18 +147,32 @@ const Hackathons = () => {
     const matchesSearch = hackathon.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          hackathon.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          hackathon.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    const matchesMode = selectedMode === "all" || hackathon.mode.toLowerCase() === selectedMode;
-    const matchesStatus = selectedStatus === "all" || hackathon.status.toLowerCase().replace(" ", "-") === selectedStatus;
-    const matchesCategory = selectedCategory === "all" || hackathon.category === selectedCategory;
-    const matchesLevel = selectedLevel === "all" || hackathon.level === selectedLevel;
-    
+
+    const matchesMode = selectedModes.length === 0 ||
+                       selectedModes.some(mode => hackathon.mode.toLowerCase() === mode);
+
+    const matchesStatus = selectedStatuses.length === 0 ||
+                         selectedStatuses.some(status => hackathon.status.toLowerCase().replace(" ", "-") === status);
+
+    // Check if any selected category exists in hackathon.tags array
+    // Setting it to lower case because tags are saved as lower case in DB
+    const matchesCategory = selectedCategories.length === 0 ||
+                           selectedCategories.some(cat => hackathon.tags.includes(cat.toLowerCase()));
+
+    const matchesLevel = selectedLevels.length === 0 ||
+                          selectedLevels.some(level => hackathon.level.includes(level));
+
     let matchesPrize = true;
-    if (prizeRange === "free") matchesPrize = hackathon.prizeValue === 0;
-    else if (prizeRange === "1k-10k") matchesPrize = hackathon.prizeValue >= 1000 && hackathon.prizeValue <= 10000;
-    else if (prizeRange === "10k-100k") matchesPrize = hackathon.prizeValue >= 10000 && hackathon.prizeValue <= 100000;
-    else if (prizeRange === "100k+") matchesPrize = hackathon.prizeValue > 100000;
-    
+    if (selectedPrizeRanges.length > 0) {
+      matchesPrize = selectedPrizeRanges.some(range => {
+        if (range === "0") return hackathon.prizeValue === 0;
+        else if (range === "1k-10k") return hackathon.prizeValue >= 1000 && hackathon.prizeValue <= 10000;
+        else if (range === "10k-100k") return hackathon.prizeValue >= 10000 && hackathon.prizeValue <= 100000;
+        else if (range === "100k+") return hackathon.prizeValue > 100000;
+        return true;
+      });
+    }
+
     return matchesSearch && matchesMode && matchesStatus && matchesCategory && matchesLevel && matchesPrize;
   });
 
@@ -195,17 +243,63 @@ const Hackathons = () => {
 
   const clearAllFilters = () => {
     setSearchTerm("");
-    setSelectedMode("all");
-    setSelectedStatus("all");
-    setSelectedCategory("all");
-    setSelectedLevel("all");
-    setPrizeRange("all");
+    setSelectedModes([]);
+    setSelectedStatuses([]);
+    setSelectedCategories([]);
+    setSelectedLevels([]);
+    setSelectedPrizeRanges([]);
   };
 
-  const activeFiltersCount = [selectedMode, selectedStatus, selectedCategory, selectedLevel, prizeRange].filter(f => f !== "all").length;
+  const clearTempFilters = () => {
+    setTempSelectedModes([]);
+    setTempSelectedStatuses([]);
+    setTempSelectedCategories([]);
+    setTempSelectedLevels([]);
+    setTempSelectedPrizeRanges([]);
+  };
+
+  const applyFilters = () => {
+    setSelectedModes(tempSelectedModes);
+    setSelectedStatuses(tempSelectedStatuses);
+    setSelectedCategories(tempSelectedCategories);
+    setSelectedLevels(tempSelectedLevels);
+    setSelectedPrizeRanges(tempSelectedPrizeRanges);
+    setShowFiltersModal(false);
+  };
+
+  const openFiltersModal = () => {
+    // Sync temp filters with current filters
+    setTempSelectedModes(selectedModes);
+    setTempSelectedStatuses(selectedStatuses);
+    setTempSelectedCategories(selectedCategories);
+    setTempSelectedLevels(selectedLevels);
+    setTempSelectedPrizeRanges(selectedPrizeRanges);
+    setShowFiltersModal(true);
+  };
+
+  const activeFiltersCount = [
+    selectedModes.length > 0 ? 1 : 0,
+    selectedStatuses.length > 0 ? 1 : 0,
+    selectedCategories.length > 0 ? 1 : 0,
+    selectedLevels.length > 0 ? 1 : 0,
+    selectedPrizeRanges.length > 0 ? 1 : 0
+  ].reduce((a, b) => a + b, 0);
 
   return (
     <div className="min-h-screen bg-black mt-4">
+      <style jsx>{`
+        select option {
+          background-color: #1f2937;
+          color: white;
+          padding: 8px;
+        }
+        select option:hover {
+          background-color: #374151;
+        }
+        select::-ms-expand {
+          display: none;
+        }
+      `}</style>
       {/* Header */}
       <div className="bg-gradient-to-r from-teal-600 via-cyan-500 to-yellow-400 border-y-4 border-pink-400 shadow-2xl">
         <div className="max-w-7xl mx-auto px-6 py-6">
@@ -229,115 +323,398 @@ const Hackathons = () => {
           </div>
 
           {/* Quick Filters */}
-          <div className="flex flex-wrap gap-3">
-            <select 
-              value={selectedMode} 
-              onChange={(e) => setSelectedMode(e.target.value)}
-              className="bg-gray-900/80 backdrop-blur border-2 border-gray-700 rounded-lg px-4 py-2.5 text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 transition-all"
-            >
-              <option value="all">All Modes</option>
-              <option value="online">🌐 Online</option>
-              <option value="offline">🏢 Physical</option>
-              <option value="hybrid">🔄 Hybrid</option>
-            </select>
-            
-            <select 
-              value={selectedStatus} 
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className="bg-gray-900/80 backdrop-blur border-2 border-gray-700 rounded-lg px-4 py-2.5 text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 transition-all"
-            >
-              <option value="all">All Status</option>
-              <option value="open">✅ Open</option>
-              <option value="closing-soon">⚡ Closing Soon</option>
-              <option value="full">🔒 Full</option>
-            </select>
-            
-            <button 
-              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-              className="bg-teal-600 hover:bg-teal-500 text-white px-6 py-2.5 rounded-lg transition-all font-mono font-bold text-sm flex items-center gap-2 border-2 border-teal-400 shadow-lg hover:shadow-teal-400/50"
+          <div className="flex flex-wrap gap-2 md:gap-3">
+            {/* Main Filters Button */}
+            <button
+              onClick={openFiltersModal}
+              className="bg-gray-900/80 backdrop-blur border-2 border-gray-700 rounded-lg px-3 md:px-4 py-2 md:py-2.5 text-white font-mono text-xs md:text-sm hover:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400 transition-all flex items-center gap-2"
             >
               <Filter className="h-4 w-4" />
-              Advanced Filters
+              Filters
               {activeFiltersCount > 0 && (
-                <span className="bg-yellow-400 text-black rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">
+                <span className="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">
                   {activeFiltersCount}
                 </span>
               )}
             </button>
 
-            {activeFiltersCount > 0 && (
-              <button 
-                onClick={clearAllFilters}
-                className="bg-red-600/80 hover:bg-red-500 border-2 border-red-400 text-white px-4 py-2.5 rounded-lg font-mono font-bold text-sm transition-all flex items-center gap-2"
+            {/* Status Badge - Shows count if statuses selected */}
+            {selectedStatuses.length > 0 && (
+              <div className="hidden sm:flex items-center gap-2 bg-gray-900/80 backdrop-blur border-2 border-teal-400 rounded-lg px-3 md:px-4 py-2 md:py-2.5 text-white font-mono text-xs md:text-sm">
+                <span className="text-teal-400">{selectedStatuses.length} Status</span>
+              </div>
+            )}
+
+            {/* User Type Badge - Shows count if levels selected */}
+            {selectedLevels.length > 0 && (
+              <div className="hidden md:flex items-center gap-2 bg-gray-900/80 backdrop-blur border-2 border-teal-400 rounded-lg px-4 py-2.5 text-white font-mono text-sm">
+                <span className="text-teal-400">{selectedLevels.length} User Types</span>
+              </div>
+            )}
+
+            {/* Category Badge - Shows count if categories selected */}
+            {selectedCategories.length > 0 && (
+              <div className="hidden lg:flex items-center gap-2 bg-gray-900/80 backdrop-blur border-2 border-teal-400 rounded-lg px-4 py-2.5 text-white font-mono text-sm">
+                <span className="text-teal-400">{selectedCategories.length} Categories</span>
+              </div>
+            )}
+
+            {/* Event Type Badge - Shows count if modes selected */}
+            {selectedModes.length > 0 && (
+              <div className="hidden lg:flex items-center gap-2 bg-gray-900/80 backdrop-blur border-2 border-teal-400 rounded-lg px-4 py-2.5 text-white font-mono text-sm">
+                <span className="text-teal-400">{selectedModes.length} Event Types</span>
+              </div>
+            )}
+
+            {/* Prize Range Badge - Shows count if prize ranges selected */}
+            {selectedPrizeRanges.length > 0 && (
+              <div className="hidden lg:flex items-center gap-2 bg-gray-900/80 backdrop-blur border-2 border-teal-400 rounded-lg px-4 py-2.5 text-white font-mono text-sm">
+                <span className="text-teal-400">{selectedPrizeRanges.length} Prize Ranges</span>
+              </div>
+            )}
+
+            {/* Sort By Dropdown */}
+            <div className="relative group ml-auto">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="appearance-none bg-gray-900/80 backdrop-blur border-2 border-gray-700 rounded-lg pl-3 md:pl-4 pr-8 md:pr-10 py-2 md:py-2.5 text-white font-mono text-xs md:text-sm hover:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400 transition-all cursor-pointer"
               >
-                <X className="h-4 w-4" />
-                Clear All
+                <option value="deadline">Sort: Deadline</option>
+                <option value="prize">Sort: Prize</option>
+                <option value="participants">Sort: Participants</option>
+                <option value="recent">Sort: Recent</option>
+              </select>
+              <ChevronDown className="absolute right-2 md:right-3 top-1/2 -translate-y-1/2 h-3 md:h-4 w-3 md:w-4 text-gray-400 pointer-events-none" />
+            </div>
+
+            {activeFiltersCount > 0 && (
+              <button
+                onClick={clearAllFilters}
+                className="bg-red-600/80 hover:bg-red-500 border-2 border-red-400 text-white px-3 md:px-4 py-2 md:py-2.5 rounded-lg font-mono font-bold text-xs md:text-sm transition-all flex items-center gap-2"
+              >
+                <X className="h-3 md:h-4 w-3 md:w-4" />
+                <span className="hidden sm:inline">Clear All</span>
+                <span className="sm:hidden">Clear</span>
               </button>
             )}
           </div>
 
-          {/* Advanced Filters Panel */}
-          {showAdvancedFilters && (
-            <div className="bg-gray-900/95 backdrop-blur border-2 mt-2 border-gray-700 rounded-xl p-6 shadow-2xl animate-in slide-in-from-top duration-300">
-              <h3 className="text-xl font-blackops text-white mb-4 flex items-center gap-2">
-                <Filter className="w-5 h-5 text-teal-400" />
-                Advanced Filters
-              </h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-gray-300 font-mono font-semibold text-sm mb-2">Category</label>
-                  <select 
-                    value={selectedCategory} 
-                    onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="w-full bg-gray-800 border-2 border-gray-700 rounded-lg px-3 py-2.5 text-white font-mono focus:outline-none focus:ring-2 focus:ring-teal-400 transition-all"
+          {/* Filters Modal */}
+          {showFiltersModal && (
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-2 sm:p-4">
+              <div className="bg-gray-900 border-2 border-teal-400 rounded-xl sm:rounded-2xl w-full max-w-3xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden shadow-2xl shadow-teal-400/20">
+                {/* Modal Header */}
+                <div className="flex items-center justify-between p-4 sm:p-6 border-b-2 border-gray-800">
+                  <h2 className="text-2xl sm:text-3xl font-blackops text-white">Filters</h2>
+                  <button
+                    onClick={() => setShowFiltersModal(false)}
+                    className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
                   >
-                    <option value="all">All Categories</option>
-                    <option value="Blockchain">Blockchain</option>
-                    <option value="FinTech">FinTech</option>
-                    <option value="Space & Science">Space & Science</option>
-                    <option value="Gaming">Gaming</option>
-                    <option value="AI/ML">AI/ML</option>
-                  </select>
+                    <X className="h-6 w-6 text-gray-400 hover:text-white" />
+                  </button>
                 </div>
-                
-                <div>
-                  <label className="block text-gray-300 font-mono font-semibold text-sm mb-2">Skill Level</label>
-                  <select 
-                    value={selectedLevel} 
-                    onChange={(e) => setSelectedLevel(e.target.value)}
-                    className="w-full bg-gray-800 border-2 border-gray-700 rounded-lg px-3 py-2.5 text-white font-mono focus:outline-none focus:ring-2 focus:ring-teal-400 transition-all"
+
+                {/* Modal Content */}
+                <div className="flex h-[400px] sm:h-[500px]">
+                  {/* Sidebar */}
+                  <div className="w-32 sm:w-40 md:w-52 bg-gray-950/50 border-r-2 border-gray-800 p-2 sm:p-3 md:p-4 overflow-y-auto">
+                    <div className="space-y-1 sm:space-y-2">
+                      {[
+                        { full: "Status", short: "Status" },
+                        { full: "Event Type", short: "Event" },
+                        { full: "User Type", short: "User" },
+                        { full: "Category", short: "Category" },
+                        { full: "Prize Rewards Range", short: "Prize" }
+                      ].map((section) => (
+                        <button
+                          key={section.full}
+                          onClick={() => setActiveFilterSection(section.full)}
+                          className={`w-full text-left px-2 sm:px-3 md:px-4 py-2 sm:py-2.5 md:py-3 rounded-lg text-xs sm:text-sm font-mono font-bold transition-all ${
+                            activeFilterSection === section.full
+                              ? "bg-teal-500/20 text-teal-400 border-2 border-teal-400"
+                              : "text-gray-400 hover:bg-gray-800 border-2 border-transparent"
+                          }`}
+                        >
+                          <span className="hidden sm:inline">{section.full}</span>
+                          <span className="sm:hidden">{section.short}</span>
+                          {section.full === "Status" && tempSelectedStatuses.length > 0 && (
+                            <span className="ml-2 w-2 h-2 bg-teal-400 rounded-full inline-block"></span>
+                          )}
+                          {section.full === "Event Type" && tempSelectedModes.length > 0 && (
+                            <span className="ml-2 w-2 h-2 bg-teal-400 rounded-full inline-block"></span>
+                          )}
+                          {section.full === "User Type" && tempSelectedLevels.length > 0 && (
+                            <span className="ml-2 w-2 h-2 bg-teal-400 rounded-full inline-block"></span>
+                          )}
+                          {section.full === "Category" && tempSelectedCategories.length > 0 && (
+                            <span className="ml-2 w-2 h-2 bg-teal-400 rounded-full inline-block"></span>
+                          )}
+                          {section.full === "Prize Rewards Range" && tempSelectedPrizeRanges.length > 0 && (
+                            <span className="ml-2 w-2 h-2 bg-teal-400 rounded-full inline-block"></span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Filter Options */}
+                  <div className="flex-1 p-3 sm:p-4 md:p-6 overflow-y-auto bg-gray-900">
+                    {/* Status Section */}
+                    {activeFilterSection === "Status" && (
+                      <div>
+                        <div className="flex items-center justify-between mb-6">
+                          <h3 className="text-xl font-blackops text-white">
+                            Status
+                            {tempSelectedStatuses.length > 0 && (
+                              <span className="ml-2 text-sm text-teal-400">({tempSelectedStatuses.length} selected)</span>
+                            )}
+                          </h3>
+                          <button
+                            onClick={() => setTempSelectedStatuses([])}
+                            className="text-sm text-teal-400 hover:text-teal-300 font-mono font-bold"
+                          >
+                            Clear
+                          </button>
+                        </div>
+                        <div className="space-y-3">
+                          {[
+                            { value: "open", label: "Live" },
+                            { value: "closing-soon", label: "Closing Soon" },
+                            { value: "full", label: "Closed" },
+                          ].map((option) => (
+                            <label
+                              key={option.value}
+                              className="flex items-center gap-3 p-4 hover:bg-gray-800 rounded-lg cursor-pointer transition-all border-2 border-transparent hover:border-teal-400/30"
+                            >
+                              <input
+                                type="checkbox"
+                                value={option.value}
+                                checked={tempSelectedStatuses.includes(option.value)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setTempSelectedStatuses([...tempSelectedStatuses, option.value]);
+                                  } else {
+                                    setTempSelectedStatuses(tempSelectedStatuses.filter(s => s !== option.value));
+                                  }
+                                }}
+                                className="w-4 h-4 text-teal-400 focus:ring-2 focus:ring-teal-400 bg-gray-800 border-gray-600 rounded"
+                              />
+                              <span className="text-gray-200 font-mono font-semibold">{option.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Event Type Section */}
+                    {activeFilterSection === "Event Type" && (
+                      <div>
+                        <div className="flex items-center justify-between mb-6">
+                          <h3 className="text-xl font-blackops text-white">
+                            Event Type
+                            {tempSelectedModes.length > 0 && (
+                              <span className="ml-2 text-sm text-teal-400">({tempSelectedModes.length} selected)</span>
+                            )}
+                          </h3>
+                          <button
+                            onClick={() => setTempSelectedModes([])}
+                            className="text-sm text-teal-400 hover:text-teal-300 font-mono font-bold"
+                          >
+                            Clear
+                          </button>
+                        </div>
+                        <div className="space-y-3">
+                          {[
+                            { value: "online", label: "Online" },
+                            { value: "offline", label: "Offline" },
+                            { value: "hybrid", label: "Hybrid" },
+                          ].map((option) => (
+                            <label
+                              key={option.value}
+                              className="flex items-center gap-3 p-4 hover:bg-gray-800 rounded-lg cursor-pointer transition-all border-2 border-transparent hover:border-teal-400/30"
+                            >
+                              <input
+                                type="checkbox"
+                                value={option.value}
+                                checked={tempSelectedModes.includes(option.value)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setTempSelectedModes([...tempSelectedModes, option.value]);
+                                  } else {
+                                    setTempSelectedModes(tempSelectedModes.filter(m => m !== option.value));
+                                  }
+                                }}
+                                className="w-4 h-4 text-teal-400 focus:ring-2 focus:ring-teal-400 bg-gray-800 border-gray-600 rounded"
+                              />
+                              <span className="text-gray-200 font-mono font-semibold">{option.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* User Type Section */}
+                    {activeFilterSection === "User Type" && (
+                      <div>
+                        <div className="flex items-center justify-between mb-6">
+                          <h3 className="text-xl font-blackops text-white">
+                            User Type
+                            {tempSelectedLevels.length > 0 && (
+                              <span className="ml-2 text-sm text-teal-400">({tempSelectedLevels.length} selected)</span>
+                            )}
+                          </h3>
+                          <button
+                            onClick={() => setTempSelectedLevels([])}
+                            className="text-sm text-teal-400 hover:text-teal-300 font-mono font-bold"
+                          >
+                            Clear
+                          </button>
+                        </div>
+                        <div className="space-y-3">
+                          {[
+                            { value: "Professionals", label: "Professionals" },
+                            { value: "Uni/College Students", label: "Uni/College Students" },
+                            { value: "High School Students", label: "High School Students" },
+                            { value: "Freshers", label: "Freshers" },
+                            { value: "Everyone", label: "Everyone" },
+                          ].map((option) => (
+                            <label
+                              key={option.value}
+                              className="flex items-center gap-3 p-4 hover:bg-gray-800 rounded-lg cursor-pointer transition-all border-2 border-transparent hover:border-teal-400/30"
+                            >
+                              <input
+                                type="checkbox"
+                                value={option.value}
+                                checked={tempSelectedLevels.includes(option.value)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setTempSelectedLevels([...tempSelectedLevels, option.value]);
+                                  } else {
+                                    setTempSelectedLevels(tempSelectedLevels.filter(l => l !== option.value));
+                                  }
+                                }}
+                                className="w-4 h-4 text-teal-400 focus:ring-2 focus:ring-teal-400 bg-gray-800 border-gray-600 rounded"
+                              />
+                              <span className="text-gray-200 font-mono font-semibold">{option.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Category Section - Multi-select */}
+                    {activeFilterSection === "Category" && (
+                      <div>
+                        <div className="flex items-center justify-between mb-6">
+                          <h3 className="text-xl font-blackops text-white">
+                            Category
+                            {tempSelectedCategories.length > 0 && (
+                              <span className="ml-2 text-sm text-teal-400">({tempSelectedCategories.length} selected)</span>
+                            )}
+                          </h3>
+                          <button
+                            onClick={() => setTempSelectedCategories([])}
+                            className="text-sm text-teal-400 hover:text-teal-300 font-mono font-bold"
+                          >
+                            Clear
+                          </button>
+                        </div>
+                        <div className="space-y-3">
+                          {availableCategories.length > 0 ? (
+                            availableCategories.map((category) => (
+                              <label
+                                key={category}
+                                className="flex items-center gap-3 p-4 hover:bg-gray-800 rounded-lg cursor-pointer transition-all border-2 border-transparent hover:border-teal-400/30"
+                              >
+                                <input
+                                  type="checkbox"
+                                  value={category}
+                                  checked={tempSelectedCategories.includes(category)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setTempSelectedCategories([...tempSelectedCategories, category]);
+                                    } else {
+                                      setTempSelectedCategories(tempSelectedCategories.filter(c => c !== category));
+                                    }
+                                  }}
+                                  className="w-4 h-4 text-teal-400 focus:ring-2 focus:ring-teal-400 bg-gray-800 border-gray-600 rounded"
+                                />
+                                <span className="text-gray-200 font-mono font-semibold">{category}</span>
+                              </label>
+                            ))
+                          ) : (
+                            <p className="text-gray-400 font-mono text-sm">No categories available</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Prize Rewards Range Section */}
+                    {activeFilterSection === "Prize Rewards Range" && (
+                      <div>
+                        <div className="flex items-center justify-between mb-6">
+                          <h3 className="text-xl font-blackops text-white">
+                            Prize Rewards Range
+                            {tempSelectedPrizeRanges.length > 0 && (
+                              <span className="ml-2 text-sm text-teal-400">({tempSelectedPrizeRanges.length} selected)</span>
+                            )}
+                          </h3>
+                          <button
+                            onClick={() => setTempSelectedPrizeRanges([])}
+                            className="text-sm text-teal-400 hover:text-teal-300 font-mono font-bold"
+                          >
+                            Clear
+                          </button>
+                        </div>
+                        <div className="space-y-3">
+                          {[
+                            { value: "0", label: "No Prize" },
+                            { value: "1k-10k", label: "RM1000 - RM10,000" },
+                            { value: "10k-100k", label: "RM10,000 - RM100,000" },
+                            { value: "100k+", label: "RM100,000+" },
+                          ].map((option) => (
+                            <label
+                              key={option.value}
+                              className="flex items-center gap-3 p-4 hover:bg-gray-800 rounded-lg cursor-pointer transition-all border-2 border-transparent hover:border-teal-400/30"
+                            >
+                              <input
+                                type="checkbox"
+                                value={option.value}
+                                checked={tempSelectedPrizeRanges.includes(option.value)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setTempSelectedPrizeRanges([...tempSelectedPrizeRanges, option.value]);
+                                  } else {
+                                    setTempSelectedPrizeRanges(tempSelectedPrizeRanges.filter(p => p !== option.value));
+                                  }
+                                }}
+                                className="w-4 h-4 text-teal-400 focus:ring-2 focus:ring-teal-400 bg-gray-800 border-gray-600 rounded"
+                              />
+                              <span className="text-gray-200 font-mono font-semibold">{option.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Modal Footer */}
+                <div className="flex items-center justify-between p-3 sm:p-4 md:p-6 border-t-2 border-gray-800 bg-gray-950/50">
+                  <button
+                    onClick={clearTempFilters}
+                    className="px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 text-xs sm:text-sm font-mono font-bold text-red-400 hover:text-red-300 transition-colors"
                   >
-                    <option value="all">All Levels</option>
-                    <option value="Beginner">🌱 Beginner</option>
-                    <option value="Intermediate">⚡ Intermediate</option>
-                    <option value="Advanced">🚀 Advanced</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-gray-300 font-mono font-semibold text-sm mb-2">Prize Range</label>
-                  <select 
-                    value={prizeRange} 
-                    onChange={(e) => setPrizeRange(e.target.value)}
-                    className="w-full bg-gray-800 border-2 border-gray-700 rounded-lg px-3 py-2.5 text-white font-mono focus:outline-none focus:ring-2 focus:ring-teal-400 transition-all"
+                    Clear Filter
+                  </button>
+                  <button
+                    onClick={applyFilters}
+                    className="px-4 sm:px-6 md:px-8 py-2 sm:py-2.5 md:py-3 bg-teal-600 hover:bg-teal-500 text-white rounded-lg font-mono font-bold text-xs sm:text-sm transition-all flex items-center gap-2 shadow-lg hover:shadow-teal-400/50 border-2 border-teal-400"
                   >
-                    <option value="all">All Prizes</option>
-                    <option value="free">Free Entry</option>
-                    <option value="1k-10k">💰 $1K - $10K</option>
-                    <option value="10k-100k">💎 $10K - $100K</option>
-                    <option value="100k+">🏆 $100K+</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-gray-300 font-mono font-semibold text-sm mb-2">Sort By</label>
-                  <select className="w-full bg-gray-800 border-2 border-gray-700 rounded-lg px-3 py-2.5 text-white font-mono focus:outline-none focus:ring-2 focus:ring-teal-400 transition-all">
-                    <option>📅 Deadline</option>
-                    <option>💰 Prize Amount</option>
-                    <option>👥 Participants</option>
-                    <option>🆕 Recently Added</option>
-                  </select>
+                    Apply Filter
+                    <ChevronRight className="h-3 sm:h-4 w-3 sm:w-4" />
+                  </button>
                 </div>
               </div>
             </div>
@@ -442,6 +819,11 @@ const Hackathons = () => {
                           <span className="truncate">{hackathon.location}</span>
                         </div>
                         
+                        <div className="flex items-center gap-2 text-sm text-gray-300 font-mono">
+                          <User className="h-4 w-4 text-pink-400 flex-shrink-0" />
+                          <span>{Array.isArray(hackathon.level) ? hackathon.level.join(', ') : hackathon.level}</span>
+                        </div>
+
                         <div className="flex items-center gap-2 text-sm text-gray-300 font-mono">
                           <Clock className="h-4 w-4 text-orange-400 flex-shrink-0" />
                           <span>{hackathon.timeLeft}</span>

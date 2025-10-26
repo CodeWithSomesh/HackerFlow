@@ -300,18 +300,29 @@ export async function addTeamMember(teamId: string, memberData: TeamMemberData) 
       return { success: false, error: 'Team is already full' };
     }
 
-    // Check if user already exists in the system
-    const { data: existingUser } = await supabase
-      .from('auth.users')
-      .select('id')
+    // Check if user already exists in the system by checking user_profiles
+    let existingUserId = null;
+    const { data: existingUserProfile } = await supabase
+      .from('user_profiles')
+      .select('user_id')
       .eq('email', memberData.email)
       .single();
+
+    if (existingUserProfile) {
+      existingUserId = existingUserProfile.user_id;
+    }
+
+    console.log('Adding team member:', {
+      email: memberData.email,
+      existingUserId,
+      teamId
+    });
 
     const { data: member, error: memberError } = await supabase
       .from('hackathon_team_members')
       .insert({
         team_id: teamId,
-        user_id: existingUser?.id || null,
+        user_id: existingUserId,
         email: memberData.email,
         mobile: memberData.mobile,
         first_name: memberData.firstName,
@@ -322,22 +333,26 @@ export async function addTeamMember(teamId: string, memberData: TeamMemberData) 
         domain: memberData.domain,
         location: memberData.location,
         is_leader: false,
-        status: existingUser ? 'pending' : 'pending',
+        status: 'pending',
         invited_by: user.id,
       })
       .select()
       .single();
 
     if (memberError) {
-      console.error('Error adding team member:', memberError);
-      return { success: false, error: 'Failed to add team member' };
+      console.error('❌ Error adding team member:', memberError);
+      console.error('Member data:', memberData);
+      return { success: false, error: `Failed to add team member: ${memberError.message}` };
     }
+
+    console.log('✅ Team member added successfully:', member);
 
     revalidatePath(`/hackathons/register/${teamId}`);
     return { success: true, data: member };
   } catch (error) {
-    console.error('Error in addTeamMember:', error);
-    return { success: false, error: 'An unexpected error occurred' };
+    console.error('❌ Error in addTeamMember:', error);
+    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+    return { success: false, error: errorMessage };
   }
 }
 
@@ -480,7 +495,6 @@ export async function getTeamsSeekingMembers(hackathonId: string) {
       `)
       .eq('hackathon_id', hackathonId)
       .eq('looking_for_teammates', true)
-      .lt('team_size_current', supabase.rpc('team_size_max'))
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -488,7 +502,12 @@ export async function getTeamsSeekingMembers(hackathonId: string) {
       return { success: false, error: 'Failed to fetch teams' };
     }
 
-    return { success: true, data: teams || [] };
+    // Filter teams that still have space (client-side filtering)
+    const teamsWithSpace = teams?.filter(team =>
+      team.team_size_current < team.team_size_max
+    ) || [];
+
+    return { success: true, data: teamsWithSpace };
   } catch (error) {
     console.error('Error in getTeamsSeekingMembers:', error);
     return { success: false, error: 'An unexpected error occurred' };

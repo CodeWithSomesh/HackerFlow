@@ -5,7 +5,8 @@
       "Bash(npx tsc:*)",
       "Bash(code:*)",
       "Bash(Get-Content \"app\\ai-idea-generator\\page.tsx\")",
-      "Bash(Select-Object -Skip 266 -First 10)"
+      "Bash(Select-Object -Skip 266 -First 10)",
+      "Bash(npm run dev:*)"
     ],
     "deny": [],
     "ask": []

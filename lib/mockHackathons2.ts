@@ -25,7 +25,7 @@ export interface Hackathon {
     featured?: boolean;
     colorTheme: string;
     category: string;
-    level: "Beginner" | "Intermediate" | "Advanced";
+    level: string[];
     prizeValue: number;
   }
 
@@ -49,7 +49,7 @@ export const mockHackathons: Hackathon[] = [
       featured: true,
       colorTheme: "purple",
       category: "Blockchain",
-      level: "Advanced",
+      level: ["Professionals"],
       prizeValue: 1000000
     },
     {
@@ -70,7 +70,7 @@ export const mockHackathons: Hackathon[] = [
       timeLeft: "12 hours left",
       colorTheme: "teal",
       category: "FinTech",
-      level: "Intermediate",
+      level: ["Uni/College Students"],
       prizeValue: 250000
     },
     {
@@ -91,7 +91,7 @@ export const mockHackathons: Hackathon[] = [
       timeLeft: "45 days left",
       colorTheme: "green",
       category: "Space & Science",
-      level: "Beginner",
+      level: ["High School Students"],
       prizeValue: 8000
     },
     {
@@ -112,7 +112,7 @@ export const mockHackathons: Hackathon[] = [
       timeLeft: "18 days left",
       colorTheme: "pink",
       category: "FinTech",
-      level: "Intermediate",
+      level: ["Uni/College Students", "Professionals"],
       prizeValue: 150000
     },
     {
@@ -133,7 +133,7 @@ export const mockHackathons: Hackathon[] = [
       timeLeft: "52 days left",
       colorTheme: "yellow",
       category: "Blockchain",
-      level: "Advanced",
+      level: ["Everyone"],
       prizeValue: 50000
     },
     {
@@ -154,7 +154,7 @@ export const mockHackathons: Hackathon[] = [
       timeLeft: "60 days left",
       colorTheme: "cyan",
       category: "Gaming",
-      level: "Beginner",
+      level: ["Everyone"],
       prizeValue: 25000
     },
     {
@@ -176,7 +176,7 @@ export const mockHackathons: Hackathon[] = [
       featured: true,
       colorTheme: "purple",
       category: "Blockchain",
-      level: "Advanced",
+      level: ["Uni/College Students", "High School Students"],
       prizeValue: 1000000
     },
     {
@@ -197,7 +197,7 @@ export const mockHackathons: Hackathon[] = [
       timeLeft: "12 hours left",
       colorTheme: "teal",
       category: "FinTech",
-      level: "Intermediate",
+      level: ["Everyone"],
       prizeValue: 250000
     },
     {
@@ -218,7 +218,7 @@ export const mockHackathons: Hackathon[] = [
       timeLeft: "45 days left",
       colorTheme: "green",
       category: "Space & Science",
-      level: "Beginner",
+      level: ["Everyone"],
       prizeValue: 8000
     },
     {
@@ -239,7 +239,7 @@ export const mockHackathons: Hackathon[] = [
       timeLeft: "18 days left",
       colorTheme: "pink",
       category: "FinTech",
-      level: "Intermediate",
+      level: ["Freshers"],
       prizeValue: 150000
     },
     {
@@ -260,7 +260,7 @@ export const mockHackathons: Hackathon[] = [
       timeLeft: "52 days left",
       colorTheme: "yellow",
       category: "Blockchain",
-      level: "Advanced",
+      level: ["Freshers", "Uni/College Students"],
       prizeValue: 50000
     },
     {
@@ -281,7 +281,7 @@ export const mockHackathons: Hackathon[] = [
       timeLeft: "60 days left",
       colorTheme: "cyan",
       category: "Gaming",
-      level: "Beginner",
+      level: ["Professionals", "Freshers"],
       prizeValue: 25000
     }
   ];

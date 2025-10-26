@@ -107,7 +107,12 @@ export default function HackathonRegister({ params }: HackathonRegisterProps) {
         setFieldsFromDB(dbFields);
         setFormData(prev => ({
           ...prev,
-          ...profileResult.data,
+          email: profileData.email || prev.email,
+          firstName: profileData.firstName || prev.firstName,
+          lastName: profileData.lastName || prev.lastName,
+          organizationName: profileData.organizationName || prev.organizationName,
+          location: profileData.location || prev.location,
+          participantType: (profileData.participantType as any) || prev.participantType,
         }));
       }
     } catch (error) {

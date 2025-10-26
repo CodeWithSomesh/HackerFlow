@@ -6,9 +6,7 @@ export const HackathonRegistrationSchema = z.object({
   firstName: z.string().min(1, 'First name is required').max(100, 'First name must be less than 100 characters'),
   lastName: z.string().max(100, 'Last name must be less than 100 characters').optional(),
   organizationName: z.string().max(200, 'Organization name must be less than 200 characters').optional(),
-  participantType: z.enum(['College Students', 'Professional', 'High School / Primary School Student', 'Fresher'], {
-    errorMap: () => ({ message: 'Please select a participant type' }),
-  }),
+  participantType: z.enum(['College Students', 'Professional', 'High School / Primary School Student', 'Fresher']),
   passoutYear: z.string().optional(),
   domain: z.string().optional(),
   location: z.string().min(1, 'Location is required'),

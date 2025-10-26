@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
-
 import { Resend } from 'resend';
+
 const resend = new Resend(process.env.RESEND_API_KEY);
+// Force production mode to send real emails
+const isDevelopment = false; // Set to true to enable dev mode simulation
 
 export async function POST(request: Request) {
   try {
@@ -10,9 +12,28 @@ export async function POST(request: Request) {
     // Generate invite link
     const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/hackathons/${hackathonId}/join-team/${teamId}`;
 
+    // In development mode, simulate email sending (bypass Resend's testing limitations)
+    if (isDevelopment) {
+      console.log('\n📧 ========== EMAIL SIMULATION (DEV MODE) ==========');
+      console.log('📧 To:', email);
+      console.log('📧 From:', inviterName);
+      console.log('📧 Team:', teamName);
+      console.log('📧 Hackathon:', hackathonName);
+      console.log('📧 Invite Link:', inviteLink);
+      console.log('📧 Subject:', `You're invited to join ${teamName} for ${hackathonName}!`);
+      console.log('📧 ================================================\n');
 
+      return NextResponse.json({
+        success: true,
+        message: 'Development mode: Email simulated successfully. Check server console for details.',
+        inviteLink,
+        devMode: true
+      });
+    }
+
+    // Production mode: Send real email via Resend
     const { data, error } = await resend.emails.send({
-      from: 'HackerFlow <noreply@yourdomain.com>', // Replace with your verified domain
+      from: process.env.RESEND_FROM_EMAIL || 'HackerFlow <onboarding@resend.dev>',
       to: [email],
       subject: `You're invited to join ${teamName} for ${hackathonName}!`,
       html: `
@@ -78,18 +99,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, data });
 
-    // Temporary response before Resend is set up
-    console.log('Email would be sent to:', email);
-    console.log('Invite link:', inviteLink);
-
-    return NextResponse.json({
-      success: true,
-      message: 'Email sending not configured yet. Install Resend and add API key to .env',
-      inviteLink
-    });
-
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error in send-team-invite:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
