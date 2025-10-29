@@ -30,11 +30,26 @@ interface GeneratedIdea {
       duration: string;
       tasks: string[];
     }>;
+    databaseRecommendation?: {
+      database: string;
+      reasoning: string;
+      schema: string;
+      alternatives: string;
+    };
+    securityBestPractices?: string[];
+    deploymentGuide?: {
+      frontend: string;
+      backend: string;
+      database: string;
+      monitoring: string;
+    };
   };
   techStack?: string[];
   estimatedTime?: string;
   skillsRequired?: string[];
   successMetrics?: string[];
+  winningStrategy?: string;
+  error?: string; // For validation errors
 }
 
 export default function AIIdeaGenerator() {
@@ -102,12 +117,14 @@ export default function AIIdeaGenerator() {
   useEffect(() => {
     if (generatedIdea && currentPage === 'results') {
       // Initialize chat for this idea
-      setChatMessages([])
-      if (!conversationId) {
+      // Don't create conversation until idea is saved (has an ID)
+      // This prevents creating conversations with temporary IDs
+      if (generatedIdea.id && !conversationId) {
         const initConversation = async () => {
           const result = await createConversation(
             generatedIdea.hackathonId,
-            generatedIdea.id || 'temp'
+            generatedIdea.id!,
+            chatMessages
           )
           if (result.success) {
             setConversationId(result.data.id)
@@ -116,7 +133,7 @@ export default function AIIdeaGenerator() {
         initConversation()
       }
     }
-  }, [generatedIdea, currentPage, conversationId])
+  }, [generatedIdea, currentPage, conversationId, chatMessages])
 
   const loadHackathons = async () => {
     const result = await fetchPublishedHackathons()
@@ -177,10 +194,10 @@ export default function AIIdeaGenerator() {
       showCustomToast('warning', 'Please upload a resume or provide inspiration')
       return
     }
-  
+
     setIsGenerating(true)
     showCustomToast('info', 'Generating your idea... This may take a moment.')
-    
+
     try {
       const response = await fetch('/api/generate-idea', {
         method: 'POST',
@@ -194,13 +211,14 @@ export default function AIIdeaGenerator() {
               content: `Generate a hackathon project idea for ${selectedHackathon.title}`,
             }
           ],
+          hackathonId: selectedHackathon.id, // Pass hackathon ID for full details
           hackathonTitle: selectedHackathon.title,
           hackathonCategories: selectedHackathon.categories,
           resumeText,
           inspiration,
         }),
       });
-  
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.error('API Error Response:', errorData);
@@ -233,6 +251,12 @@ export default function AIIdeaGenerator() {
       try {
         const parsed = JSON.parse(jsonMatch[0]);
         console.log('Successfully parsed idea:', parsed);
+
+        // Check if AI returned a validation error
+        if (parsed.error) {
+          showCustomToast('error', parsed.error);
+          return;
+        }
 
         setGeneratedIdea({
           ...parsed,
@@ -279,11 +303,17 @@ export default function AIIdeaGenerator() {
 
     if (result.success) {
       showCustomToast('success', 'Idea saved successfully!')
-      // Now create a conversation for this idea
+      // Update generatedIdea with the saved ID
+      setGeneratedIdea({
+        ...generatedIdea,
+        id: result.data.id
+      })
+      // Now create a conversation for this idea if one doesn't exist
       if (!conversationId) {
         const convResult = await createConversation(
           generatedIdea.hackathonId,
-          result.data.id
+          result.data.id,
+          chatMessages // Pass existing chat messages if any
         )
         if (convResult.success) {
           setConversationId(convResult.data.id)
@@ -309,14 +339,21 @@ export default function AIIdeaGenerator() {
       return
     }
 
+    // Check if idea is saved before allowing chat
+    if (!generatedIdea?.id) {
+      showCustomToast('warning', 'Please save your idea first before chatting')
+      return
+    }
+
     const userMessage: Message = {
       role: 'user',
       content: chatInput,
       timestamp: new Date().toISOString(),
     }
 
+    const updatedMessages = [...chatMessages, userMessage]
     setChatInput('')
-    setChatMessages([...chatMessages, userMessage])
+    setChatMessages(updatedMessages)
     setIsStreamingChat(true)
 
     try {
@@ -324,10 +361,7 @@ export default function AIIdeaGenerator() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: [
-            ...chatMessages,
-            userMessage,
-          ].map(msg => ({
+          messages: updatedMessages.map(msg => ({
             role: msg.role,
             content: msg.content,
           })),
@@ -360,15 +394,12 @@ export default function AIIdeaGenerator() {
           timestamp: new Date().toISOString(),
         }
 
-        setChatMessages((prev) => [...prev, assistantMessage])
+        const finalMessages = [...updatedMessages, assistantMessage]
+        setChatMessages(finalMessages)
 
         // Update conversation in database
         if (conversationId) {
-          await updateConversation(conversationId, [
-            ...chatMessages,
-            userMessage,
-            assistantMessage,
-          ])
+          await updateConversation(conversationId, finalMessages)
         }
       }
     } catch (error) {
@@ -711,16 +742,117 @@ export default function AIIdeaGenerator() {
                     </div>
                   </div>
 
+                  {/* Database Recommendation */}
+                  {generatedIdea.implementation?.databaseRecommendation && (
+                    <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-6">
+                      <h3 className="text-lg font-blackops text-white mb-3 flex items-center gap-2">
+                        <div className="w-1 h-6 bg-gradient-to-b from-blue-400 to-blue-600"></div>
+                        Database Recommendation
+                      </h3>
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-blue-300 font-mono font-bold text-sm mb-1">
+                            {generatedIdea.implementation.databaseRecommendation.database}
+                          </p>
+                          <p className="text-gray-300 font-mono text-xs leading-relaxed">
+                            {generatedIdea.implementation.databaseRecommendation.reasoning}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-blue-300 font-mono font-bold text-xs mb-1">Schema:</p>
+                          <p className="text-gray-300 font-mono text-xs">
+                            {generatedIdea.implementation.databaseRecommendation.schema}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-blue-300 font-mono font-bold text-xs mb-1">Alternatives:</p>
+                          <p className="text-gray-300 font-mono text-xs">
+                            {generatedIdea.implementation.databaseRecommendation.alternatives}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Security Best Practices */}
+                  {generatedIdea.implementation?.securityBestPractices && generatedIdea.implementation.securityBestPractices.length > 0 && (
+                    <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-6">
+                      <h3 className="text-lg font-blackops text-white mb-3 flex items-center gap-2">
+                        <div className="w-1 h-6 bg-gradient-to-b from-red-400 to-red-600"></div>
+                        Security Best Practices
+                      </h3>
+                      <ul className="space-y-2">
+                        {generatedIdea.implementation.securityBestPractices.map((practice: string, idx: number) => (
+                          <li key={idx} className="flex gap-2 items-start">
+                            <span className="text-red-400 mt-1">•</span>
+                            <p className="text-gray-300 font-mono text-xs leading-relaxed flex-1">
+                              {practice}
+                            </p>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Deployment Guide */}
+                  {generatedIdea.implementation?.deploymentGuide && (
+                    <div className="bg-purple-500/5 border border-purple-500/20 rounded-lg p-6">
+                      <h3 className="text-lg font-blackops text-white mb-3 flex items-center gap-2">
+                        <div className="w-1 h-6 bg-gradient-to-b from-purple-400 to-purple-600"></div>
+                        Deployment Guide
+                      </h3>
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-purple-300 font-mono font-bold text-xs mb-1">Frontend:</p>
+                          <p className="text-gray-300 font-mono text-xs leading-relaxed">
+                            {generatedIdea.implementation.deploymentGuide.frontend}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-purple-300 font-mono font-bold text-xs mb-1">Backend:</p>
+                          <p className="text-gray-300 font-mono text-xs leading-relaxed">
+                            {generatedIdea.implementation.deploymentGuide.backend}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-purple-300 font-mono font-bold text-xs mb-1">Database:</p>
+                          <p className="text-gray-300 font-mono text-xs leading-relaxed">
+                            {generatedIdea.implementation.deploymentGuide.database}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-purple-300 font-mono font-bold text-xs mb-1">Monitoring:</p>
+                          <p className="text-gray-300 font-mono text-xs leading-relaxed">
+                            {generatedIdea.implementation.deploymentGuide.monitoring}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Winning Strategy */}
+                  {generatedIdea.winningStrategy && (
+                    <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-lg p-6">
+                      <h3 className="text-lg font-blackops text-white mb-3 flex items-center gap-2">
+                        <div className="w-1 h-6 bg-gradient-to-b from-yellow-400 to-yellow-600"></div>
+                        Winning Strategy
+                      </h3>
+                      <p className="text-gray-300 font-mono text-sm leading-relaxed">
+                        {generatedIdea.winningStrategy}
+                      </p>
+                    </div>
+                  )}
+
                   {/* Action Buttons */}
                   <div className="flex gap-3 pt-4 border-t border-gray-700">
-                    <button 
+                    <button
                       onClick={() => showCustomToast('info', 'Share feature coming soon!')}
                       className="flex-1 px-4 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-mono font-bold text-sm transition-all border border-gray-700 flex items-center justify-center gap-2"
                     >
                       <Share2 className="w-4 h-4" />
                       Share
                     </button>
-                    <button 
+                    <button
                       onClick={handleSaveIdea}
                       disabled={isSaving}
                       className="flex-1 px-4 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-mono font-bold text-sm transition-all border border-gray-700 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -737,7 +869,7 @@ export default function AIIdeaGenerator() {
                         </>
                       )}
                     </button>
-                    <button 
+                    <button
                       onClick={() => showCustomToast('info', 'Edit feature coming soon!')}
                       className="flex-1 px-4 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 hover:opacity-90 text-white rounded-lg font-mono font-bold text-sm transition-all shadow-lg flex items-center justify-center gap-2"
                     >
@@ -779,11 +911,16 @@ export default function AIIdeaGenerator() {
               <div className="flex-1 overflow-y-auto mb-4 space-y-3">
                 {chatMessages.length === 0 && (
                   <div className="flex items-center justify-center h-full">
-                    <div className="text-center">
+                    <div className="text-center px-4">
                       <MessageCircle className="w-8 h-8 text-gray-500 mx-auto mb-2" />
-                      <p className="text-sm text-gray-400 font-mono">
+                      <p className="text-sm text-gray-400 font-mono mb-2">
                         Ask questions about your idea!
                       </p>
+                      {!generatedIdea?.id && (
+                        <p className="text-xs text-yellow-400 font-mono">
+                          Save your idea first to start chatting
+                        </p>
+                      )}
                     </div>
                   </div>
                 )}
