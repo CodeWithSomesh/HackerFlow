@@ -293,7 +293,7 @@ CREATE TABLE IF NOT EXISTS hackathons (
   organization TEXT NOT NULL,
   website_url TEXT,
   visibility TEXT NOT NULL CHECK (visibility IN ('public', 'invite')),
-  mode TEXT NOT NULL CHECK (mode IN ('online', 'offline')),
+  mode TEXT NOT NULL CHECK (mode IN ('online', 'offline', 'hybrid')),
   categories TEXT[] NOT NULL,
   about TEXT NOT NULL,
   created_by UUID REFERENCES auth.users(id) NOT NULL,
@@ -378,11 +378,18 @@ FROM auth.users
 WHERE raw_user_meta_data ? 'user_type';
 
 -- Add location column to hackathons table
-ALTER TABLE hackathons 
+ALTER TABLE hackathons
 ADD COLUMN location TEXT;
 
 -- Optional: Add a comment to document the column
 COMMENT ON COLUMN hackathons.location IS 'Physical location for offline/hybrid events';
+
+-- Add additional hackathon detail columns
+ALTER TABLE hackathons ADD COLUMN IF NOT EXISTS eligibility TEXT;
+ALTER TABLE hackathons ADD COLUMN IF NOT EXISTS requirements TEXT;
+ALTER TABLE hackathons ADD COLUMN IF NOT EXISTS important_dates JSONB;
+ALTER TABLE hackathons ADD COLUMN IF NOT EXISTS timeline JSONB;
+ALTER TABLE hackathons ADD COLUMN IF NOT EXISTS prizes JSONB;
 
 -- Add to your existing schema
 CREATE TABLE generated_ideas (
@@ -412,6 +419,38 @@ CREATE POLICY "Users can view own ideas" ON generated_ideas
 
 CREATE POLICY "Users can insert own ideas" ON generated_ideas
   FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Conversations table for AI chat
+CREATE TABLE conversations (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) NOT NULL,
+  hackathon_id UUID REFERENCES hackathons(id) NOT NULL,
+  idea_id UUID REFERENCES generated_ideas(id),
+  messages TEXT NOT NULL DEFAULT '[]', -- JSON string of messages array
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Add RLS policies for conversations
+ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own conversations" ON conversations
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own conversations" ON conversations
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own conversations" ON conversations
+  FOR UPDATE USING (auth.uid() = user_id);
+
+-- Add index for faster queries
+CREATE INDEX idx_conversations_user_id ON conversations(user_id);
+CREATE INDEX idx_conversations_idea_id ON conversations(idea_id);
+CREATE INDEX idx_conversations_hackathon_id ON conversations(hackathon_id);
+
+-- Trigger to update conversations updated_at
+CREATE TRIGGER update_conversations_updated_at BEFORE UPDATE ON conversations
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Hackathon Registrations and Teams
 CREATE TABLE hackathon_teams (

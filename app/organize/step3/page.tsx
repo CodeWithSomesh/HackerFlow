@@ -56,6 +56,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { MinimalTiptap } from '@/components/ui/shadcn-io/minimal-tiptap'
 import { MultiSelect } from '@/components/multi-select'
 import { triggerFireworks, triggerSideCannons, triggerStars } from '@/lib/confetti'
+import { OrganizerVerificationModal } from '@/components/organizer-verification-modal'
+import { PaymentModal } from '@/components/payment-modal'
 
 
 type SectionKey = 'banner' | 'basic' | 'timeline' | 'about' | 'prizes' | 'dates' | 'faq' | 'organizers' | 'sponsors' | 'requirements' | 'eligibility'
@@ -67,9 +69,15 @@ export default function OrganizeStep3Page() {
   const [hackathonId, setHackathonId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [showVerificationModal, setShowVerificationModal] = useState(false)
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [showPublishDialog, setShowPublishDialog] = useState(false)
   const [isPublishing, setIsPublishing] = useState(false)
   const [isSavingDraft, setIsSavingDraft] = useState(false)
+  const [identityDocumentUrl, setIdentityDocumentUrl] = useState<string>('')
+  const [authorizationLetterUrl, setAuthorizationLetterUrl] = useState<string>('')
+  const [existingIdentityUrl, setExistingIdentityUrl] = useState<string>('')
+  const [existingAuthLetterUrl, setExistingAuthLetterUrl] = useState<string>('')
 
   // Form state
   const [formData, setFormData] = useState<{
@@ -217,6 +225,18 @@ export default function OrganizeStep3Page() {
       
       if (result.success && result.data) {
         const data = result.data as any
+
+        // Load existing documents if they exist
+        if (data.identity_document_url) {
+          setExistingIdentityUrl(data.identity_document_url)
+          setIdentityDocumentUrl(data.identity_document_url)
+        }
+        if (data.authorization_letter_url) {
+          setExistingAuthLetterUrl(data.authorization_letter_url)
+          setAuthorizationLetterUrl(data.authorization_letter_url)
+        }
+      
+
         const formValues = {
           title: data.title || 'Your Awesome Hackathon',
           organizer: data.organization || 'Your Organization',
@@ -339,7 +359,11 @@ export default function OrganizeStep3Page() {
   }
 
   const updateAddPrize = () => {
-    if (newPrize.position.trim() && newPrize.amount.trim()) {
+    // Validate: position is required, amount is required only if not Certificate
+    const isValid = newPrize.position.trim() &&
+      (newPrize.type === 'Certificate' || (newPrize.amount && newPrize.amount.trim()));
+
+    if (isValid) {
       if (editingPrizeIndex !== null) {
         const updatedPrizes = [...tempFormData.prizes]
         updatedPrizes[editingPrizeIndex] = newPrize
@@ -350,6 +374,8 @@ export default function OrganizeStep3Page() {
       }
       setNewPrize({ position: '', amount: '', description: '', type: 'Cash' })
       setHasUnsavedChanges(true)
+    } else {
+      showCustomToast('error', 'Please fill in all required fields. Amount is optional for Certificate prizes.')
     }
   }
 
@@ -486,8 +512,12 @@ export default function OrganizeStep3Page() {
         break
   
       case 'prizes':
-        if (tempFormData.prizes?.find(prize => !prize.position || !prize.amount || !prize.type)) {
-          return 'All prizes must have position, amount, and type'
+        if (tempFormData.prizes?.find(prize => !prize.position || !prize.type)) {
+          return 'All prizes must have position and type'
+        }
+        // Check that non-certificate prizes have amounts
+        if (tempFormData.prizes?.find(prize => prize.type !== 'Certificate' && !prize.amount)) {
+          return 'Cash and Other prizes must have an amount'
         }
         break
   
@@ -703,13 +733,16 @@ export default function OrganizeStep3Page() {
         return
       }
   
-      // Update status to published
+      // Update status to published and save verification documents
       const { error: publishError } = await supabase
         .from('hackathons')
         .update({
           status: 'published',
           published_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
+          identity_document_url: identityDocumentUrl,
+          authorization_letter_url: authorizationLetterUrl,
+          verification_status: 'pending',
         })
         .eq('id', hackathonId)
         .eq('created_by', user.id)
@@ -883,8 +916,14 @@ export default function OrganizeStep3Page() {
                   return
                 }
 
-                // Only show dialog if validation passes
-                setShowPublishDialog(true)
+                // Check if documents already exist
+                if (existingIdentityUrl && existingAuthLetterUrl) {
+                  // Documents already uploaded, skip to payment
+                  setShowPaymentModal(true)
+                } else {
+                  // Need to upload documents
+                  setShowVerificationModal(true)
+                }
               }}
               disabled={isSavingDraft || isPublishing || isLoading}
             >
@@ -2026,28 +2065,11 @@ export default function OrganizeStep3Page() {
 
                     {/* Add New Prize */}
                     <div className="p-5 bg-black/40 border border-gray-700 rounded-lg space-y-4">
-                      <Input 
-                        placeholder="Prize Position (e.g., 1st Place)" 
-                        className="bg-gray-900/60 border-gray-600 text-gray-100 h-11 font-mono"
-                        value={newPrize.position}
-                        onChange={(e) => setNewPrize({...newPrize, position: e.target.value})}
-                      />
-                      <Input 
-                        placeholder="Amount (e.g., $2,000)" 
-                        className="bg-gray-900/60 border-gray-600 text-gray-100 h-11 font-mono"
-                        value={newPrize.amount}
-                        onChange={(e) => setNewPrize({...newPrize, amount: e.target.value})}
-                      />
-                      <Textarea 
-                        rows={3} 
-                        placeholder="Prize description and details" 
-                        className="bg-gray-900/60 border-gray-600 text-gray-100 font-mono"
-                        value={newPrize.description}
-                        onChange={(e) => setNewPrize({...newPrize, description: e.target.value})}
-                      />
-                      <Select 
+                      <Select
                         value={newPrize.type}
-                        onValueChange={(value) => setNewPrize({...newPrize, type: value})}
+                        onValueChange={(value) => {
+                          setNewPrize({...newPrize, type: value, amount: value === 'Certificate' ? '' : newPrize.amount})
+                        }}
                       >
                         <SelectTrigger className="bg-gray-900/60 font-mono border-gray-600 text-gray-200 h-11 text-md">
                           <SelectValue placeholder="Select prize type" />
@@ -2058,6 +2080,27 @@ export default function OrganizeStep3Page() {
                           <SelectItem value="Others">Others</SelectItem>
                         </SelectContent>
                       </Select>
+                      <Input
+                        placeholder="Prize Position (e.g., 1st Place)"
+                        className="bg-gray-900/60 border-gray-600 text-gray-100 h-11 font-mono"
+                        value={newPrize.position}
+                        onChange={(e) => setNewPrize({...newPrize, position: e.target.value})}
+                      />
+                      {newPrize.type !== 'Certificate' && (
+                        <Input
+                          placeholder="Amount (e.g., $2,000)"
+                          className="bg-gray-900/60 border-gray-600 text-gray-100 h-11 font-mono"
+                          value={newPrize.amount}
+                          onChange={(e) => setNewPrize({...newPrize, amount: e.target.value})}
+                        />
+                      )}
+                      <Textarea
+                        rows={3}
+                        placeholder="Prize description and details"
+                        className="bg-gray-900/60 border-gray-600 text-gray-100 font-mono"
+                        value={newPrize.description}
+                        onChange={(e) => setNewPrize({...newPrize, description: e.target.value})}
+                      />
                     </div>
                     {/* Update the Add Prize button */}
                     <div className="flex gap-3">
@@ -2786,6 +2829,30 @@ export default function OrganizeStep3Page() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Organizer Verification Modal */}
+        <OrganizerVerificationModal
+          open={showVerificationModal}
+          onOpenChange={setShowVerificationModal}
+          onVerificationComplete={(identityUrl, authUrl) => {
+            setIdentityDocumentUrl(identityUrl)
+            setAuthorizationLetterUrl(authUrl)
+            setShowPaymentModal(true)
+          }}
+          existingIdentityUrl={existingIdentityUrl}
+          existingAuthLetterUrl={existingAuthLetterUrl}
+        />
+
+        {/* Payment Modal */}
+        <PaymentModal
+          open={showPaymentModal}
+          onOpenChange={setShowPaymentModal}
+          onPaymentComplete={() => {
+            setShowPublishDialog(true)
+          }}
+          amount={50}
+          hackathonTitle={formData.title}
+        />
       </div>
     </div>
   )}
