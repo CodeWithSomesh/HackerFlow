@@ -13,20 +13,33 @@ import {
   ExternalLink,
   Search
 } from 'lucide-react'
-import { getFriendsList, removeFriend, type Friendship } from '@/lib/actions/friend-actions'
+import { getFriendsList, getFriendsListForUser, removeFriend, type Friendship } from '@/lib/actions/friend-actions'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 interface ProfileFriendsTabProps {
   isActive?: boolean
   onCountChange?: () => void
+  targetUserId?: string  // Optional: if provided, shows this user's friends instead of logged-in user's friends
 }
 
-export function ProfileFriendsTab({ isActive = true, onCountChange }: ProfileFriendsTabProps = {}) {
+export function ProfileFriendsTab({ isActive = true, onCountChange, targetUserId }: ProfileFriendsTabProps = {}) {
   const [friends, setFriends] = useState<Friendship[]>([])
   const [loading, setLoading] = useState(true)
   const [removingId, setRemovingId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [showUnfriendDialog, setShowUnfriendDialog] = useState(false)
+  const [friendToRemove, setFriendToRemove] = useState<{ id: string; name: string } | null>(null)
 
   useEffect(() => {
     loadFriends()
@@ -41,7 +54,11 @@ export function ProfileFriendsTab({ isActive = true, onCountChange }: ProfileFri
 
   const loadFriends = async () => {
     setLoading(true)
-    const result = await getFriendsList()
+
+    // If targetUserId is provided, get that user's friends; otherwise get logged-in user's friends
+    const result = targetUserId
+      ? await getFriendsListForUser(targetUserId)
+      : await getFriendsList()
 
     if (result.success && result.data) {
       setFriends(result.data as Friendship[])
@@ -52,17 +69,22 @@ export function ProfileFriendsTab({ isActive = true, onCountChange }: ProfileFri
     setLoading(false)
   }
 
-  const handleRemoveFriend = async (friendshipId: string, friendName: string) => {
-    if (!confirm(`Are you sure you want to unfriend ${friendName}?`)) {
-      return
-    }
+  const handleRemoveFriend = (friendshipId: string, friendName: string) => {
+    setFriendToRemove({ id: friendshipId, name: friendName })
+    setShowUnfriendDialog(true)
+  }
 
-    setRemovingId(friendshipId)
-    const result = await removeFriend(friendshipId)
+  const confirmRemoveFriend = async () => {
+    if (!friendToRemove) return
+
+    setRemovingId(friendToRemove.id)
+    setShowUnfriendDialog(false)
+
+    const result = await removeFriend(friendToRemove.id)
 
     if (result.success) {
       toast.success('Removed from friends')
-      setFriends(prev => prev.filter(f => f.id !== friendshipId))
+      setFriends(prev => prev.filter(f => f.id !== friendToRemove.id))
 
       // Notify parent to reload friend counts
       onCountChange?.()
@@ -71,6 +93,7 @@ export function ProfileFriendsTab({ isActive = true, onCountChange }: ProfileFri
     }
 
     setRemovingId(null)
+    setFriendToRemove(null)
   }
 
   const filteredFriends = friends.filter(friendship => {
@@ -105,19 +128,23 @@ export function ProfileFriendsTab({ isActive = true, onCountChange }: ProfileFri
           <div className="flex items-center gap-3">
             <Users className="w-8 h-8 text-teal-400" />
             <div>
-              <h2 className="text-3xl font-blackops text-white">MY FRIENDS</h2>
+              <h2 className="text-3xl font-blackops text-white">
+                {targetUserId ? 'FRIENDS' : 'MY FRIENDS'}
+              </h2>
               <p className="text-gray-400 font-mono text-sm">
                 {friends.length} {friends.length === 1 ? 'friend' : 'friends'}
               </p>
             </div>
           </div>
 
-          <Link href="/search-friends">
-            <button className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-pink-500 to-rose-500 border-2 border-pink-400 rounded-lg text-white font-mono font-bold hover:from-pink-600 hover:to-rose-600 shadow-lg shadow-pink-500/30 transition-all">
-              <Search className="w-4 h-4" />
-              Find Friends
-            </button>
-          </Link>
+          {!targetUserId && (
+            <Link href="/search-friends">
+              <button className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-pink-500 to-rose-500 border-2 border-pink-400 rounded-lg text-white font-mono font-bold hover:from-pink-600 hover:to-rose-600 shadow-lg shadow-pink-500/30 transition-all">
+                <Search className="w-4 h-4" />
+                Find Friends
+              </button>
+            </Link>
+          )}
         </div>
 
         {/* Search */}
@@ -228,17 +255,19 @@ export function ProfileFriendsTab({ isActive = true, onCountChange }: ProfileFri
                           <ExternalLink className="w-4 h-4" />
                         </button>
                       </Link>
-                      <button
-                        onClick={() => handleRemoveFriend(friendship.id, friend.full_name)}
-                        disabled={removingId === friendship.id}
-                        className="p-2 bg-gray-800 border border-gray-700 rounded-lg hover:border-red-500 hover:text-red-400 text-gray-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {removingId === friendship.id ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <UserX className="w-4 h-4" />
-                        )}
-                      </button>
+                      {!targetUserId && (
+                        <button
+                          onClick={() => handleRemoveFriend(friendship.id, friend.full_name)}
+                          disabled={removingId === friendship.id}
+                          className="p-2 bg-gray-800 border border-gray-700 rounded-lg hover:border-red-500 hover:text-red-400 text-gray-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {removingId === friendship.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <UserX className="w-4 h-4" />
+                          )}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </motion.div>
@@ -258,9 +287,11 @@ export function ProfileFriendsTab({ isActive = true, onCountChange }: ProfileFri
             <p className="text-gray-500 font-mono mb-6">
               {searchQuery
                 ? 'Try a different search query'
-                : 'Start connecting with other hackers and organizers'}
+                : targetUserId
+                  ? 'This user has no friends yet'
+                  : 'Start connecting with other hackers and organizers'}
             </p>
-            {!searchQuery && (
+            {!searchQuery && !targetUserId && (
               <Link href="/search-friends">
                 <button className="px-6 py-3 bg-gradient-to-r from-pink-500 to-rose-500 border-2 border-pink-400 rounded-lg text-white font-mono font-bold hover:from-pink-600 hover:to-rose-600 shadow-lg shadow-pink-500/30 transition-all">
                   Find Friends
@@ -270,6 +301,39 @@ export function ProfileFriendsTab({ isActive = true, onCountChange }: ProfileFri
           </div>
         </div>
       )}
+
+      {/* Unfriend Confirmation Dialog */}
+      <AlertDialog open={showUnfriendDialog} onOpenChange={setShowUnfriendDialog}>
+        <AlertDialogContent className="bg-gradient-to-br from-gray-900 to-gray-800 border-2 border-gray-700 max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-blackops text-2xl text-white flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-r from-red-500 to-orange-500 flex items-center justify-center">
+                <UserX className="w-6 h-6 text-white" />
+              </div>
+              Remove Friend?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-300 font-mono text-sm space-y-3 pt-4">
+              <p>
+                Are you sure you want to unfriend <span className="text-white font-bold">{friendToRemove?.name}</span>?
+              </p>
+              <p className="text-gray-400">
+                This action cannot be undone. You'll need to send a new friend request to reconnect.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-3">
+            <AlertDialogCancel className="bg-gray-800 py-6 hover:bg-black border-gray-600 text-white font-mono">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmRemoveFriend}
+              className="bg-gradient-to-r py-6 from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white font-mono font-bold"
+            >
+              Remove Friend
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

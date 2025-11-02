@@ -25,6 +25,24 @@ export interface TeamMemberData extends RegistrationData {
   status?: 'pending' | 'accepted' | 'rejected';
 }
 
+// Helper function to update team size count
+async function updateTeamSize(teamId: string) {
+  const supabase = await createClient();
+
+  const { data: acceptedMembers } = await supabase
+    .from('hackathon_team_members')
+    .select('id')
+    .eq('team_id', teamId)
+    .eq('status', 'accepted');
+
+  if (acceptedMembers) {
+    await supabase
+      .from('hackathon_teams')
+      .update({ team_size_current: acceptedMembers.length })
+      .eq('id', teamId);
+  }
+}
+
 // Get user's existing profile data for pre-filling
 export async function getUserProfileForRegistration() {
   try {
@@ -371,6 +389,13 @@ export async function updateTeamMemberStatus(memberId: string, status: 'accepted
       updateData.joined_at = new Date().toISOString();
     }
 
+    // Get member's team_id before update
+    const { data: member } = await supabase
+      .from('hackathon_team_members')
+      .select('team_id')
+      .eq('id', memberId)
+      .single();
+
     const { error } = await supabase
       .from('hackathon_team_members')
       .update(updateData)
@@ -380,6 +405,11 @@ export async function updateTeamMemberStatus(memberId: string, status: 'accepted
     if (error) {
       console.error('Error updating member status:', error);
       return { success: false, error: 'Failed to update status' };
+    }
+
+    // Update team size count
+    if (member?.team_id) {
+      await updateTeamSize(member.team_id);
     }
 
     revalidatePath('/hackathons');
@@ -467,6 +497,9 @@ export async function removeTeamMember(memberId: string) {
       console.error('Error removing team member:', error);
       return { success: false, error: 'Failed to remove team member' };
     }
+
+    // Update team size count after removal
+    await updateTeamSize(member.team_id);
 
     revalidatePath(`/hackathons/register/${member.team_id}`);
     return { success: true };

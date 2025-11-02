@@ -146,7 +146,11 @@ export default function TeamManagementPage({ params }: TeamPageProps) {
         // Fetch teams seeking members
         const teamsResult = await getTeamsSeekingMembers(resolvedParams.id);
         if (teamsResult.success) {
-          setTeamsSeekingMembers(teamsResult.data || []);
+          // Filter out own team from the list
+          const filteredTeams = (teamsResult.data || []).filter(
+            (seekingTeam: any) => seekingTeam.id !== teamResult.data?.id
+          );
+          setTeamsSeekingMembers(filteredTeams);
         }
       }
     } catch (error) {

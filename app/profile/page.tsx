@@ -41,6 +41,10 @@ import {
     disconnectGitHub,
     fetchPinnedRepositories,
     fetchTopLanguages,
+    saveGitHubStats,
+    saveGitHubRepositories,
+    savePinnedRepositories,
+    saveTopLanguages,
     type LanguageStats,
     type ContributionStreak
 } from "@/lib/actions/github-actions"
@@ -456,15 +460,12 @@ export default function ProfilePage() {
   const loadGitHubData = async () => {
     setLoadingGithub(true)
     try {
-      // Fetch pinned repositories
-      const pinnedResult = await fetchPinnedRepositories()
-      if (pinnedResult.success && pinnedResult.repositories) {
-        setPinnedProjects(pinnedResult.repositories)
-      }
-  
-      // Fetch all repositories for top starred
+      // Fetch and save all repositories
       const reposResult = await fetchGitHubRepositories()
       if (reposResult.success && reposResult.repositories) {
+        // Save all repositories to database
+        await saveGitHubRepositories(reposResult.repositories)
+
         const topStarred = reposResult.repositories
             .filter((repo: any) => !repo.is_fork)
             .sort((a: { stars_count: number }, b: { stars_count: number }) => b.stars_count - a.stars_count)
@@ -479,21 +480,36 @@ export default function ProfilePage() {
             }))
         setTopStarredProjects(topStarred)
       }
-  
-      // Fetch stats with real contribution data
+
+      // Fetch and save pinned repositories
+      const pinnedResult = await fetchPinnedRepositories()
+      if (pinnedResult.success && pinnedResult.repositories) {
+        // Save pinned repositories to database
+        await savePinnedRepositories(pinnedResult.repositories)
+        setPinnedProjects(pinnedResult.repositories)
+      }
+
+      // Fetch and save stats with real contribution data
       const statsResult = await fetchGitHubStats()
-        if (statsResult.success && statsResult.stats) {
+      if (statsResult.success && statsResult.stats) {
+        // Save stats to database
+        await saveGitHubStats(statsResult.stats)
+
         setGithubStats({
             ...statsResult.stats,
             streak: statsResult.stats.streak || { current: 0, longest: 0, total: 0 }
         })
       }
-  
-      // Fetch top languages
+
+      // Fetch and save top languages
       const languagesResult = await fetchTopLanguages()
       if (languagesResult.success && languagesResult.languages) {
+        // Save languages to database
+        await saveTopLanguages(languagesResult.languages)
         setTopLanguages(languagesResult.languages)
       }
+
+      showCustomToast('success', 'GitHub data synced successfully')
     } catch (error) {
       console.error('Error loading GitHub data:', error)
       showCustomToast('error', 'Failed to load GitHub data')
@@ -775,37 +791,52 @@ export default function ProfilePage() {
                             <>
                             {userData.githubUsername && (
                                 <a href={`https://github.com/${userData.githubUsername}`} target="_blank" rel="noopener noreferrer" 
-                                className="flex items-center gap-2 px-4 py-2 bg-gray-800/50 border border-gray-700 rounded-lg text-gray-300 hover:text-white hover:border-gray-600 transition-all font-mono">
-                                <Github className="w-4 h-4" />
-                                <span>@{userData.githubUsername}</span>
+                                className="flex items-center gap-3 px-4 py-3 bg-gray-800 border-2 border-purple-800 rounded-lg hover:border-purple-500 transition-colors group"
+                                >
+                                    <Github className="w-5 h-5 text-gray-400 group-hover:text-purple-400" />
+                                    <span className="text-gray-300 group-hover:text-white font-mono">
+                                        @{userData.githubUsername}
+                                    </span>
                                 </a>
                             )}
                             {userData.linkedinUrl && (
                                 <a href={userData.linkedinUrl} target="_blank" rel="noopener noreferrer"
-                                className="flex items-center gap-2 px-4 py-2 bg-gray-800/50 border border-gray-700 rounded-lg text-gray-300 hover:text-blue-400 hover:border-blue-500/50 transition-all font-mono">
-                                <Linkedin className="w-4 h-4" />
-                                <span>LinkedIn</span>
+                                className="flex items-center gap-3 px-4 py-3 bg-gray-800 border-2 border-blue-800 rounded-lg hover:border-blue-500 transition-colors group"
+                                >
+                                    <Linkedin className="w-5 h-5 text-gray-400 group-hover:text-blue-400" />
+                                    <span className="text-gray-300 group-hover:text-white font-mono">
+                                        LinkedIn Profile
+                                    </span>
                                 </a>
                             )}
                             {userData.twitterUsername && (
                                 <a href={`https://twitter.com/${userData.twitterUsername.replace('@', '')}`} target="_blank" rel="noopener noreferrer"
-                                className="flex items-center gap-2 px-4 py-2 bg-gray-800/50 border border-gray-700 rounded-lg text-gray-300 hover:text-blue-400 hover:border-blue-500/50 transition-all font-mono">
-                                <Twitter className="w-4 h-4" />
-                                <span>{userData.twitterUsername}</span>
+                                className="flex items-center gap-3 px-4 py-3 bg-gray-800 border-2 border-cyan-700 rounded-lg hover:border-cyan-500 transition-colors group"
+                                >
+                                    <Twitter className="w-5 h-5 text-gray-400 group-hover:text-cyan-400" />
+                                    <span className="text-gray-300 group-hover:text-white font-mono">
+                                        @{userData.twitterUsername}
+                                    </span>
                                 </a>
                             )}
                             {userData.portfolioUrl && (
                                 <a href={userData.portfolioUrl} target="_blank" rel="noopener noreferrer"
-                                className="flex items-center gap-2 px-4 py-2 bg-gray-800/50 border border-gray-700 rounded-lg text-gray-300 hover:text-pink-400 hover:border-pink-500/50 transition-all font-mono">
-                                <Globe className="w-4 h-4" />
-                                <span>Portfolio</span>
+                                className="flex items-center gap-3 px-4 py-3 bg-gray-800 border-2 border-teal-700 rounded-lg hover:border-teal-500 transition-colors group"
+                                >
+                                    <Globe className="w-5 h-5 text-gray-400 group-hover:text-teal-400" />
+                                    <span className="text-gray-300 group-hover:text-white font-mono">
+                                        Portfolio
+                                    </span>
                                 </a>
                             )}
                             {userData.instagramUsername && (
                                 <a href={`https://instagram.com/${userData.instagramUsername}`} target="_blank" rel="noopener noreferrer"
-                                className="flex items-center gap-2 px-4 py-2 bg-gray-800/50 border border-gray-700 rounded-lg text-gray-300 hover:text-pink-400 hover:border-pink-500/50 transition-all font-mono">
-                                <Instagram className="w-4 h-4" />
-                                <span>@{userData.instagramUsername}</span>
+                                className="flex items-center gap-3 px-4 py-3 bg-gray-800 border-2 border-pink-700 rounded-lg hover:border-pink-500 transition-colors group"
+                                >
+                                    <Instagram className="w-5 h-5 text-gray-400 group-hover:text-pink-400" />
+                                    <span className="text-gray-300 group-hover:text-white font-mono">
+                                        @{userData.instagramUsername}
+                                    </span>
                                 </a>
                             )}
                             </>
@@ -829,7 +860,7 @@ export default function ProfilePage() {
                     <span className="flex items-center gap-2">
                       {tab}
                       {tab === "friends" && friendCounts.friendCount > 0 && (
-                        <span className="px-2 py-0.5 bg-teal-500 rounded-full text-xs">
+                        <span className="px-2 py-0.5 bg-teal-500 rounded-full text-xs text-white">
                           {friendCounts.friendCount}
                         </span>
                       )}

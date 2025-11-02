@@ -12,7 +12,10 @@
       "Bash(test:*)",
       "Bash(npx supabase db reset)",
       "Bash(cat:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(Select-String -Pattern \"brevo\\|resend\")",
+      "Bash(find:*)",
+      "Bash(Select-String -Pattern \"profile\\[userId\\]\" -Context 0,2)"
     ],
     "deny": [],
     "ask": []

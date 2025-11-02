@@ -213,10 +213,10 @@ export default function SearchFriendsPage() {
                         <img
                           src={user.profile_image}
                           alt={user.full_name}
-                          className="w-20 h-20 rounded-full border-2 border-teal-400 object-cover cursor-pointer hover:border-teal-300 transition-colors"
+                          className="w-40 h-40 rounded-2xl border-2 border-teal-400 object-cover cursor-pointer hover:border-teal-300 transition-colors"
                         />
                       ) : (
-                        <div className="w-20 h-20 rounded-full border-2 border-teal-400 bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center cursor-pointer hover:border-teal-300 transition-colors">
+                        <div className="w-40 h-40 rounded-2xl border-2 border-teal-400 bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center cursor-pointer hover:border-teal-300 transition-colors">
                           <User className="w-10 h-10 text-white" />
                         </div>
                       )}
@@ -225,14 +225,14 @@ export default function SearchFriendsPage() {
                     {/* User Info */}
                     <div className="flex-1">
                       <Link href={`/profile/${user.user_id}`}>
-                        <h3 className="text-2xl font-bold text-white hover:text-teal-400 transition-colors cursor-pointer">
+                        <h3 className="text-2xl font-blackops text-white hover:text-teal-400 transition-colors cursor-pointer">
                           {user.full_name}
                         </h3>
                       </Link>
                       <p className="text-gray-400 font-mono text-sm mb-2">{user.email}</p>
 
                       {user.bio && (
-                        <p className="text-gray-300 mb-3 line-clamp-2">{user.bio}</p>
+                        <p className="text-gray-300 mb-3 font-geist line-clamp-2">{user.bio}</p>
                       )}
 
                       <div className="flex flex-wrap gap-3 mb-3">
