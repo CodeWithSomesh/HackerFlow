@@ -21,6 +21,16 @@ import {
 } from '@/lib/actions/friend-actions'
 import { toast } from 'sonner'
 import { FriendCelebrationModal } from './friend-celebration-modal'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 interface FriendRequestButtonProps {
   userId: string
@@ -42,6 +52,7 @@ export function FriendRequestButton({
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
   const [showCelebration, setShowCelebration] = useState(false)
+  const [showUnfriendDialog, setShowUnfriendDialog] = useState(false)
 
   useEffect(() => {
     loadStatus()
@@ -53,7 +64,7 @@ export function FriendRequestButton({
 
     if (result.success) {
       setStatus(result.status as any)
-      setDirection(result.direction || null)
+      setDirection((result.direction as 'sent' | 'received') || null)
       setRequestId(result.requestId || null)
       setFriendshipId(result.friendshipId || null)
     }
@@ -134,13 +145,14 @@ export function FriendRequestButton({
     setActionLoading(false)
   }
 
-  const handleUnfriend = async () => {
+  const handleUnfriend = () => {
+    setShowUnfriendDialog(true)
+  }
+
+  const confirmUnfriend = async () => {
     if (!friendshipId) return
 
-    if (!confirm(`Are you sure you want to unfriend ${userName}?`)) {
-      return
-    }
-
+    setShowUnfriendDialog(false)
     setActionLoading(true)
     const result = await removeFriend(friendshipId)
 
@@ -173,7 +185,7 @@ export function FriendRequestButton({
           <button
             onClick={handleUnfriend}
             disabled={actionLoading}
-            className="flex items-center gap-2 px-6 py-3 bg-teal-500/10 border-2 border-teal-500 rounded-lg text-teal-400 font-mono font-bold hover:bg-red-500/10 hover:border-red-500 hover:text-red-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-6 py-3 bg-teal-500 border-4 border-black rounded-lg text-white font-mono font-bold hover:bg-red-500/80   transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {actionLoading ? (
               <>
@@ -198,6 +210,39 @@ export function FriendRequestButton({
           friendImage={userImage}
           friendId={userId}
         />
+
+        {/* Unfriend Confirmation Dialog */}
+        <AlertDialog open={showUnfriendDialog} onOpenChange={setShowUnfriendDialog}>
+          <AlertDialogContent className="bg-gradient-to-br from-gray-900 to-gray-800 border-2 border-gray-700 max-w-md">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="font-blackops text-2xl text-white flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-r from-red-500 to-orange-500 flex items-center justify-center">
+                  <UserX className="w-6 h-6 text-white" />
+                </div>
+                Remove Friend?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-gray-300 font-mono text-sm space-y-3 pt-4">
+                <p>
+                  Are you sure you want to unfriend <span className="text-white font-bold">{userName}</span>?
+                </p>
+                <p className="text-gray-400">
+                  This action cannot be undone. You'll need to send a new friend request to reconnect.
+                </p>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="gap-3">
+              <AlertDialogCancel className="bg-gray-800 py-6 hover:bg-black border-gray-600 text-white font-mono">
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmUnfriend}
+                className="bg-gradient-to-r py-6 from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white font-mono font-bold"
+              >
+                Remove Friend
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </>
     )
   }
@@ -208,7 +253,7 @@ export function FriendRequestButton({
       <button
         onClick={handleCancelRequest}
         disabled={actionLoading}
-        className="flex items-center gap-2 px-6 py-3 bg-yellow-500/10 border-2 border-yellow-500 rounded-lg text-yellow-400 font-mono font-bold hover:bg-red-500/10 hover:border-red-500 hover:text-red-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        className="flex items-center gap-2 px-6 py-3 bg-yellow-400 border-4 border-black rounded-lg text-white font-mono font-bold hover:bg-red-500/80   transition-all disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {actionLoading ? (
           <>
@@ -233,7 +278,7 @@ export function FriendRequestButton({
           <button
             onClick={handleAcceptRequest}
             disabled={actionLoading}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 border-2 border-teal-400 rounded-lg text-white font-mono font-bold hover:from-teal-600 hover:to-cyan-600 shadow-lg shadow-teal-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 border-4 border-black rounded-lg text-white font-mono font-bold hover:from-teal-600 hover:to-cyan-600 shadow-lg shadow-teal-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {actionLoading ? (
               <>
@@ -251,7 +296,7 @@ export function FriendRequestButton({
           <button
             onClick={handleRejectRequest}
             disabled={actionLoading}
-            className="flex items-center gap-2 px-6 py-3 bg-gray-800 border-2 border-gray-700 rounded-lg text-gray-400 font-mono font-bold hover:bg-red-500/10 hover:border-red-500 hover:text-red-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-6 py-3 bg-gray-800 border-2 border-gray-700 rounded-lg text-gray-400 font-mono font-bold hover:bg-red-500/80  hover:text-red-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <X className="w-4 h-4" />
             <span>Reject</span>
@@ -274,7 +319,7 @@ export function FriendRequestButton({
     <button
       onClick={handleSendRequest}
       disabled={actionLoading}
-      className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-pink-500 to-rose-500 border-2 border-pink-400 rounded-lg text-white font-mono font-bold hover:from-pink-600 hover:to-rose-600 shadow-lg shadow-pink-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+      className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-pink-500 to-rose-500 border-4 border-black rounded-lg text-white font-mono font-bold hover:from-pink-600 hover:to-rose-600 shadow-lg shadow-pink-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {actionLoading ? (
         <>

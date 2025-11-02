@@ -187,6 +187,20 @@ export default function JoinTeamPage({ params }: JoinTeamPageProps) {
         return;
       }
 
+      // Update team size count - count all accepted members
+      const { data: acceptedMembers } = await supabase
+        .from('hackathon_team_members')
+        .select('id')
+        .eq('team_id', resolvedParams.teamId)
+        .eq('status', 'accepted');
+
+      if (acceptedMembers) {
+        await supabase
+          .from('hackathon_teams')
+          .update({ team_size_current: acceptedMembers.length })
+          .eq('id', resolvedParams.teamId);
+      }
+
       // Check if registration already exists
       const { data: existingReg } = await supabase
         .from('hackathon_registrations')
@@ -196,14 +210,22 @@ export default function JoinTeamPage({ params }: JoinTeamPageProps) {
         .single();
 
       if (!existingReg) {
-        // Create registration record
+        // Create registration record with all required fields from member data
         const { error: regError } = await supabase
           .from('hackathon_registrations')
           .insert({
             hackathon_id: resolvedParams.id,
             user_id: user.id,
             team_id: resolvedParams.teamId,
-            registration_status: 'confirmed'
+            email: memberData.email,
+            mobile: memberData.mobile,
+            first_name: memberData.first_name,
+            last_name: memberData.last_name,
+            organization_name: memberData.organization_name,
+            participant_type: memberData.participant_type,
+            passout_year: memberData.passout_year,
+            domain: memberData.domain,
+            location: memberData.location,
           });
 
         if (regError) {

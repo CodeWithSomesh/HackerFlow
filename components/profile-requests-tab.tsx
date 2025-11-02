@@ -25,6 +25,7 @@ import {
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { FriendCelebrationModal } from './friend-celebration-modal'
+import { triggerStars } from '@/lib/confetti'
 
 interface FriendRequest {
   id: string
@@ -36,7 +37,12 @@ interface FriendRequest {
   receiver?: any
 }
 
-export function ProfileRequestsTab() {
+interface ProfileRequestsTabProps {
+  isActive?: boolean
+  onCountChange?: () => void
+}
+
+export function ProfileRequestsTab({ isActive = true, onCountChange }: ProfileRequestsTabProps = {}) {
   const [receivedRequests, setReceivedRequests] = useState<FriendRequest[]>([])
   const [sentRequests, setSentRequests] = useState<FriendRequest[]>([])
   const [loading, setLoading] = useState(true)
@@ -48,6 +54,12 @@ export function ProfileRequestsTab() {
   useEffect(() => {
     loadRequests()
   }, [])
+
+  useEffect(() => {
+    if (isActive) {
+      loadRequests()
+    }
+  }, [isActive])
 
   const loadRequests = async () => {
     setLoading(true)
@@ -82,6 +94,9 @@ export function ProfileRequestsTab() {
     const result = await acceptFriendRequest(requestId)
 
     if (result.success) {
+      // Trigger star confetti effect
+      triggerStars()
+
       toast.success('Friend request accepted!')
 
       // Remove from local state immediately

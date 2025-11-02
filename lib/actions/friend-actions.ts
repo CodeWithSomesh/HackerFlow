@@ -139,24 +139,28 @@ export async function sendFriendRequest(receiverId: string) {
       return { success: false, error: 'You are already friends with this user' }
     }
 
-    // Check if a friend request already exists
+    // Check if a PENDING friend request already exists
     const { data: existingRequest, error: requestError } = await supabase
       .from('friend_requests')
       .select('id, status, sender_id')
       .or(`and(sender_id.eq.${user.id},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${user.id})`)
+      .eq('status', 'pending')
       .maybeSingle()
 
     if (existingRequest) {
-      if (existingRequest.status === 'pending') {
-        if (existingRequest.sender_id === user.id) {
-          return { success: false, error: 'Friend request already sent' }
-        } else {
-          return { success: false, error: 'This user has already sent you a friend request' }
-        }
-      } else if (existingRequest.status === 'accepted') {
-        return { success: false, error: 'You are already friends' }
+      if (existingRequest.sender_id === user.id) {
+        return { success: false, error: 'Friend request already sent' }
+      } else {
+        return { success: false, error: 'This user has already sent you a friend request' }
       }
     }
+
+    // Delete any old rejected or accepted requests to allow sending again
+    await supabase
+      .from('friend_requests')
+      .delete()
+      .or(`and(sender_id.eq.${user.id},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${user.id})`)
+      .in('status', ['rejected', 'accepted'])
 
     // Create friend request
     const { data: newRequest, error: createError } = await supabase
@@ -489,6 +493,59 @@ export async function getFriendsList() {
 }
 
 // =====================================================
+// GET FRIENDS LIST FOR A SPECIFIC USER (for viewing other user's friends)
+// =====================================================
+export async function getFriendsListForUser(targetUserId: string) {
+  try {
+    const supabase = await createClient()
+
+    const { data, error } = await supabase
+      .from('friendships')
+      .select(`
+        id,
+        user_id_1,
+        user_id_2,
+        created_at
+      `)
+      .or(`user_id_1.eq.${targetUserId},user_id_2.eq.${targetUserId}`)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Get friends error:', error)
+      return { success: false, error: `Failed to get friends: ${error.message}` }
+    }
+
+    // Get friend profiles
+    const friendsWithProfiles = await Promise.all(
+      data.map(async (friendship) => {
+        const friendId = friendship.user_id_1 === targetUserId ? friendship.user_id_2 : friendship.user_id_1
+
+        const { data: profile, error: profileError } = await supabase
+          .from('user_profiles')
+          .select('user_id, full_name, email, profile_image, bio, user_primary_type, programming_languages, frameworks, position, organization_name, city, state, country')
+          .eq('user_id', friendId)
+          .single()
+
+        if (profileError) {
+          console.error('Profile error:', profileError)
+          return { ...friendship, friend: null }
+        }
+
+        return { ...friendship, friend: profile }
+      })
+    )
+
+    return { success: true, data: friendsWithProfiles.filter(f => f.friend !== null) }
+  } catch (error) {
+    console.error('Error in getFriendsListForUser:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }
+  }
+}
+
+// =====================================================
 // REMOVE FRIEND (UNFRIEND)
 // =====================================================
 export async function removeFriend(friendshipId: string) {
@@ -498,6 +555,18 @@ export async function removeFriend(friendshipId: string) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return { success: false, error: 'User not authenticated' }
+    }
+
+    // First, get the friendship to find the user IDs
+    const { data: friendship, error: fetchError } = await supabase
+      .from('friendships')
+      .select('user_id_1, user_id_2')
+      .eq('id', friendshipId)
+      .single()
+
+    if (fetchError || !friendship) {
+      console.error('Fetch friendship error:', fetchError)
+      return { success: false, error: 'Friendship not found' }
     }
 
     // Delete the friendship
@@ -511,6 +580,13 @@ export async function removeFriend(friendshipId: string) {
       console.error('Delete friendship error:', deleteError)
       return { success: false, error: `Failed to remove friend: ${deleteError.message}` }
     }
+
+    // Delete the corresponding accepted friend request to allow new requests
+    await supabase
+      .from('friend_requests')
+      .delete()
+      .eq('status', 'accepted')
+      .or(`and(sender_id.eq.${friendship.user_id_1},receiver_id.eq.${friendship.user_id_2}),and(sender_id.eq.${friendship.user_id_2},receiver_id.eq.${friendship.user_id_1})`)
 
     revalidatePath('/profile')
     return { success: true }

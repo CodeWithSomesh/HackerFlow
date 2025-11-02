@@ -174,7 +174,7 @@ export function FriendCelebrationModal({
                   <div className="text-center">
                     <p className="text-2xl font-bold text-white mb-1">{friendName}</p>
                     <p className="text-gray-400 font-mono text-sm">
-                      Start chatting and collaborating!
+                      Start Collaborating!
                     </p>
                   </div>
                 </motion.div>

@@ -497,12 +497,187 @@ export async function fetchGitHubStats(): Promise<{ success: boolean; stats?: Gi
   }
 }
 
+// Save GitHub stats to database
+export async function saveGitHubStats(stats: GitHubStats & { streak?: ContributionStreak }) {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      throw new Error('Not authenticated')
+    }
+
+    // Upsert GitHub stats
+    const { error: statsError } = await supabase
+      .from('github_stats')
+      .upsert({
+        user_id: user.id,
+        total_contributions: stats.contributions,
+        public_repos: stats.repositories,
+        followers: stats.followers,
+        following: stats.following,
+        total_stars: stats.stars,
+        current_streak: stats.streak?.current || 0,
+        longest_streak: stats.streak?.longest || 0,
+        contribution_graph: stats.contributionGraph,
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'user_id'
+      })
+
+    if (statsError) {
+      console.error('Error saving GitHub stats:', statsError)
+      throw statsError
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error('Error in saveGitHubStats:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }
+  }
+}
+
+// Save GitHub repositories to database
+export async function saveGitHubRepositories(repositories: any[]) {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      throw new Error('Not authenticated')
+    }
+
+    // Delete existing repositories for this user
+    await supabase
+      .from('github_repositories')
+      .delete()
+      .eq('user_id', user.id)
+
+    // Insert new repositories
+    if (repositories.length > 0) {
+      const reposToInsert = repositories.map(repo => ({
+        user_id: user.id,
+        name: repo.name,
+        description: repo.description,
+        language: repo.language,
+        stars_count: repo.stars_count,
+        forks_count: repo.forks_count,
+        html_url: repo.html_url,
+        is_fork: repo.is_fork,
+        is_pinned: false, // Will be updated separately
+        created_at: repo.created_at,
+        updated_at: repo.updated_at
+      }))
+
+      const { error: reposError } = await supabase
+        .from('github_repositories')
+        .insert(reposToInsert)
+
+      if (reposError) {
+        console.error('Error saving repositories:', reposError)
+        throw reposError
+      }
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error('Error in saveGitHubRepositories:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }
+  }
+}
+
+// Save pinned repositories to database
+export async function savePinnedRepositories(pinnedRepos: any[]) {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      throw new Error('Not authenticated')
+    }
+
+    // Mark all repos as not pinned first
+    await supabase
+      .from('github_repositories')
+      .update({ is_pinned: false })
+      .eq('user_id', user.id)
+
+    // Update pinned status for pinned repos
+    for (const repo of pinnedRepos) {
+      await supabase
+        .from('github_repositories')
+        .update({ is_pinned: true })
+        .eq('user_id', user.id)
+        .eq('name', repo.name)
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error('Error in savePinnedRepositories:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }
+  }
+}
+
+// Save top languages to database
+export async function saveTopLanguages(languages: LanguageStats[]) {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      throw new Error('Not authenticated')
+    }
+
+    // Delete existing languages for this user
+    await supabase
+      .from('github_languages')
+      .delete()
+      .eq('user_id', user.id)
+
+    // Insert new languages
+    if (languages.length > 0) {
+      const langsToInsert = languages.map(lang => ({
+        user_id: user.id,
+        name: lang.name,
+        percentage: lang.percentage,
+        color: lang.color
+      }))
+
+      const { error: langsError } = await supabase
+        .from('github_languages')
+        .insert(langsToInsert)
+
+      if (langsError) {
+        console.error('Error saving languages:', langsError)
+        throw langsError
+      }
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error('Error in saveTopLanguages:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }
+  }
+}
+
 // Disconnect GitHub
 export async function disconnectGitHub() {
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    
+
     if (!user) {
       throw new Error('Not authenticated')
     }
