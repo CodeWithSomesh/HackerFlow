@@ -15,6 +15,7 @@ interface OrganizerVerificationModalProps {
   onVerificationComplete: (identityDocUrl: string, authLetterUrl: string) => void
   existingIdentityUrl?: string
   existingAuthLetterUrl?: string
+  hackathonId?: string
 }
 
 export function OrganizerVerificationModal({
@@ -22,7 +23,8 @@ export function OrganizerVerificationModal({
   onOpenChange,
   onVerificationComplete,
   existingIdentityUrl = '',
-  existingAuthLetterUrl = ''
+  existingAuthLetterUrl = '',
+  hackathonId
 }: OrganizerVerificationModalProps) {
   const [identityDoc, setIdentityDoc] = useState<File | null>(null)
   const [authorizationLetter, setAuthorizationLetter] = useState<File | null>(null)
@@ -94,9 +96,9 @@ export function OrganizerVerificationModal({
       let finalIdentityUrl = existingIdentityUrl
       let finalAuthUrl = existingAuthLetterUrl
 
-      // Only upload if new files selected
+      // Only upload if new files selected - now passing hackathonId
       if (identityDoc) {
-        const identityResult = await uploadIdentityDocument(identityDoc)
+        const identityResult = await uploadIdentityDocument(identityDoc, hackathonId)
         if (!identityResult.success) {
           showCustomToast('error', identityResult.error || 'Failed to upload identity document')
           setIsUploading(false)
@@ -106,7 +108,7 @@ export function OrganizerVerificationModal({
       }
 
       if (authorizationLetter) {
-        const authResult = await uploadAuthorizationLetter(authorizationLetter)
+        const authResult = await uploadAuthorizationLetter(authorizationLetter, hackathonId)
         if (!authResult.success) {
           showCustomToast('error', authResult.error || 'Failed to upload authorization letter')
           setIsUploading(false)

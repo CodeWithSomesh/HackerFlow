@@ -527,7 +527,7 @@ const Hackathons = () => {
                         <div className="space-y-3">
                           {[
                             { value: "online", label: "Online" },
-                            { value: "offline", label: "Offline" },
+                            { value: "offline", label: "Physical" },
                             { value: "hybrid", label: "Hybrid" },
                           ].map((option) => (
                             <label
@@ -816,7 +816,12 @@ const Hackathons = () => {
                         
                         <div className="flex items-center gap-2 text-sm text-gray-300 font-mono">
                           <MapPin className="h-4 w-4 text-green-400 flex-shrink-0" />
-                          <span className="truncate">{hackathon.location}</span>
+                          <span className="truncate">
+                            {hackathon.mode === 'online' ? 
+                            hackathon.mode.charAt(0).toUpperCase() + hackathon.mode.slice(1) :
+                            `${hackathon.location} (${hackathon.mode === 'offline' ? "Physical" : hackathon.mode.charAt(0).toUpperCase() + hackathon.mode.slice(1)})`
+                          }
+                          </span>
                         </div>
                         
                         <div className="flex items-center gap-2 text-sm text-gray-300 font-mono">

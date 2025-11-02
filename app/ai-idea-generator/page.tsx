@@ -6,6 +6,8 @@ import { fetchPublishedHackathons } from "@/lib/actions/createHackathon-actions"
 import { saveGeneratedIdea } from "@/lib/actions/generatedIdeas-actions";
 import { createConversation, updateConversation, type Message } from "@/lib/actions/conversations-actions";
 import { showCustomToast } from '@/components/toast-notification';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 
 interface Hackathon {
@@ -111,6 +113,27 @@ export default function AIIdeaGenerator() {
 
   useEffect(() => {
     loadHackathons()
+
+    // Restore idea from localStorage if user refreshed the page
+    const savedIdea = localStorage.getItem('currentGeneratedIdea')
+    const savedHackathon = localStorage.getItem('currentHackathon')
+
+    if (savedIdea && savedHackathon) {
+      try {
+        const idea = JSON.parse(savedIdea)
+        const hackathon = JSON.parse(savedHackathon)
+
+        setGeneratedIdea(idea)
+        setSelectedHackathon(hackathon)
+        setCurrentPage('results')
+
+        console.log('Restored idea from localStorage:', idea.title)
+      } catch (error) {
+        console.error('Failed to restore idea from localStorage:', error)
+        localStorage.removeItem('currentGeneratedIdea')
+        localStorage.removeItem('currentHackathon')
+      }
+    }
   }, [])
 
   // Load conversation when idea is generated
@@ -281,6 +304,12 @@ export default function AIIdeaGenerator() {
   const handleSaveIdea = async () => {
     if (!generatedIdea) return
 
+    // Prevent duplicate saves
+    if (generatedIdea.id) {
+      showCustomToast('info', 'Idea already saved! You can view it in your Hacker Dashboard.')
+      return
+    }
+
     setIsSaving(true)
     const result = await saveGeneratedIdea({
       hackathonId: generatedIdea.hackathonId,
@@ -302,12 +331,20 @@ export default function AIIdeaGenerator() {
     setIsSaving(false)
 
     if (result.success) {
-      showCustomToast('success', 'Idea saved successfully!')
-      // Update generatedIdea with the saved ID
-      setGeneratedIdea({
+      const updatedIdea = {
         ...generatedIdea,
         id: result.data.id
-      })
+      }
+
+      // Update state
+      setGeneratedIdea(updatedIdea)
+
+      // Save to localStorage for persistence across refreshes
+      localStorage.setItem('currentGeneratedIdea', JSON.stringify(updatedIdea))
+      localStorage.setItem('currentHackathon', JSON.stringify(selectedHackathon))
+
+      showCustomToast('success', 'Idea saved! You can view it anytime in your Hacker Dashboard.')
+
       // Now create a conversation for this idea if one doesn't exist
       if (!conversationId) {
         const convResult = await createConversation(
@@ -357,22 +394,42 @@ export default function AIIdeaGenerator() {
     setIsStreamingChat(true)
 
     try {
+      const requestBody = {
+        messages: updatedMessages.map(msg => ({
+          role: msg.role,
+          content: msg.content,
+        })),
+        hackathonTitle: selectedHackathon.title,
+        hackathonCategories: selectedHackathon.categories,
+        hackathonId: selectedHackathon.id,
+        // Pass the generated idea for context
+        generatedIdea: {
+          title: generatedIdea.title,
+          description: generatedIdea.description,
+          problemStatement: generatedIdea.problemStatement,
+          vision: generatedIdea.vision,
+          techStack: generatedIdea.techStack,
+          implementation: generatedIdea.implementation,
+          skillsRequired: generatedIdea.skillsRequired,
+          successMetrics: generatedIdea.successMetrics,
+        },
+      }
+
+      console.log('Sending chat request with full body:', requestBody)
+      console.log('Messages array:', requestBody.messages)
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: updatedMessages.map(msg => ({
-            role: msg.role,
-            content: msg.content,
-          })),
-          hackathonTitle: selectedHackathon.title,
-          hackathonCategories: selectedHackathon.categories,
-          hackathonId: selectedHackathon.id,
-        }),
+        body: JSON.stringify(requestBody),
       })
 
+      console.log('Chat response status:', response.status, response.statusText)
+
       if (!response.ok) {
-        throw new Error('Failed to send message')
+        const errorText = await response.text()
+        console.error('Chat API error response:', errorText)
+        throw new Error(`Failed to send message: ${response.status} ${errorText}`)
       }
 
       const reader = response.body?.getReader()
@@ -386,7 +443,10 @@ export default function AIIdeaGenerator() {
 
           const chunk = decoder.decode(value)
           fullResponse += chunk
+          console.log('Received chunk, length:', chunk.length)
         }
+
+        console.log('Full response received, length:', fullResponse.length)
 
         const assistantMessage: Message = {
           role: 'assistant',
@@ -399,12 +459,17 @@ export default function AIIdeaGenerator() {
 
         // Update conversation in database
         if (conversationId) {
-          await updateConversation(conversationId, finalMessages)
+          console.log('Updating conversation:', conversationId)
+          const updateResult = await updateConversation(conversationId, finalMessages)
+          console.log('Conversation update result:', updateResult)
+        } else {
+          console.warn('No conversation ID - messages will not be saved')
         }
       }
     } catch (error) {
       console.error('Error sending message:', error)
-      showCustomToast('error', 'Failed to send message')
+      const errorMsg = error instanceof Error ? error.message : 'Failed to send message'
+      showCustomToast('error', errorMsg)
       // Remove the user message if there was an error
       setChatMessages((prev) => prev.slice(0, -1))
     } finally {
@@ -615,11 +680,11 @@ export default function AIIdeaGenerator() {
         </div>
 
         <div className="max-w-[1700px] mx-auto px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 h-[calc(100vh-220px)]">
+          <div className="grid grid-cols-[25%_40%_33%] gap-3 h-[calc(100vh-220px)]">
             {/* LEFT COLUMN - Timeline & Sidebar */}
             <div className="space-y-6 overflow-y-auto pr-2">
               {/* Project Timeline */}
-              <div className="bg-gradient-to-br from-gray-900 to-gray-800 border-2 border-blue-500/30 rounded-2xl p-6">
+              <div className="bg-gradient-to-br from-gray-900 to-gray-800 border-2 border-blue-500/30 rounded-2xl p-4">
                 <h3 className="text-lg font-blackops text-white mb-4 flex items-center gap-2">
                   <div className="w-1 h-6 bg-gradient-to-b from-blue-400 to-blue-600"></div>
                   Time Estimates
@@ -693,22 +758,71 @@ export default function AIIdeaGenerator() {
             </div>
 
             {/* CENTER COLUMN - Main Idea Content */}
-            <div className="lg:col-span-2 overflow-y-auto pr-2">
+            <div className="overflow-y-auto pr-2">
               <div className="bg-gradient-to-br from-gray-900 to-gray-800 border-2 border-purple-500/30 rounded-2xl overflow-hidden shadow-xl">
                 {/* Header */}
-                <div className="bg-gradient-to-r from-purple-600/20 to-pink-600/20 border-b border-gray-700 p-8">
-                  <div className="flex items-start justify-between gap-4 mb-4">
+                <div className="bg-gradient-to-r from-purple-600/20 to-pink-600/20 border-b border-gray-700 p-4">
+                  <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                       <h2 className="text-3xl font-blackops text-white mb-3">
                         {generatedIdea.title}
                       </h2>
-                      <p className="text-gray-300 font-mono text-base leading-relaxed">
-                        {generatedIdea.description}
-                      </p>
                     </div>
                     <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center flex-shrink-0">
                       <Sparkles className="w-8 h-8 text-white" />
                     </div>
+                  </div>
+                  <div>
+                    <p className="text-gray-300 text-pretty font-mono text-base leading-relaxed">
+                       {generatedIdea.description}
+                    </p>
+                  </div>
+
+                  {/* Action Buttons in Header */}
+                  <div className="flex gap-3 mt-6">
+                    <button
+                      onClick={handleSaveIdea}
+                      disabled={isSaving || Boolean(generatedIdea.id)}
+                      className={`flex-1 px-6 py-3 ${
+                        generatedIdea.id
+                          ? 'bg-green-600 cursor-default'
+                          : 'bg-gradient-to-r from-teal-500 to-cyan-500 hover:opacity-90'
+                      } text-white rounded-lg font-mono font-bold text-sm transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-75`}
+                    >
+                      {isSaving ? (
+                        <>
+                          <Loader className="w-4 h-4 animate-spin" />
+                          Saving...
+                        </>
+                      ) : generatedIdea.id ? (
+                        <>
+                          <CheckCircle className="w-4 h-4" />
+                          Saved
+                        </>
+                      ) : (
+                        <>
+                          <BookmarkPlus className="w-4 h-4" />
+                          Save Idea
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => {
+                        // Clear localStorage
+                        localStorage.removeItem('currentGeneratedIdea')
+                        localStorage.removeItem('currentHackathon')
+
+                        // Reset state
+                        setCurrentPage('input')
+                        setGeneratedIdea(null)
+                        setChatMessages([])
+                        setConversationId(null)
+                      }}
+                      className="flex-1 px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-mono font-bold text-sm transition-all border border-gray-700 flex items-center justify-center gap-2"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      Generate Another
+                    </button>
                   </div>
                 </div>
 
@@ -783,8 +897,8 @@ export default function AIIdeaGenerator() {
                       </h3>
                       <ul className="space-y-2">
                         {generatedIdea.implementation.securityBestPractices.map((practice: string, idx: number) => (
-                          <li key={idx} className="flex gap-2 items-start">
-                            <span className="text-red-400 mt-1">•</span>
+                          <li key={idx} className="flex gap-2 items-center">
+                            <span className="text-red-400">•</span>
                             <p className="text-gray-300 font-mono text-xs leading-relaxed flex-1">
                               {practice}
                             </p>
@@ -801,7 +915,7 @@ export default function AIIdeaGenerator() {
                         <div className="w-1 h-6 bg-gradient-to-b from-purple-400 to-purple-600"></div>
                         Deployment Guide
                       </h3>
-                      <div className="space-y-3">
+                      <div className="space-y-6">
                         <div>
                           <p className="text-purple-300 font-mono font-bold text-xs mb-1">Frontend:</p>
                           <p className="text-gray-300 font-mono text-xs leading-relaxed">
@@ -843,63 +957,12 @@ export default function AIIdeaGenerator() {
                     </div>
                   )}
 
-                  {/* Action Buttons */}
-                  <div className="flex gap-3 pt-4 border-t border-gray-700">
-                    <button
-                      onClick={() => showCustomToast('info', 'Share feature coming soon!')}
-                      className="flex-1 px-4 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-mono font-bold text-sm transition-all border border-gray-700 flex items-center justify-center gap-2"
-                    >
-                      <Share2 className="w-4 h-4" />
-                      Share
-                    </button>
-                    <button
-                      onClick={handleSaveIdea}
-                      disabled={isSaving}
-                      className="flex-1 px-4 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-mono font-bold text-sm transition-all border border-gray-700 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isSaving ? (
-                        <>
-                          <Loader className="w-4 h-4 animate-spin" />
-                          Saving...
-                        </>
-                      ) : (
-                        <>
-                          <BookmarkPlus className="w-4 h-4" />
-                          Save Idea
-                        </>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => showCustomToast('info', 'Edit feature coming soon!')}
-                      className="flex-1 px-4 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 hover:opacity-90 text-white rounded-lg font-mono font-bold text-sm transition-all shadow-lg flex items-center justify-center gap-2"
-                    >
-                      <MessageCircle className="w-4 h-4" />
-                      Edit idea
-                    </button>
-                  </div>
                 </div>
-              </div>
-
-              {/* Back Button */}
-              <div className="mt-6 flex justify-center">
-                <button
-                  onClick={() => {
-                    setCurrentPage('input')
-                    setGeneratedIdea(null)
-                    setSelectedHackathon(null)
-                    setResumeFile(null)
-                    setResumeText('')
-                    setInspiration('')
-                  }}
-                  className="px-6 py-3 rounded-lg font-mono font-bold text-white bg-gray-800 hover:bg-gray-700 border-2 border-gray-700 transition-all"
-                >
-                  Generate Another Idea
-                </button>
               </div>
             </div>
 
             {/* RIGHT COLUMN - Chat with AI */}
-            <div className="bg-gradient-to-br from-gray-900 to-gray-800 border-2 border-cyan-500/30 rounded-2xl p-6 flex flex-col overflow-hidden">
+            <div className="bg-gradient-to-br from-gray-900 to-gray-800 border-2 border-cyan-500/30 rounded-2xl p-4 flex flex-col overflow-hidden">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center">
                   <MessageCircle className="w-5 h-5 text-white" />
@@ -931,13 +994,39 @@ export default function AIIdeaGenerator() {
                     className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
                     <div
-                      className={`max-w-xs px-4 py-2 rounded-lg text-sm font-mono ${
+                      className={`max-w-[85%] px-4 py-3 rounded-lg text-sm ${
                         message.role === 'user'
                           ? 'bg-gradient-to-r from-teal-500 to-cyan-500 text-white'
                           : 'bg-gray-800 text-gray-300 border border-gray-700'
                       }`}
                     >
-                      {message.content}
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
+                          ul: ({ children }) => <ul className="list-disc list-inside space-y-1 my-2">{children}</ul>,
+                          ol: ({ children }) => <ol className="list-decimal list-inside space-y-1 my-2">{children}</ol>,
+                          li: ({ children }) => <li className="ml-2">{children}</li>,
+                          h1: ({ children }) => <h1 className="text-lg font-bold mb-2 mt-3 first:mt-0">{children}</h1>,
+                          h2: ({ children }) => <h2 className="text-base font-bold mb-2 mt-3 first:mt-0">{children}</h2>,
+                          h3: ({ children }) => <h3 className="text-sm font-bold mb-1 mt-2 first:mt-0">{children}</h3>,
+                          code: ({ inline, children }: { inline?: boolean; children: React.ReactNode }) =>
+                            inline ? (
+                              <code className="bg-gray-700 px-1.5 py-0.5 rounded text-xs">{children}</code>
+                            ) : (
+                              <code className="block bg-gray-900 p-2 rounded my-2 text-xs overflow-x-auto">{children}</code>
+                            ),
+                          strong: ({ children }) => <strong className="font-bold text-white">{children}</strong>,
+                          em: ({ children }) => <em className="italic">{children}</em>,
+                          a: ({ href, children }) => (
+                            <a href={href} className="text-cyan-400 hover:text-cyan-300 underline" target="_blank" rel="noopener noreferrer">
+                              {children}
+                            </a>
+                          ),
+                        }}
+                      >
+                        {message.content}
+                      </ReactMarkdown>
                     </div>
                   </div>
                 ))}

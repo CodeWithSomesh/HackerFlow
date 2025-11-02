@@ -189,17 +189,17 @@ export function Navbar() {
                   <NavigationMenuContent className="min-w-[400px] p-4 bg-black">
                     <ul className="grid w-[400px] gap-3 md:w-[500px] grid-cols-2 lg:w-[550px]">
                       <ListItem
-                        title="Generate Hackathon Ideas with AI"
-                        href="/hackathons"
+                        title="AI Hackathon Idea Generator"
+                        href="/ai-idea-generator"
                         className="hover:bg-gray-600"
                         image={BrowseHackathonImage} 
                         imageAlt="AI Idea Generation"
                       >
-                        Use AI to brainstorm innovative project ideas for hackathons.
+                        Use AI to brainstorm and generate inovative project ideas for hackathons.
                       </ListItem>
                       <ListItem
                         title="AI Team Matchmaking"
-                        href="/organize/step1"
+                        href="/find-teammates"
                         className="hover:bg-gray-600"
                         image={BrowseHackathonImage} 
                         imageAlt="Team Matchmaking"
@@ -212,8 +212,8 @@ export function Navbar() {
 
                 <NavigationMenuItem>
                   <NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
-                    <Link href="/leaderboard" className="bg-transparent hover:bg-accent/50">
-                      Leaderboard
+                    <Link href="/search-friends" className="bg-transparent hover:bg-accent/50">
+                      Discover
                     </Link>
                   </NavigationMenuLink>
                 </NavigationMenuItem>
@@ -257,14 +257,16 @@ export function Navbar() {
                     </DropdownMenuItem>
                     
                     <DropdownMenuItem className="rounded-md px-3 py-2.5 hover:bg-gray-800 focus:bg-gray-800 cursor-pointer transition-colors group">
-                      <LayoutDashboard className="h-4 w-4 mr-3 text-gray-400 group-hover:text-cyan-400 transition-colors" />
-                      <span className="text-sm">Dashboard</span>
+                      <Link href={"/dashboard"} className="flex items-center gap-2">
+                        <LayoutDashboard className="h-4 w-4 mr-3 text-gray-400 group-hover:text-cyan-400 transition-colors" />
+                        <span className="text-sm">Dashboard</span>  
+                      </Link>
                     </DropdownMenuItem>
                     
-                    <DropdownMenuItem className="rounded-md px-3 py-2.5 hover:bg-gray-800 focus:bg-gray-800 cursor-pointer transition-colors group">
+                    {/* <DropdownMenuItem className="rounded-md px-3 py-2.5 hover:bg-gray-800 focus:bg-gray-800 cursor-pointer transition-colors group">
                       <Settings className="h-4 w-4 mr-3 text-gray-400 group-hover:text-blue-400 transition-colors" />
                       <span className="text-sm">Settings</span>
-                    </DropdownMenuItem>
+                    </DropdownMenuItem> */}
                     
                     <DropdownMenuSeparator className="bg-gray-800 my-2" />
                     
@@ -360,16 +362,16 @@ export function Navbar() {
                       </CollapsibleTrigger>
                       <CollapsibleContent className="space-y-1 px-3">
                         <MobileListItem
-                          title="Generate Hackathon Ideas with AI"
-                          href="/hackathons"
+                          title="AI Hackathon Idea Generator"
+                          href="/ai-idea-generator"
                           onClose={closeMobileMenu}
                           className="hover:bg-gray-700"
                         >
-                          Use AI to brainstorm innovative project ideas for hackathons.
+                          Use AI to brainstorm and generate inovative project ideas for hackathons.
                         </MobileListItem>
                         <MobileListItem
                           title="AI Team Matchmaking"
-                          href="/organize/step1"
+                          href="/find-teammates"
                           onClose={closeMobileMenu}
                           className="hover:bg-gray-700"
                         >
@@ -378,13 +380,13 @@ export function Navbar() {
                       </CollapsibleContent>
                     </Collapsible>
 
-                    {/* Leaderboard */}
+                    {/* Search Friends */}
                     <Link
-                      href="/leaderboard"
+                      href="/search-friends"
                       onClick={closeMobileMenu}
                       className="block rounded-lg px-3 py-2 text-sm font-medium hover:bg-gray-800 transition-colors"
                     >
-                      Leaderboard
+                      Discover
                     </Link>
                   </nav>
 
@@ -418,14 +420,14 @@ export function Navbar() {
                             <User className="h-4 w-4" />
                             Dashboard
                           </Link>
-                          <Link
+                          {/* <Link
                             href="/settings"
                             onClick={closeMobileMenu}
                             className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-gray-800 transition-colors"
                           >
                             <Settings className="h-4 w-4" />
                             Settings
-                          </Link>
+                          </Link> */}
                           
                           <form action={signOut} className="w-full">
                             <button 

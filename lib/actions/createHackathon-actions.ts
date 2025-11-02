@@ -216,6 +216,12 @@ export async function updateHackathonStep2(hackathonId: string, data: CreateHack
       if (error) {
         return { success: false, error: error.message };
       }
+
+      // Add this log to see what's being returned
+      console.log('Hackathon data from DB:', {
+        identity_document_url: data?.identity_document_url,
+        authorization_letter_url: data?.authorization_letter_url
+      })
   
       return { success: true, data };
     } catch (error) {
@@ -321,7 +327,7 @@ export async function fetchHackathonById(hackathonId: string) {
   }
 }
 
-export async function uploadIdentityDocument(file: File) {
+export async function uploadIdentityDocument(file: File, hackathonId?: string) {
   try {
     const supabase = await createClient();
 
@@ -361,6 +367,23 @@ export async function uploadIdentityDocument(file: File) {
       .from('identity-documents')
       .getPublicUrl(filePath);
 
+    // Update the database immediately if hackathonId is provided
+    if (hackathonId) {
+      const { error: dbError } = await supabase
+        .from('hackathons')
+        .update({
+          identity_document_url: publicUrl,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', hackathonId)
+        .eq('created_by', user.id);
+
+      if (dbError) {
+        console.error('Database update error:', dbError);
+        // Don't fail the upload if DB update fails, but log it
+      }
+    }
+
     return { success: true, url: publicUrl };
   } catch (error) {
     console.error('Upload error:', error);
@@ -368,7 +391,7 @@ export async function uploadIdentityDocument(file: File) {
   }
 }
 
-export async function uploadAuthorizationLetter(file: File) {
+export async function uploadAuthorizationLetter(file: File, hackathonId?: string) {
   try {
     const supabase = await createClient();
 
@@ -407,6 +430,23 @@ export async function uploadAuthorizationLetter(file: File) {
     const { data: { publicUrl } } = supabase.storage
       .from('authorization-letters')
       .getPublicUrl(filePath);
+
+    // Update the database immediately if hackathonId is provided
+    if (hackathonId) {
+      const { error: dbError } = await supabase
+        .from('hackathons')
+        .update({
+          authorization_letter_url: publicUrl,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', hackathonId)
+        .eq('created_by', user.id);
+
+      if (dbError) {
+        console.error('Database update error:', dbError);
+        // Don't fail the upload if DB update fails, but log it
+      }
+    }
 
     return { success: true, url: publicUrl };
   } catch (error) {

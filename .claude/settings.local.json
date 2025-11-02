@@ -9,7 +9,10 @@
       "Bash(npm run dev:*)",
       "Bash(Get-Content \"package.json\")",
       "Bash(Select-String -Pattern \"supabase\")",
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "Bash(npx supabase db reset)",
+      "Bash(cat:*)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": []
