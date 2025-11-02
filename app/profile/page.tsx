@@ -1,12 +1,13 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { getUserProfile, saveHackerProfile, saveOrganizerProfile, getUserGitHubProjects, uploadProfileImage } from "@/lib/actions/profile-actions"
-import { 
-  User, 
-  Mail, 
-  MapPin, 
-  Briefcase, 
+import {
+  User,
+  Mail,
+  MapPin,
+  Briefcase,
   GraduationCap,
   Github,
   Linkedin,
@@ -29,30 +30,36 @@ import {
   Link as LinkIcon,
   X,
   Save,
-  Upload
+  Upload,
+  Inbox
 } from "lucide-react"
 import { showCustomToast } from "@/components/toast-notification"
-import { 
-    connectGitHub, 
-    fetchGitHubRepositories, 
-    fetchGitHubStats, 
-    disconnectGitHub, 
+import {
+    connectGitHub,
+    fetchGitHubRepositories,
+    fetchGitHubStats,
+    disconnectGitHub,
     fetchPinnedRepositories,
     fetchTopLanguages,
     type LanguageStats,
-    type ContributionStreak 
+    type ContributionStreak
 } from "@/lib/actions/github-actions"
 import { HackerProfileSchema, OrganizerProfileSchema } from "@/lib/validations/profile"
+import { ProfileFriendsTab } from "@/components/profile-friends-tab"
+import { ProfileRequestsTab } from "@/components/profile-requests-tab"
+import { getFriendCountsDirect as getFriendCounts } from "@/lib/actions/friend-actions-direct"
 import z from "zod"
 
 export default function ProfilePage() {
+  const searchParams = useSearchParams()
   const [isEditing, setIsEditing] = useState(false)
   const [activeTab, setActiveTab] = useState("overview")
   const [userType, setUserType] = useState<"hacker" | "organizer" | null>(null)
   const [showImageUpload, setShowImageUpload] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-const [loadingGithub, setLoadingGithub] = useState(false)
+  const [loadingGithub, setLoadingGithub] = useState(false)
+  const [friendCounts, setFriendCounts] = useState({ friendCount: 0, pendingRequestCount: 0 })
 
   // Mock user data - replace with real data from your backend
   const [userData, setUserData] = useState({
@@ -107,7 +114,23 @@ const [loadingGithub, setLoadingGithub] = useState(false)
   // Load user profile on mount
   useEffect(() => {
     loadUserProfile()
+    loadFriendCounts()
   }, [])
+
+  // Handle URL params for tab navigation
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (tab && ['overview', 'friends', 'requests', 'github', 'activity'].includes(tab)) {
+      setActiveTab(tab)
+    }
+  }, [searchParams])
+
+  const loadFriendCounts = async () => {
+    const result = await getFriendCounts()
+    if (result.success && result.data) {
+      setFriendCounts(result.data)
+    }
+  }
 
   const loadUserProfile = async () => {
     setLoading(true)
@@ -793,7 +816,7 @@ const [loadingGithub, setLoadingGithub] = useState(false)
 
                 {/* Tabs */}
                 <div className="flex gap-2 mb-6 overflow-x-auto">
-                {["overview", "github", "activity"].map((tab) => (
+                {["overview", "friends", "requests", "github", "activity"].map((tab) => (
                     <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
@@ -803,7 +826,19 @@ const [loadingGithub, setLoadingGithub] = useState(false)
                         : "bg-gray-800/50 border border-gray-700 text-gray-400 hover:text-white hover:border-gray-600"
                     }`}
                     >
-                    {tab}
+                    <span className="flex items-center gap-2">
+                      {tab}
+                      {tab === "friends" && friendCounts.friendCount > 0 && (
+                        <span className="px-2 py-0.5 bg-teal-500 rounded-full text-xs">
+                          {friendCounts.friendCount}
+                        </span>
+                      )}
+                      {tab === "requests" && friendCounts.pendingRequestCount > 0 && (
+                        <span className="px-2 py-0.5 bg-pink-500 rounded-full text-xs animate-pulse">
+                          {friendCounts.pendingRequestCount}
+                        </span>
+                      )}
+                    </span>
                     </button>
                 ))}
                 </div>
@@ -1412,6 +1447,17 @@ const [loadingGithub, setLoadingGithub] = useState(false)
                         </div>
                         </div>
                     </div>
+                    )}
+
+                    {activeTab === "friends" && (
+                      <ProfileFriendsTab
+                        isActive={activeTab === "friends"}
+                        onCountChange={loadFriendCounts}
+                      />
+                    )}
+
+                    {activeTab === "requests" && (
+                      <ProfileRequestsTab />
                     )}
 
                     {activeTab === "github" && userData.githubConnected && (

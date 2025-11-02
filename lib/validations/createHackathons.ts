@@ -91,10 +91,18 @@ export const createHackathonStep2Schema = z.object({
     categories: z.array(z.string()).optional(),
     prizes: z.array(z.object({
       position: z.string().min(1, 'Prize position is required'),
-      amount: z.string().min(1, 'Prize amount is required'),
+      amount: z.string().optional(),
       description: z.string().optional(),
       type: z.string().min(1, 'Prize type is required')
-    })).optional(),
+    })).optional().refine((prizes) => {
+      // Validate that non-certificate prizes have an amount
+      if (!prizes) return true;
+      return prizes.every(prize =>
+        prize.type === 'Certificate' || (prize.amount && prize.amount.trim().length > 0)
+      );
+    }, {
+      message: 'Cash prizes must have an amount specified'
+    }),
     timeline: z.array(z.object({
       title: z.string().min(1, 'Timeline title is required'),
       startDate: z.string().min(1, 'Start date is required'),

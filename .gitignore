@@ -40,3 +40,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# claude
+/claude
+.claude/*
+.claude/settings.local.json
+
+#sql
+/sql
+.sql*
+*/sql

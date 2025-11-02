@@ -216,6 +216,12 @@ export async function updateHackathonStep2(hackathonId: string, data: CreateHack
       if (error) {
         return { success: false, error: error.message };
       }
+
+      // Add this log to see what's being returned
+      console.log('Hackathon data from DB:', {
+        identity_document_url: data?.identity_document_url,
+        authorization_letter_url: data?.authorization_letter_url
+      })
   
       return { success: true, data };
     } catch (error) {
@@ -301,7 +307,7 @@ export async function fetchPublishedHackathons() {
 export async function fetchHackathonById(hackathonId: string) {
   try {
     const supabase = await createClient();
-    
+
     const { data, error } = await supabase
       .from('hackathons')
       .select('*')
@@ -318,5 +324,133 @@ export async function fetchHackathonById(hackathonId: string) {
   } catch (error) {
     console.error('Server error:', error);
     return { success: false, error: 'An unexpected error occurred', data: null };
+  }
+}
+
+export async function uploadIdentityDocument(file: File, hackathonId?: string) {
+  try {
+    const supabase = await createClient();
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      return { success: false, error: 'User not authenticated' };
+    }
+
+    // Validate file type
+    const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+    if (!validTypes.includes(file.type)) {
+      return { success: false, error: 'Please upload a PDF or image file (JPG, PNG)' };
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      return { success: false, error: 'File size must be less than 5MB' };
+    }
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+    // With folder structure
+    const filePath = `${user.id}/${fileName}`;
+    // Without folder (simpler)
+    // const filePath = fileName;
+
+    const { error: uploadError } = await supabase.storage
+      .from('identity-documents')
+      .upload(filePath, file);
+
+    if (uploadError) {
+      console.error('Upload error:', uploadError);
+      return { success: false, error: 'Failed to upload identity document' };
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('identity-documents')
+      .getPublicUrl(filePath);
+
+    // Update the database immediately if hackathonId is provided
+    if (hackathonId) {
+      const { error: dbError } = await supabase
+        .from('hackathons')
+        .update({
+          identity_document_url: publicUrl,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', hackathonId)
+        .eq('created_by', user.id);
+
+      if (dbError) {
+        console.error('Database update error:', dbError);
+        // Don't fail the upload if DB update fails, but log it
+      }
+    }
+
+    return { success: true, url: publicUrl };
+  } catch (error) {
+    console.error('Upload error:', error);
+    return { success: false, error: 'An unexpected error occurred' };
+  }
+}
+
+export async function uploadAuthorizationLetter(file: File, hackathonId?: string) {
+  try {
+    const supabase = await createClient();
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      return { success: false, error: 'User not authenticated' };
+    }
+
+    // Validate file type
+    const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+    if (!validTypes.includes(file.type)) {
+      return { success: false, error: 'Please upload a PDF or image file (JPG, PNG)' };
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      return { success: false, error: 'File size must be less than 5MB' };
+    }
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+    // With folder structure
+    const filePath = `${user.id}/${fileName}`;
+    // Without folder (simpler)
+    // const filePath = fileName;
+
+    const { error: uploadError } = await supabase.storage
+      .from('authorization-letters')
+      .upload(filePath, file);
+
+    if (uploadError) {
+      console.error('Upload error:', uploadError);
+      return { success: false, error: 'Failed to upload authorization letter' };
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('authorization-letters')
+      .getPublicUrl(filePath);
+
+    // Update the database immediately if hackathonId is provided
+    if (hackathonId) {
+      const { error: dbError } = await supabase
+        .from('hackathons')
+        .update({
+          authorization_letter_url: publicUrl,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', hackathonId)
+        .eq('created_by', user.id);
+
+      if (dbError) {
+        console.error('Database update error:', dbError);
+        // Don't fail the upload if DB update fails, but log it
+      }
+    }
+
+    return { success: true, url: publicUrl };
+  } catch (error) {
+    console.error('Upload error:', error);
+    return { success: false, error: 'An unexpected error occurred' };
   }
 }

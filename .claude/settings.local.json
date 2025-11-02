@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build:*)",
+      "Bash(npx tsc:*)",
+      "Bash(code:*)",
+      "Bash(Get-Content \"app\\ai-idea-generator\\page.tsx\")",
+      "Bash(Select-Object -Skip 266 -First 10)",
+      "Bash(npm run dev:*)",
+      "Bash(Get-Content \"package.json\")",
+      "Bash(Select-String -Pattern \"supabase\")",
+      "Bash(test:*)",
+      "Bash(npx supabase db reset)",
+      "Bash(cat:*)",
+      "Bash(npm install:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
