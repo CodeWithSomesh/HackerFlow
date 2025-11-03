@@ -285,7 +285,7 @@ export async function updateHackathonStep2(hackathonId: string, data: CreateHack
 export async function fetchPublishedHackathons() {
   try {
     const supabase = await createClient();
-    
+
     const { data, error } = await supabase
       .from('hackathons')
       .select('*')
@@ -297,7 +297,45 @@ export async function fetchPublishedHackathons() {
       return { success: false, error: error.message, data: [] };
     }
 
-    return { success: true, data: data || [] };
+    // Fetch team counts and participant counts for all hackathons
+    const hackathonIds = data?.map(h => h.id) || [];
+
+    const teamCountsPromises = hackathonIds.map(id =>
+      supabase
+        .from('hackathon_teams')
+        .select('id', { count: 'exact', head: true })
+        .eq('hackathon_id', id)
+    );
+
+    const participantCountsPromises = hackathonIds.map(id =>
+      supabase
+        .from('hackathon_registrations')
+        .select('user_id', { count: 'exact', head: true })
+        .eq('hackathon_id', id)
+    );
+
+    const [teamCountsResults, participantCountsResults] = await Promise.all([
+      Promise.all(teamCountsPromises),
+      Promise.all(participantCountsPromises)
+    ]);
+
+    // Create maps of hackathon_id to counts
+    const teamCountsMap = new Map();
+    const participantCountsMap = new Map();
+
+    hackathonIds.forEach((id, index) => {
+      teamCountsMap.set(id, teamCountsResults[index]?.count || 0);
+      participantCountsMap.set(id, participantCountsResults[index]?.count || 0);
+    });
+
+    // Attach counts to hackathon data
+    const dataWithCounts = data?.map(hack => ({
+      ...hack,
+      team_count: teamCountsMap.get(hack.id) || 0,
+      participant_count: participantCountsMap.get(hack.id) || 0
+    }));
+
+    return { success: true, data: dataWithCounts || [] };
   } catch (error) {
     console.error('Server error:', error);
     return { success: false, error: 'An unexpected error occurred', data: [] };
@@ -324,6 +362,50 @@ export async function fetchHackathonById(hackathonId: string) {
   } catch (error) {
     console.error('Server error:', error);
     return { success: false, error: 'An unexpected error occurred', data: null };
+  }
+}
+
+export async function getHackathonTeamCount(hackathonId: string) {
+  try {
+    const supabase = await createClient();
+
+    // Count unique teams registered for this hackathon
+    const { count, error } = await supabase
+      .from('hackathon_teams')
+      .select('id', { count: 'exact', head: true })
+      .eq('hackathon_id', hackathonId);
+
+    if (error) {
+      console.error('Error counting teams:', error);
+      return { success: false, error: error.message, count: 0 };
+    }
+
+    return { success: true, count: count || 0 };
+  } catch (error) {
+    console.error('Server error:', error);
+    return { success: false, error: 'An unexpected error occurred', count: 0 };
+  }
+}
+
+export async function getHackathonParticipantCount(hackathonId: string) {
+  try {
+    const supabase = await createClient();
+
+    // Count unique participants (users) registered for this hackathon
+    const { count, error } = await supabase
+      .from('hackathon_registrations')
+      .select('user_id', { count: 'exact', head: true })
+      .eq('hackathon_id', hackathonId);
+
+    if (error) {
+      console.error('Error counting participants:', error);
+      return { success: false, error: error.message, count: 0 };
+    }
+
+    return { success: true, count: count || 0 };
+  } catch (error) {
+    console.error('Server error:', error);
+    return { success: false, error: 'An unexpected error occurred', count: 0 };
   }
 }
 

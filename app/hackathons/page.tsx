@@ -53,7 +53,7 @@ const Hackathons = () => {
           endDate: hack.registration_end_date,
           location: hack.location || 'Online',
           mode: hack.mode as "online" | "hybrid" | "offline",
-          participants: hack.participants || 0,
+          participants: hack.participant_count || 0, // Use actual participant count from server
           maxParticipants: hack.max_participants || 1000,
           prize: hack.total_prize_pool || '$0',
           tags: hack.categories || [],
@@ -64,7 +64,8 @@ const Hackathons = () => {
           colorTheme: getRandomTheme(index),
           category: hack.categories?.[0] || 'General',
           level: hack.eligibility?.[0] || 'Meow', // Use the first eligibility option
-          prizeValue: parsePrizeValue(hack.total_prize_pool)
+          prizeValue: parsePrizeValue(hack.total_prize_pool),
+          teamCount: hack.team_count || 0 // Add team count from server
         }));
 
         setDbHackathons(transformedData);
@@ -787,10 +788,18 @@ const Hackathons = () => {
                           {getModeIcon(hackathon.mode)}
                           {hackathon.mode.toUpperCase()}
                         </div>
-                        
-                        <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold font-mono bg-black/80 backdrop-blur border-2 ${theme.border} ${theme.text}`}>
-                          <Users className="h-3 w-3" />
-                          {hackathon.participants}
+
+                        <div className="flex items-center gap-2">
+                          {hackathon.teamCount !== undefined && hackathon.teamCount > 0 && (
+                            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold font-mono bg-black/80 backdrop-blur border-2 ${theme.border} ${theme.text}`}>
+                              <Users className="h-3 w-3" />
+                              {hackathon.teamCount} Teams
+                            </div>
+                          )}
+                          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold font-mono bg-black/80 backdrop-blur border-2 ${theme.border} ${theme.text}`}>
+                            <User className="h-3 w-3" />
+                            {hackathon.participants}
+                          </div>
                         </div>
                       </div>
                     </div>

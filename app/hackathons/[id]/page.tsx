@@ -35,7 +35,7 @@ import TrophyImage from "@/assets/Trophy Prize.png"
 import PrizeImage from "@/assets/Prize Box.png"
 import CertificateImage from "@/assets/Certificate.png"
 import { motion} from "framer-motion"
-import { fetchHackathonById } from "@/lib/actions/createHackathon-actions";
+import { fetchHackathonById, getHackathonTeamCount, getHackathonParticipantCount } from "@/lib/actions/createHackathon-actions";
 
 
 interface HackathonDetailsProps {
@@ -48,6 +48,8 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
   const [loading, setLoading] = useState(true);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+  const [teamCount, setTeamCount] = useState<number>(0);
+  const [participantCount, setParticipantCount] = useState<number>(0);
 
 
   
@@ -61,8 +63,22 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
     try {
       // Try to fetch from database first
       const dbResult = await fetchHackathonById(resolvedParams.id);
-      
+
       if (dbResult.success && dbResult.data) {
+        // Fetch actual team count and participant count
+        const [teamCountResult, participantCountResult] = await Promise.all([
+          getHackathonTeamCount(resolvedParams.id),
+          getHackathonParticipantCount(resolvedParams.id)
+        ]);
+
+        if (teamCountResult.success) {
+          setTeamCount(teamCountResult.count);
+        }
+
+        if (participantCountResult.success) {
+          setParticipantCount(participantCountResult.count);
+        }
+
         // Transform DB data to match Hackathon interface
         const transformedData: Hackathon = {
           id: dbResult.data.id,
@@ -297,13 +313,6 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
     }
   };
 
-  useEffect(() => {
-    // Simulate API call - replace with actual API call
-    const foundHackathon = mockHackathons.find(h => h.id === resolvedParams.id);
-    setHackathon(foundHackathon || null);
-    setLoading(false);
-  }, [resolvedParams.id]);
-
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -468,27 +477,27 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
       </div>
 
       <div className="max-w-7xl mx-auto py-6 px-6">
-        <div className="grid lg:grid-cols-[70.2%_20%] gap-4">
+        <div className="grid lg:grid-cols-[1fr_350px] gap-6">
           {/* Main Content */}
           <div className="space-y-6">
             {/* Enhanced Hero Section */}
             <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 border-2 border-gray-700 shadow-2xl">
               {/* Animated gradient background */}
               <div className={`absolute inset-0 bg-gradient-to-br ${theme.gradient} opacity-0 animate-puls`}></div>
-              
+
               <div className="relative z-10 p-8">
-                <div className="grid grid-cols-[15%_83%] gap-4 mb-6">
-                  <div className="rounded-xl max-h-[100px] overflow-hidden border-2 border-gray-700 shadow-lg hover:scale-105 transition-transform">
+                <div className="flex items-center gap-6 mb-6">
+                  <div className="rounded-xl w-24 h-24 flex-shrink-0 overflow-hidden border-2 border-gray-700 shadow-lg hover:scale-105 transition-transform">
                     <Image
                       src={hackathon.image}
                       alt={hackathon.title}
                       width={100}
                       height={100}
                       unoptimized
-                      className="object-cover h-[100px] w-full"
+                      className="object-cover h-full w-full"
                     />
                   </div>
-                  <h1 className="text-5xl lg:text-6xl font-blackops text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-blue-400 to-teal-400 leading-tight">
+                  <h1 className="text-4xl lg:text-5xl font-blackops text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-blue-400 to-teal-400 leading-tight flex-1">
                     {hackathon.title}
                   </h1>
                 </div>
@@ -521,23 +530,23 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
                 </div>
 
                 {/* Enhanced Key Stats Grid */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
                   {[
-                    { icon: Users, value: hackathon.participants, label: 'Participants', color: 'from-blue-500 to-blue-700', glow: 'shadow-blue-500/30' },
-                    { icon: Trophy, value: hackathon.totalPrizePool, label: 'Prize Pool', color: 'from-yellow-500 to-yellow-700', glow: 'shadow-yellow-500/30' },
-                    { 
-                      icon: Clock, 
-                      value: calculateTimeLeft(hackathon.startDate, hackathon.endDate).text, 
-                      label: calculateTimeLeft(hackathon.startDate, hackathon.endDate).label, 
-                      color: 'from-green-500 to-green-700', 
-                      glow: 'shadow-green-500/30' 
+                    { icon: Users, value: participantCount || hackathon.participants, label: 'Participants', color: 'from-blue-500 to-blue-700', glow: 'shadow-blue-500/20' },
+                    { icon: Trophy, value: hackathon.totalPrizePool, label: 'Prize Pool', color: 'from-yellow-500 to-yellow-700', glow: 'shadow-yellow-500/20' },
+                    {
+                      icon: Clock,
+                      value: calculateTimeLeft(hackathon.startDate, hackathon.endDate).text,
+                      label: calculateTimeLeft(hackathon.startDate, hackathon.endDate).label,
+                      color: 'from-green-500 to-green-700',
+                      glow: 'shadow-green-500/20'
                     },
-                    { icon: MapPin, value: hackathon.mode.charAt(0).toUpperCase() + hackathon.mode.slice(1), label: hackathon.location.split(',')[0], color: 'from-purple-500 to-purple-700', glow: 'shadow-purple-500/30' }
+                    { icon: MapPin, value: hackathon.mode.charAt(0).toUpperCase() + hackathon.mode.slice(1), label: hackathon.location.split(',')[0], color: 'from-purple-500 to-purple-700', glow: 'shadow-purple-500/20' }
                   ].map((stat, idx) => (
-                    <div key={idx} className={`bg-gradient-to-br ${stat.color} backdrop-blur border-2 border-white/10 rounded-2xl p-5 text-center hover:scale-105 transition-all ${stat.glow} shadow-xl group`}>
-                      <stat.icon className="w-7 h-7 text-white mx-auto mb-3 group-hover:scale-110 transition-transform" />
-                      <div className="text-3xl font-blackops text-white drop-shadow-lg">{stat.value}</div>
-                      <div className="text-sm text-white/90 font-mono mt-1 font-bold">{stat.label}</div>
+                    <div key={idx} className={`bg-gradient-to-br ${stat.color} backdrop-blur border border-white/20 rounded-xl p-3 text-center hover:scale-105 transition-all ${stat.glow} shadow-lg group`}>
+                      <stat.icon className="w-5 h-5 text-white mx-auto mb-2 group-hover:scale-110 transition-transform" />
+                      <div className="text-2xl font-blackops text-white drop-shadow-lg leading-tight">{stat.value}</div>
+                      <div className="text-xs text-white/90 font-mono mt-1 font-bold uppercase tracking-wide">{stat.label}</div>
                     </div>
                   ))}
                 </div>
@@ -1103,7 +1112,7 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
                     {/* Teams Registered */}
                     <div className="bg-gradient-to-br from-blue-500/10 to-purple-500/10 border border-blue-500/30 rounded-xl p-4 text-center hover:scale-105 transition-all">
                       <Users className="w-6 h-6 text-blue-400 mx-auto mb-2" />
-                      <div className="text-xl font-bold text-white font-mono">{Math.ceil(hackathon.participants / 4)}</div>
+                      <div className="text-xl font-bold text-white font-mono">{teamCount}</div>
                       <div className="text-xs text-gray-300 font-medium">TEAMS</div>
                     </div>
 
@@ -1133,15 +1142,15 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
                   <div className="space-y-3">
                     <div className="flex justify-between text-sm font-medium">
                       <span className="text-gray-300 font-mono">Participants</span>
-                      <span className="text-white font-bold font-mono">{hackathon.participants}/{hackathon.maxParticipants}</span>
+                      <span className="text-white font-bold font-mono">{participantCount || hackathon.participants}/{hackathon.maxParticipants}</span>
                     </div>
-                    
+
                     {/* Enhanced progress bar */}
                     <div className="relative">
                       <div className="w-full bg-gray-800 rounded-full h-3 overflow-hidden border border-gray-700">
-                        <div 
+                        <div
                           className="h-full bg-gradient-to-r from-blue-400 via-purple-500 to-teal-500 transition-all duration-700 relative"
-                          style={{ width: `${(hackathon.participants / hackathon.maxParticipants) * 100}%` }}
+                          style={{ width: `${((participantCount || hackathon.participants) / hackathon.maxParticipants) * 100}%` }}
                         >
                           <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
                           {/* Animated shine effect */}
@@ -1149,7 +1158,7 @@ export default function HackathonDetails({ params }: HackathonDetailsProps) {
                         </div>
                       </div>
                       <div className="text-center text-sm text-gray-400 font-mono mt-2 font-medium">
-                        {Math.round((hackathon.participants / hackathon.maxParticipants) * 100)}% Full
+                        {Math.round(((participantCount || hackathon.participants) / hackathon.maxParticipants) * 100)}% Full
                       </div>
                     </div>
                   </div>

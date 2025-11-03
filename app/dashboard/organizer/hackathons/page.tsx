@@ -234,7 +234,7 @@ export default function OrganizerHackathonsPage() {
                                 </Link>
                               </DropdownMenuItem>
                               <DropdownMenuItem asChild>
-                                <Link href={`/organize/step1?id=${hackathon.id}`} className="cursor-pointer">
+                                <Link href={`/organize/step3?id=${hackathon.id}`} className="cursor-pointer">
                                   <Edit className="h-4 w-4 mr-2" />
                                   Edit
                                 </Link>

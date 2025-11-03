@@ -28,10 +28,17 @@ import {
   updateTeam,
   addTeamMember,
   removeTeamMember,
-  getTeamsSeekingMembers
+  getTeamsSeekingMembers,
+  completeTeam
 } from "@/lib/actions/hackathon-registration-actions";
+import {
+  sendTeamMergeInvite,
+  getTeamMergeInvitations,
+  respondToMergeInvite
+} from "@/lib/actions/team-merge-actions";
 import { fetchHackathonById } from "@/lib/actions/createHackathon-actions";
 import { showCustomToast } from "@/components/toast-notification";
+import { triggerCustomShapes } from "@/lib/confetti";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -74,15 +81,19 @@ export default function TeamManagementPage({ params }: TeamPageProps) {
   const [inviteEmail, setInviteEmail] = useState('');
   const [sendingEmail, setSendingEmail] = useState(false);
   const [confirmText, setConfirmText] = useState('');
-  const [activeTab, setActiveTab] = useState<'past' | 'seeking' | 'players'>('past');
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [showEditTeamModal, setShowEditTeamModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [showCompleteDialog, setShowCompleteDialog] = useState(false);
   const [showEditMemberModal, setShowEditMemberModal] = useState(false);
   const [memberToDelete, setMemberToDelete] = useState<string | null>(null);
   const [memberToEdit, setMemberToEdit] = useState<any>(null);
+  const [completingTeam, setCompletingTeam] = useState(false);
+  const [mergeInvitations, setMergeInvitations] = useState<any[]>([]);
+  const [sendingInvite, setSendingInvite] = useState(false);
+  const [showInvitationsModal, setShowInvitationsModal] = useState(false);
 
   const [teamFormData, setTeamFormData] = useState<TeamFormData>({
     teamName: '',
@@ -126,6 +137,26 @@ export default function TeamManagementPage({ params }: TeamPageProps) {
 
       setIsLeader(registrationCheck.isTeamLeader || false);
 
+      // For team-based hackathons, verify user is still a team member
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (user && registrationCheck.registration?.team_id) {
+        const { data: memberCheck } = await supabase
+          .from('hackathon_team_members')
+          .select('id, status')
+          .eq('team_id', registrationCheck.registration.team_id)
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        // If user was removed from team, they won't have a member record
+        if (!memberCheck) {
+          setTeam({ removed: true, team_name: registrationCheck.registration?.hackathon_teams?.team_name });
+          setLoading(false);
+          return;
+        }
+      }
+
       // Fetch hackathon details
       const hackathonResult = await fetchHackathonById(resolvedParams.id);
       if (hackathonResult.success && hackathonResult.data) {
@@ -145,12 +176,24 @@ export default function TeamManagementPage({ params }: TeamPageProps) {
 
         // Fetch teams seeking members
         const teamsResult = await getTeamsSeekingMembers(resolvedParams.id);
+        console.log('Teams seeking result:', teamsResult);
         if (teamsResult.success) {
           // Filter out own team from the list
           const filteredTeams = (teamsResult.data || []).filter(
             (seekingTeam: any) => seekingTeam.id !== teamResult.data?.id
           );
+          console.log('Filtered teams:', filteredTeams);
           setTeamsSeekingMembers(filteredTeams);
+        } else {
+          console.error('Failed to fetch teams seeking members:', teamsResult.error);
+        }
+
+        // Fetch team merge invitations
+        if (teamResult.data?.id) {
+          const invitationsResult = await getTeamMergeInvitations(teamResult.data.id);
+          if (invitationsResult.success) {
+            setMergeInvitations(invitationsResult.data || []);
+          }
         }
       }
     } catch (error) {
@@ -419,7 +462,7 @@ export default function TeamManagementPage({ params }: TeamPageProps) {
       showCustomToast('error', 'Please type "confirm" to continue');
       return;
     }
-  
+
     try {
       const result = await cancelRegistration(resolvedParams.id);
       if (result.success) {
@@ -433,6 +476,76 @@ export default function TeamManagementPage({ params }: TeamPageProps) {
     } finally {
       setShowCancelDialog(false);
       setConfirmText('');
+    }
+  };
+
+  const handleCompleteTeam = async () => {
+    if (!team?.id) return;
+
+    setCompletingTeam(true);
+    try {
+      const result = await completeTeam(team.id);
+      if (result.success) {
+        showCustomToast('success', 'Team completed successfully! Confirmation emails sent to all members.');
+        triggerCustomShapes(); // Confetti celebration!
+        await loadData(); // Reload to show updated state
+      } else {
+        showCustomToast('error', result.error || 'Failed to complete team');
+      }
+    } catch (error) {
+      showCustomToast('error', 'An unexpected error occurred');
+    } finally {
+      setCompletingTeam(false);
+      setShowCompleteDialog(false);
+    }
+  };
+
+  const handleSendMergeInvite = async (receiverTeamId: string) => {
+    if (!team?.id) return;
+
+    setSendingInvite(true);
+    try {
+      const result = await sendTeamMergeInvite(
+        team.id,
+        receiverTeamId,
+        resolvedParams.id
+      );
+
+      if (result.success) {
+        showCustomToast('success', 'Merge invitation sent successfully!');
+        await loadData(); // Reload to show updated invitations
+      } else {
+        showCustomToast('error', result.error || 'Failed to send invitation');
+      }
+    } catch (error) {
+      showCustomToast('error', 'An unexpected error occurred');
+    } finally {
+      setSendingInvite(false);
+    }
+  };
+
+  const handleRespondToInvite = async (invitationId: string, action: 'accept' | 'reject') => {
+    try {
+      const result = await respondToMergeInvite(invitationId, action);
+
+      if (result.success) {
+        showCustomToast('success', result.message || `Invitation ${action}ed successfully!`);
+        if (action === 'accept') {
+          triggerCustomShapes(); // Celebrate team merge!
+        }
+
+        // Immediately update UI by removing the invitation from state
+        setMergeInvitations((prev: any[]) =>
+          prev.filter((inv: any) => inv.id !== invitationId)
+        );
+
+        // Then reload all data to get fresh state
+        await loadData();
+      } else {
+        showCustomToast('error', result.error || `Failed to ${action} invitation`);
+      }
+    } catch (error) {
+      showCustomToast('error', 'An unexpected error occurred');
     }
   };
   
@@ -506,12 +619,37 @@ export default function TeamManagementPage({ params }: TeamPageProps) {
               MY TEAM
             </h1>
 
-            {team && (
+            {team?.removed ? (
+              <div className="text-center py-12">
+                <div className="w-20 h-20 rounded-full bg-gradient-to-r from-red-500 to-orange-500 flex items-center justify-center mx-auto mb-6">
+                  <X className="w-10 h-10 text-white" />
+                </div>
+                <h2 className="text-2xl font-blackops text-white mb-4">REMOVED FROM TEAM</h2>
+                <p className="text-gray-400 font-mono mb-2">
+                  You have been removed from <strong className="text-white">{team.team_name}</strong>
+                </p>
+                <p className="text-gray-400 font-mono mb-6">
+                  by the team leader.
+                </p>
+                <div className="bg-red-500/10 border-2 border-red-500/30 rounded-xl p-6 max-w-md mx-auto mb-6">
+                  <p className="text-red-300 font-mono text-sm">
+                    You are no longer part of this team. If you believe this was a mistake, please contact the team leader.
+                  </p>
+                </div>
+                <Link
+                  href={`/hackathons/${resolvedParams.id}`}
+                  className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white rounded-xl font-mono font-bold transition-all"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                  Back to Hackathon
+                </Link>
+              </div>
+            ) : team && (
               <>
                 <div className="mb-6">
                   <h2 className="text-2xl font-blackops text-white mb-2">{team.team_name}</h2>
                   <p className="text-gray-400 font-mono">
-                    Team Size: {team.team_size_current}/{team.team_size_max}
+                    Team Size: {team.hackathon_team_members?.length}/{team.team_size_max}
                   </p>
                 </div>
 
@@ -541,6 +679,11 @@ export default function TeamManagementPage({ params }: TeamPageProps) {
                             {member.status === 'pending' && !member.is_leader && (
                               <span className="px-3 py-1 bg-yellow-500/20 border border-yellow-500/30 rounded-full text-yellow-400 text-xs font-mono font-bold">
                                 PENDING
+                              </span>
+                            )}
+                            {member.status === 'accepted' && !member.is_leader && (
+                              <span className="px-3 py-1 bg-green-500/20 border border-green-500/30 rounded-full text-green-400 text-xs font-mono font-bold">
+                                VERIFIED
                               </span>
                             )}
                           </div>
@@ -597,7 +740,7 @@ export default function TeamManagementPage({ params }: TeamPageProps) {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="grid lg:grid-cols-[60%_38%] gap-4">
+        <div className={`${team.hackathon_team_members?.length < hackathon.team_size_max && !team?.is_completed ? "grid lg:grid-cols-[60%_38%] gap-4": "max-w-7xl mx-auto gap-4"}`}>
           {/* Left Section - Team Management */}
           <div className="space-y-6">
             {/* Team Info Card */}
@@ -637,6 +780,8 @@ export default function TeamManagementPage({ params }: TeamPageProps) {
                     className={`p-6 border-2 rounded-xl ${
                       member.is_leader
                         ? 'bg-green-500/5 border-green-500/30'
+                        : member.status === 'accepted'
+                        ? 'bg-green-500/5 border-green-500/30'
                         : member.status === 'pending'
                         ? 'bg-yellow-500/5 border-yellow-500/30'
                         : 'bg-gray-800/30 border-gray-700/50'
@@ -659,6 +804,11 @@ export default function TeamManagementPage({ params }: TeamPageProps) {
                           {member.status === 'pending' && !member.is_leader && (
                             <span className="px-3 py-1 bg-yellow-500/20 border border-yellow-500/30 rounded-full text-yellow-400 text-xs font-mono font-bold">
                               CONFIRMATION PENDING
+                            </span>
+                          )}
+                          {member.status === 'accepted' && !member.is_leader && (
+                            <span className="px-3 py-1 bg-green-500/20 border border-green-500/30 rounded-full text-green-400 text-xs font-mono font-bold">
+                              VERIFIED
                             </span>
                           )}
                         </div>
@@ -689,18 +839,20 @@ export default function TeamManagementPage({ params }: TeamPageProps) {
               </div>
 
               {/* Add Member Buttons */}
-              {team && team.team_size_current < hackathon.team_size_max && (
+              {team && team.hackathon_team_members?.length < hackathon.team_size_max && !team.is_completed && (
                 <div className="flex gap-4">
                   <button
                     onClick={() => setShowAddMemberModal(true)}
-                    className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white rounded-xl font-mono font-bold transition-all"
+                    disabled={team.hackathon_team_members?.length >= hackathon.team_size_max || team.is_completed}
+                    className="flex-1 flex items-center  justify-center gap-2 px-6 py-4 bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white rounded-xl font-mono font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <UserPlus className="w-5 h-5" />
-                    Add {team.hackathon_team_members?.length === 1 ? '2nd' : '3rd'} Member
+                    Add New Member
                   </button>
                   <button
                     onClick={() => setShowInviteModal(true)}
-                    className="flex items-center justify-center gap-2 px-6 py-4 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-mono font-bold transition-all border-2 border-gray-700"
+                    disabled={team.hackathon_team_members?.length >= hackathon.team_size_max || team.is_completed}
+                    className="flex items-center justify-center gap-2 px-6 py-4 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-mono font-bold transition-all border-2 border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Share2 className="w-5 h-5" />
                     Invite Friends
@@ -729,50 +881,75 @@ export default function TeamManagementPage({ params }: TeamPageProps) {
           </div>
 
           {/* Right Section - Teams Seeking Members */}
-          {team && team.team_size_current < hackathon.team_size_max && (
-            <div className="space-y-6">
-              {/* Tabs */}
-              <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-6">
-                <div className="flex gap-2 mb-6">
-                  <button
-                    onClick={() => setActiveTab('past')}
-                    className={`flex-1 py-2 px-4 rounded-lg font-mono font-bold transition-all ${
-                      activeTab === 'past'
-                        ? 'bg-gradient-to-r from-blue-500 to-teal-500 text-white'
-                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                    }`}
-                  >
-                    Past teammates
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('seeking')}
-                    className={`flex-1 py-2 px-4 rounded-lg font-mono font-bold transition-all ${
-                      activeTab === 'seeking'
-                        ? 'bg-gradient-to-r from-blue-500 to-teal-500 text-white'
-                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                    }`}
-                  >
-                    Teams seeking
-                  </button>
+          {team && team.hackathon_team_members?.length < hackathon.team_size_max && !team.is_completed && (
+            <div className="space-y-6 ">
+              {/* Pending Invitations */}
+              {mergeInvitations.filter((inv: any) => inv.status === 'pending' && inv.receiver_team_id === team.id).length > 0 && (
+                <div className="bg-gradient-to-br from-blue-900 to-blue-800 rounded-2xl border-2 border-blue-700 p-6">
+                  <h3 className="text-xl font-blackops text-white mb-6">MERGE INVITATIONS</h3>
+                  <div className="space-y-4">
+                    {mergeInvitations
+                      .filter((inv: any) => inv.status === 'pending' && inv.receiver_team_id === team.id)
+                      .map((invitation: any) => {
+                        const senderTeam = invitation.sender_team;
+                        const senderLeader = senderTeam?.hackathon_team_members?.find((m: any) => m.is_leader);
+
+                        return (
+                          <div key={invitation.id} className="p-4 bg-blue-800/30 border-2 border-blue-700/50 rounded-xl">
+                            <div className="mb-3">
+                              <h4 className="font-blackops text-white mb-1">{senderTeam?.team_name || 'Unknown Team'}</h4>
+                              <p className="text-sm text-blue-300 font-mono">
+                                {senderLeader?.first_name || 'Team Leader'} wants to merge teams!
+                              </p>
+                              {invitation.message && (
+                                <p className="text-sm text-gray-300 font-mono mt-2 italic">
+                                  &quot;{invitation.message}&quot;
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleRespondToInvite(invitation.id, 'accept')}
+                                className="flex-1 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm font-mono font-bold transition-all"
+                              >
+                                Accept
+                              </button>
+                              <button
+                                onClick={() => handleRespondToInvite(invitation.id, 'reject')}
+                                className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-mono font-bold transition-all"
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
                 </div>
+              )}
+
+              {/* Teams Seeking Members */}
+              <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-6">
+                <h3 className="text-xl font-blackops text-white mb-6">TEAMS SEEKING MEMBERS</h3>
 
                 {/* Content */}
-                {activeTab === 'past' && (
-                  <div className="text-center py-8">
-                    <Users className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                    <p className="text-gray-400 font-mono">No past teammate suggestions right now. Explore other ways to create your team.</p>
-                  </div>
-                )}
+                <div className="space-y-4 max-h-[600px] overflow-y-auto">
+                  {teamsSeekingMembers.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Users className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                      <p className="text-gray-400 font-mono">No teams looking for members at the moment.</p>
+                    </div>
+                  ) : (
+                    teamsSeekingMembers.map((seekingTeam) => {
+                      // Check if invitation already sent
+                      const hasPendingInvite = mergeInvitations.some(
+                        (inv: any) =>
+                          inv.status === 'pending' &&
+                          ((inv.sender_team_id === team.id && inv.receiver_team_id === seekingTeam.id) ||
+                           (inv.receiver_team_id === team.id && inv.sender_team_id === seekingTeam.id))
+                      );
 
-                {activeTab === 'seeking' && (
-                  <div className="space-y-4 max-h-[600px] overflow-y-auto">
-                    {teamsSeekingMembers.length === 0 ? (
-                      <div className="text-center py-8">
-                        <Users className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                        <p className="text-gray-400 font-mono">No teams looking for members at the moment.</p>
-                      </div>
-                    ) : (
-                      teamsSeekingMembers.map((seekingTeam) => (
+                      return (
                         <div key={seekingTeam.id} className="p-4 bg-gray-800/30 border-2 border-gray-700/50 rounded-xl hover:border-teal-500/30 transition-all">
                           <div className="flex items-start justify-between mb-3">
                             <div>
@@ -784,43 +961,77 @@ export default function TeamManagementPage({ params }: TeamPageProps) {
                                 {seekingTeam.hackathon_team_members?.[0]?.organization_name || 'Organization'}
                               </p>
                             </div>
-                            <button className="px-4 py-2 bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white rounded-lg text-sm font-mono font-bold transition-all">
-                              Invite
+                            <button
+                              onClick={() => handleSendMergeInvite(seekingTeam.id)}
+                              disabled={sendingInvite || hasPendingInvite || !isLeader}
+                              className="px-4 py-2 bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white rounded-lg text-sm font-mono font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {hasPendingInvite ? 'Invited' : 'Invite'}
                             </button>
                           </div>
                           <div className="flex items-center gap-2 text-xs text-gray-400 font-mono">
                             <Users className="w-4 h-4" />
-                            <span>({seekingTeam.team_size_current}/{seekingTeam.team_size_max})</span>
+                            <span>({seekingTeam.hackathon_team_members?.length}/{seekingTeam.team_size_max})</span>
                             <span className="text-gray-600">•</span>
                             <span>Team created {new Date(seekingTeam.created_at).toLocaleDateString()}</span>
                           </div>
                         </div>
-                      ))
-                    )}
-                  </div>
-                )}
+                      );
+                    })
+                  )}
+                </div>
               </div>
             </div>
           )}
-        </div>
 
-        {/* Action Buttons */}
-        <div className="mt-8 flex gap-4">
-          <Link
-            href={`/hackathons/${resolvedParams.id}`}
-            className="px-8 py-4 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-mono font-bold transition-all border-2 border-gray-700"
-          >
-            Back
-          </Link>
-          <button
-            onClick={() => setShowCancelDialog(true)}
-            className="px-8 py-4 bg-red-500/10 hover:bg-red-500/20 border-2 border-red-500/30 hover:border-red-500 text-red-400 hover:text-red-300 rounded-xl font-mono font-bold transition-all"
-          >
-            Cancel Registration
-          </button>
-          <button className="flex-1 px-8 py-4 bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white rounded-xl font-mono font-bold transition-all">
-            Next
-          </button>
+          {/* Action Buttons */}
+          <div className="flex gap-5 justify-end">
+            <Link
+              href={`/hackathons/${resolvedParams.id}`}
+              className="px-8 py-4 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-mono font-bold transition-all border-2 border-gray-700"
+            >
+              Back
+            </Link>
+            {isLeader && (
+              <>
+                {!team?.is_completed ? (
+                  <>
+                    <button
+                      onClick={() => setShowCancelDialog(true)}
+                      className="px-8 py-4 bg-red-500/10 hover:bg-red-500/20 border-2 border-red-500/30 hover:border-red-500 text-red-400 hover:text-red-300 rounded-xl font-mono font-bold transition-all"
+                    >
+                      Cancel Registration
+                    </button>
+                    <button
+                      onClick={() => setShowCompleteDialog(true)}
+                      disabled={team?.hackathon_team_members?.filter((m: any) => m.status === 'accepted').length < 1}
+                      className="px-8 py-4 bg-green-500/10 hover:bg-green-500/20 border-2 border-green-500/30 hover:border-green-500 text-green-400 hover:text-green-300 rounded-xl font-mono font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Complete Team
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="px-8 py-4 bg-green-500/20 border-2 border-green-500 text-green-300 rounded-xl font-mono font-bold">
+                      ✓ Team Completed
+                    </div>
+                    {/* <button
+                      onClick={() => setShowEditTeamModal(true)}
+                      className="px-8 py-4 bg-blue-500/10 hover:bg-blue-500/20 border-2 border-blue-500/30 hover:border-blue-500 text-blue-400 hover:text-blue-300 rounded-xl font-mono font-bold transition-all"
+                    >
+                      Edit Team Details
+                    </button> */}
+                    <button
+                      onClick={() => setShowCancelDialog(true)}
+                      className="px-8 py-4 bg-red-500/10 hover:bg-red-500/20 border-2 border-red-500/30 hover:border-red-500 text-red-400 hover:text-red-300 rounded-xl font-mono font-bold transition-all"
+                    >
+                      Cancel Registration
+                    </button>
+                  </>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1352,6 +1563,47 @@ export default function TeamManagementPage({ params }: TeamPageProps) {
         className="bg-gradient-to-r py-6 from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white font-mono font-bold disabled:opacity-50 disabled:cursor-not-allowed"
       >
         Cancel Registration
+      </AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
+
+{/* Complete Team Dialog */}
+<AlertDialog open={showCompleteDialog} onOpenChange={setShowCompleteDialog}>
+  <AlertDialogContent className="bg-gradient-to-br from-gray-900 to-gray-800 border-2 border-gray-700 max-w-md">
+    <AlertDialogHeader>
+      <AlertDialogTitle className="font-blackops text-2xl text-white flex items-center gap-3">
+        <div className="w-12 h-12 rounded-full bg-gradient-to-r from-green-500 to-teal-500 flex items-center justify-center">
+          <Users className="w-6 h-6 text-white" />
+        </div>
+        Complete Team?
+      </AlertDialogTitle>
+      <AlertDialogDescription className="text-gray-300 font-mono text-sm space-y-3 pt-4">
+        <p>Are you ready to complete your team for this hackathon?</p>
+        <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+          <p className="text-green-300 text-xs">
+            This will confirm your team for the hackathon and send confirmation emails to all team members with good luck wishes!
+          </p>
+        </div>
+        <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mt-3">
+          <p className="text-blue-300 text-xs">
+            <strong>Note:</strong> You don't need to reach the maximum team size to complete. You can proceed with your current team members.
+          </p>
+        </div>
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+    <AlertDialogFooter className="gap-3">
+      <AlertDialogCancel
+        className="bg-gray-800 py-6 hover:bg-black border-gray-600 text-white font-mono"
+      >
+        Not Yet
+      </AlertDialogCancel>
+      <AlertDialogAction
+        onClick={handleCompleteTeam}
+        disabled={completingTeam}
+        className="bg-gradient-to-r py-6 from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 text-white font-mono font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {completingTeam ? 'Completing...' : 'Complete Team'}
       </AlertDialogAction>
     </AlertDialogFooter>
   </AlertDialogContent>
