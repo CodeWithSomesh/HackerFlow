@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/button'
@@ -64,6 +64,7 @@ type SectionKey = 'banner' | 'basic' | 'timeline' | 'about' | 'prizes' | 'dates'
 
 export default function OrganizeStep3Page() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [open, setOpen] = useState(false)
   const [activeSection, setActiveSection] = useState<SectionKey>('basic')
   const [hackathonId, setHackathonId] = useState<string | null>(null)
@@ -213,13 +214,18 @@ export default function OrganizeStep3Page() {
   // Preload data from database
   useEffect(() => {
     const loadHackathonData = async () => {
-      const storedId = localStorage.getItem('current_hackathon_id')
+      // Check URL parameter first, then fallback to localStorage
+      const urlId = searchParams.get('id')
+      const storedId = urlId || localStorage.getItem('current_hackathon_id')
+
       if (!storedId) {
         showCustomToast('error', 'No hackathon found. Please start from Step 1.')
         router.push('/organize/step1')
         return
       }
-      
+
+      // Store the ID in localStorage for consistency
+      localStorage.setItem('current_hackathon_id', storedId)
       setHackathonId(storedId)
       const result = await getHackathonById(storedId)
       
@@ -280,7 +286,7 @@ export default function OrganizeStep3Page() {
     }
     
     loadHackathonData()
-  }, [router, reset])
+  }, [router, reset, searchParams])
 
   const openEditor = (key: SectionKey) => {
     setActiveSection(key)

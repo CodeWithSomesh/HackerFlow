@@ -462,10 +462,10 @@ export async function removeTeamMember(memberId: string) {
       return { success: false, error: 'User not authenticated' };
     }
 
-    // Get member details to verify team leader
+    // Get member details to verify team leader and for email notification
     const { data: member } = await supabase
       .from('hackathon_team_members')
-      .select('team_id, is_leader')
+      .select('team_id, is_leader, email, first_name, last_name, user_id')
       .eq('id', memberId)
       .single();
 
@@ -477,10 +477,10 @@ export async function removeTeamMember(memberId: string) {
       return { success: false, error: 'Cannot remove team leader' };
     }
 
-    // Verify user is team leader
+    // Verify user is team leader and get team/hackathon details for email
     const { data: team } = await supabase
       .from('hackathon_teams')
-      .select('team_leader_id')
+      .select('team_leader_id, team_name, hackathon_id, hackathons(title)')
       .eq('id', member.team_id)
       .single();
 
@@ -488,6 +488,7 @@ export async function removeTeamMember(memberId: string) {
       return { success: false, error: 'Only team leader can remove members' };
     }
 
+    // Delete member record
     const { error } = await supabase
       .from('hackathon_team_members')
       .delete()
@@ -498,8 +499,138 @@ export async function removeTeamMember(memberId: string) {
       return { success: false, error: 'Failed to remove team member' };
     }
 
+    // Also delete their registration record so they can rejoin
+    console.log('🗑️ Attempting to delete registration for member:', {
+      user_id: member.user_id,
+      email: member.email,
+      hackathon_id: team.hackathon_id,
+      team_id: member.team_id
+    });
+
+    // FIRST: Check what registration actually exists
+    const { data: existingReg } = await supabase
+      .from('hackathon_registrations')
+      .select('*')
+      .eq('email', member.email)
+      .eq('hackathon_id', team.hackathon_id);
+
+    console.log('📋 Existing registration records for this email:', existingReg);
+
+    // Delete registration by hackathon_id, team_id, and email
+    // RLS policy allows team leaders to delete their team members' registrations
+    const { data: deletedReg, error: regError } = await supabase
+      .from('hackathon_registrations')
+      .delete()
+      .eq('hackathon_id', team.hackathon_id)
+      .eq('team_id', member.team_id)
+      .eq('email', member.email)
+      .select();
+
+    if (regError) {
+      console.error('❌ Error removing registration:', regError);
+      console.error('❌ Supabase error details:', JSON.stringify(regError, null, 2));
+      return { success: false, error: 'Failed to remove registration record' };
+    }
+
+    if (deletedReg && deletedReg.length > 0) {
+      console.log('✅ Registration deleted successfully:', deletedReg);
+    } else {
+      console.log('⚠️ No registration record found for this team member.');
+      console.log('⚠️ This means RLS policy blocked the deletion or no matching record exists');
+    }
+
     // Update team size count after removal
     await updateTeamSize(member.team_id);
+
+    // Send removal notification email using Brevo API directly
+    try {
+      console.log('🔔 Sending removal notification email to:', member.email);
+
+      const memberName = `${member.first_name} ${member.last_name || ''}`.trim();
+      const teamName = team.team_name;
+      const hackathonName = (team as any).hackathons?.title || 'the hackathon';
+      const leaderName = user.user_metadata?.full_name || 'The team leader';
+
+      // Check if we're in development mode (no Brevo API key)
+      const isDevelopment = !process.env.BREVO_API_KEY;
+
+      if (isDevelopment) {
+        // Development mode: Log email details to console
+        console.log('\n📧 ========== REMOVAL EMAIL SIMULATION (DEV MODE) ==========');
+        console.log('📧 To:', member.email);
+        console.log('📧 Member:', memberName);
+        console.log('📧 Team:', teamName);
+        console.log('📧 Hackathon:', hackathonName);
+        console.log('📧 Removed by:', leaderName);
+        console.log('📧 Subject:', `You have been removed from ${teamName}`);
+        console.log('📧 ================================================\n');
+        console.log('✅ Development mode: Email simulated successfully');
+      } else {
+        // Production mode: Send real email via Brevo
+        const brevo = await import('@getbrevo/brevo');
+        const apiInstance = new brevo.TransactionalEmailsApi();
+        apiInstance.setApiKey(brevo.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY || '');
+
+        const sendSmtpEmail = new brevo.SendSmtpEmail();
+        sendSmtpEmail.subject = `You have been removed from ${teamName}`;
+        sendSmtpEmail.to = [{ email: member.email, name: memberName }];
+        sendSmtpEmail.htmlContent = `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Team Removal Notification</title>
+            </head>
+            <body style="font-family: 'Arial', sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <div style="background: linear-gradient(135deg, #dc2626 0%, #ea580c 100%); padding: 30px; border-radius: 10px 10px 0 0;">
+                <h1 style="color: white; margin: 0; font-size: 28px;">HackerFlow</h1>
+              </div>
+
+              <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
+                <h2 style="color: #dc2626; margin-top: 0;">Team Removal Notification</h2>
+
+                <p>Hi ${memberName},</p>
+
+                <p>We're writing to inform you that you have been removed from the team "<strong>${teamName}</strong>" for <strong>${hackathonName}</strong> by ${leaderName}.</p>
+
+                <div style="background: #fee2e2; padding: 20px; border-left: 4px solid #dc2626; margin: 20px 0;">
+                  <p style="margin: 0; color: #991b1b;">
+                    <strong>You are no longer a member of this team.</strong>
+                  </p>
+                </div>
+
+                <p>If you believe this was a mistake, please contact the team leader directly.</p>
+
+                <p>You can still participate in ${hackathonName} by:</p>
+                <ul style="color: #666;">
+                  <li>Joining another team that's looking for members</li>
+                  <li>Creating your own team</li>
+                  <li>Registering as an individual (if allowed)</li>
+                </ul>
+
+                <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+
+                <p style="color: #666; font-size: 12px; margin-bottom: 0;">
+                  Best regards,<br>
+                  The HackerFlow Team
+                </p>
+              </div>
+            </body>
+          </html>
+        `;
+        sendSmtpEmail.sender = {
+          name: process.env.BREVO_SENDER_NAME || 'HackerFlow',
+          email: process.env.BREVO_FROM_EMAIL || 'noreply@yourdomain.com'
+        };
+
+        const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
+        console.log('✅ Removal notification email sent successfully via Brevo:', data);
+      }
+    } catch (emailError) {
+      console.error('💥 Error sending removal email:', emailError);
+      // Don't fail the removal if email fails
+    }
 
     revalidatePath(`/hackathons/register/${member.team_id}`);
     return { success: true };
@@ -528,6 +659,7 @@ export async function getTeamsSeekingMembers(hackathonId: string) {
       `)
       .eq('hackathon_id', hackathonId)
       .eq('looking_for_teammates', true)
+      .eq('is_completed', false)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -725,6 +857,164 @@ export async function cancelRegistration(hackathonId: string) {
     return { success: true };
   } catch (error) {
     console.error('Error in cancelRegistration:', error);
+    return { success: false, error: 'An unexpected error occurred' };
+  }
+}
+
+// Complete team and send confirmation emails to all members
+export async function completeTeam(teamId: string) {
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return { success: false, error: 'User not authenticated' };
+    }
+
+    // Verify user is team leader and get team details
+    const { data: team, error: teamError } = await supabase
+      .from('hackathon_teams')
+      .select(`
+        *,
+        hackathons(title, registration_start_date),
+        hackathon_team_members!inner(*)
+      `)
+      .eq('id', teamId)
+      .single();
+
+    if (teamError || !team) {
+      console.error('Error fetching team:', teamError);
+      return { success: false, error: 'Team not found' };
+    }
+
+    if (team.team_leader_id !== user.id) {
+      return { success: false, error: 'Only team leader can complete the team' };
+    }
+
+    // Check if team already completed
+    if (team.is_completed) {
+      return { success: false, error: 'Team is already completed' };
+    }
+
+    // Update team as completed
+    const { error: updateError } = await supabase
+      .from('hackathon_teams')
+      .update({
+        is_completed: true,
+        completed_at: new Date().toISOString()
+      })
+      .eq('id', teamId);
+
+    if (updateError) {
+      console.error('Error completing team:', updateError);
+      return { success: false, error: 'Failed to complete team' };
+    }
+
+    // Get all accepted team members for sending confirmation emails
+    const acceptedMembers = team.hackathon_team_members.filter((member: any) =>
+      member.status === 'accepted'
+    );
+
+    // Send confirmation emails to all accepted members using Brevo API directly
+    try {
+      const teamName = team.team_name;
+      const hackathonName = (team as any).hackathons?.title || 'the hackathon';
+
+      const isDevelopment = !process.env.BREVO_API_KEY;
+
+      if (isDevelopment) {
+        console.log('\n📧 ========== TEAM COMPLETION EMAILS (DEV MODE) ==========');
+        console.log('📧 Team:', teamName);
+        console.log('📧 Hackathon:', hackathonName);
+        console.log('📧 Recipients:', acceptedMembers.length);
+        acceptedMembers.forEach((member: any) => {
+          console.log(`   - ${member.first_name} ${member.last_name} (${member.email})`);
+        });
+        console.log('📧 ================================================\n');
+      } else {
+        const brevo = await import('@getbrevo/brevo');
+        const apiInstance = new brevo.TransactionalEmailsApi();
+        apiInstance.setApiKey(brevo.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY || '');
+
+        for (const member of acceptedMembers) {
+          const memberName = `${member.first_name} ${member.last_name || ''}`.trim();
+
+          const sendSmtpEmail = new brevo.SendSmtpEmail();
+          sendSmtpEmail.subject = `Team "${teamName}" is Ready for ${hackathonName}!`;
+          sendSmtpEmail.to = [{ email: member.email, name: memberName }];
+          sendSmtpEmail.htmlContent = `
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Team Completed</title>
+              </head>
+              <body style="font-family: 'Arial', sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="background: linear-gradient(135deg, #10b981 0%, #14b8a6 100%); padding: 30px; border-radius: 10px 10px 0 0;">
+                  <h1 style="color: white; margin: 0; font-size: 28px;">🎉 HackerFlow</h1>
+                </div>
+
+                <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
+                  <h2 style="color: #10b981; margin-top: 0;">Your Team is Ready! 🚀</h2>
+
+                  <p>Hi ${memberName},</p>
+
+                  <p>Great news! Your team <strong>"${teamName}"</strong> has been confirmed and is ready for <strong>${hackathonName}</strong>!</p>
+
+                  <div style="background: #d1fae5; padding: 20px; border-left: 4px solid #10b981; margin: 20px 0;">
+                    <p style="margin: 0; color: #065f46;">
+                      <strong>🎯 It's time to prepare!</strong>
+                    </p>
+                  </div>
+
+                  <h3 style="color: #334155; margin-top: 25px;">Next Steps:</h3>
+                  <ul style="color: #666; line-height: 1.8;">
+                    <li><strong>Connect with your team:</strong> Schedule a meeting to discuss your strategy and ideas</li>
+                    <li><strong>Plan your approach:</strong> Brainstorm solutions and divide responsibilities among team members</li>
+                    <li><strong>Prepare your tools:</strong> Set up your development environment and necessary tools</li>
+                    <li><strong>Review the rules:</strong> Make sure everyone understands the hackathon guidelines</li>
+                    <li><strong>Stay motivated:</strong> Remember, you've got this! Work together and have fun!</li>
+                  </ul>
+
+                  <div style="background: #eff6ff; padding: 20px; border-left: 4px solid #3b82f6; margin: 25px 0;">
+                    <p style="margin: 0; color: #1e40af; font-size: 14px;">
+                      <strong>💡 Pro Tip:</strong> Great teams communicate well! Set up a group chat or communication channel to stay in sync during the hackathon.
+                    </p>
+                  </div>
+
+                  <p style="margin-top: 25px; font-size: 16px; color: #334155;">
+                    We're excited to see what your team creates! Good luck, and may the code be with you! 💻✨
+                  </p>
+
+                  <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+
+                  <p style="color: #666; font-size: 12px; margin-bottom: 0;">
+                    Best of luck,<br>
+                    The HackerFlow Team
+                  </p>
+                </div>
+              </body>
+            </html>
+          `;
+          sendSmtpEmail.sender = {
+            name: process.env.BREVO_SENDER_NAME || 'HackerFlow',
+            email: process.env.BREVO_FROM_EMAIL || 'noreply@yourdomain.com'
+          };
+
+          await apiInstance.sendTransacEmail(sendSmtpEmail);
+          console.log(`✅ Completion email sent to ${memberName} (${member.email})`);
+        }
+      }
+    } catch (emailError) {
+      console.error('Error sending completion emails:', emailError);
+      // Don't fail the completion if emails fail
+    }
+
+    revalidatePath(`/hackathons/${team.hackathon_id}/team`);
+    return { success: true };
+  } catch (error) {
+    console.error('Error in completeTeam:', error);
     return { success: false, error: 'An unexpected error occurred' };
   }
 }

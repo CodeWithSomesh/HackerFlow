@@ -28,10 +28,28 @@ export default function JoinTeamPage({ params }: JoinTeamPageProps) {
   const [memberData, setMemberData] = useState<any>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [user, setUser] = useState<any>(null);
+  const [editableData, setEditableData] = useState<any>({});
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     handleJoinTeam();
   }, [resolvedParams.id, resolvedParams.teamId]);
+
+  useEffect(() => {
+    if (memberData) {
+      setEditableData({
+        mobile: memberData.mobile || '',
+        first_name: memberData.first_name || '',
+        last_name: memberData.last_name || '',
+        organization_name: memberData.organization_name || '',
+        location: memberData.location || '',
+      });
+      // If mobile is missing, automatically enable editing
+      if (!memberData.mobile) {
+        setIsEditing(true);
+      }
+    }
+  }, [memberData]);
 
   const handleJoinTeam = async () => {
     setLoading(true);
@@ -153,9 +171,51 @@ export default function JoinTeamPage({ params }: JoinTeamPageProps) {
           setStatus('ready');
         }
       } else {
-        // No member record found with this email
-        setStatus('error');
-        setMessage('You were not invited to this team. Please ask the team leader to add you first.');
+        // No member record found with this email - this user came via shared link
+        // Allow them to join by creating a new member record
+        // First, get user profile data to pre-fill
+        const { data: userProfile } = await supabase
+          .from('user_profiles')
+          .select('full_name, email, city, state, country, university, company')
+          .eq('user_id', currentUser.id)
+          .single();
+
+        // Parse full name
+        const nameParts = userProfile?.full_name?.split(' ') || [currentUser.email?.split('@')[0] || 'User'];
+        const firstName = nameParts[0] || 'User';
+        const lastName = nameParts.slice(1).join(' ') || '';
+        const location = `${userProfile?.city || ''}, ${userProfile?.state || ''}, ${userProfile?.country || ''}`.trim() || 'Unknown';
+
+        // Create a pending member record
+        const { data: newMember, error: createError } = await supabase
+          .from('hackathon_team_members')
+          .insert({
+            team_id: resolvedParams.teamId,
+            user_id: currentUser.id,
+            email: currentUser.email || '',
+            mobile: '', // Will be filled during verification
+            first_name: firstName,
+            last_name: lastName,
+            organization_name: userProfile?.university || userProfile?.company || '',
+            participant_type: 'College Students',
+            location: location,
+            is_leader: false,
+            status: 'pending',
+          })
+          .select()
+          .single();
+
+        if (createError || !newMember) {
+          console.error('Failed to create member record:', createError);
+          setStatus('error');
+          setMessage('Failed to join team. Please try again or contact the team leader.');
+          setLoading(false);
+          return;
+        }
+
+        // Show verification page with the newly created member data
+        setMemberData(newMember);
+        setStatus('ready');
       }
     } catch (error) {
       console.error('Error joining team:', error);
@@ -169,14 +229,25 @@ export default function JoinTeamPage({ params }: JoinTeamPageProps) {
   const handleVerifyAndJoin = async () => {
     if (!memberData || !user) return;
 
+    // Validate required fields
+    if (!editableData.mobile || !editableData.first_name || !editableData.location) {
+      showCustomToast('error', 'Please fill in all required fields (Mobile, First Name, Location)');
+      return;
+    }
+
     setVerifying(true);
     try {
       const supabase = createClient();
 
-      // Update member status to accepted
+      // Update member with edited data and set status to accepted
       const { error: updateError } = await supabase
         .from('hackathon_team_members')
         .update({
+          mobile: editableData.mobile,
+          first_name: editableData.first_name,
+          last_name: editableData.last_name,
+          organization_name: editableData.organization_name,
+          location: editableData.location,
           status: 'accepted',
           joined_at: new Date().toISOString()
         })
@@ -210,7 +281,7 @@ export default function JoinTeamPage({ params }: JoinTeamPageProps) {
         .single();
 
       if (!existingReg) {
-        // Create registration record with all required fields from member data
+        // Create registration record with all required fields from updated member data
         const { error: regError } = await supabase
           .from('hackathon_registrations')
           .insert({
@@ -218,14 +289,14 @@ export default function JoinTeamPage({ params }: JoinTeamPageProps) {
             user_id: user.id,
             team_id: resolvedParams.teamId,
             email: memberData.email,
-            mobile: memberData.mobile,
-            first_name: memberData.first_name,
-            last_name: memberData.last_name,
-            organization_name: memberData.organization_name,
+            mobile: editableData.mobile,
+            first_name: editableData.first_name,
+            last_name: editableData.last_name,
+            organization_name: editableData.organization_name,
             participant_type: memberData.participant_type,
             passout_year: memberData.passout_year,
             domain: memberData.domain,
-            location: memberData.location,
+            location: editableData.location,
           });
 
         if (regError) {
@@ -284,27 +355,104 @@ export default function JoinTeamPage({ params }: JoinTeamPageProps) {
             </div>
           </div>
 
-          {/* Your Details */}
+          {/* Your Details - Editable Form */}
           <div className="bg-yellow-500/10 border-2 border-yellow-500/30 rounded-xl p-6 mb-6">
-            <h2 className="text-xl font-blackops text-white mb-4 flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-yellow-400" />
-              YOUR DETAILS (PENDING VERIFICATION)
-            </h2>
-            <div className="space-y-2 text-gray-300 font-mono text-sm">
-              <p><strong className="text-white">Name:</strong> {memberData.first_name} {memberData.last_name}</p>
-              <p><strong className="text-white">Email:</strong> {memberData.email}</p>
-              <p><strong className="text-white">Mobile:</strong> {memberData.mobile}</p>
-              <p><strong className="text-white">Location:</strong> {memberData.location}</p>
-              <p><strong className="text-white">Participant Type:</strong> {memberData.participant_type}</p>
-              {memberData.organization_name && (
-                <p><strong className="text-white">Organization:</strong> {memberData.organization_name}</p>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-blackops text-white flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-yellow-400" />
+                YOUR DETAILS
+              </h2>
+              {!isEditing && (
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/50 text-blue-300 rounded-lg text-sm font-mono transition-all"
+                >
+                  Edit
+                </button>
               )}
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-400 text-sm font-mono mb-1">
+                    First Name <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editableData.first_name || ''}
+                    onChange={(e) => setEditableData({...editableData, first_name: e.target.value})}
+                    disabled={!isEditing}
+                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white font-mono text-sm focus:outline-none focus:border-teal-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-sm font-mono mb-1">Last Name</label>
+                  <input
+                    type="text"
+                    value={editableData.last_name || ''}
+                    onChange={(e) => setEditableData({...editableData, last_name: e.target.value})}
+                    disabled={!isEditing}
+                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white font-mono text-sm focus:outline-none focus:border-teal-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm font-mono mb-1">Email (read-only)</label>
+                <input
+                  type="email"
+                  value={memberData.email}
+                  disabled
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-400 font-mono text-sm cursor-not-allowed opacity-50"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm font-mono mb-1">
+                  Mobile <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="tel"
+                  value={editableData.mobile || ''}
+                  onChange={(e) => setEditableData({...editableData, mobile: e.target.value})}
+                  disabled={!isEditing}
+                  placeholder="Enter your mobile number"
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white font-mono text-sm focus:outline-none focus:border-teal-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm font-mono mb-1">
+                  Location <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={editableData.location || ''}
+                  onChange={(e) => setEditableData({...editableData, location: e.target.value})}
+                  disabled={!isEditing}
+                  placeholder="City, State, Country"
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white font-mono text-sm focus:outline-none focus:border-teal-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm font-mono mb-1">Organization</label>
+                <input
+                  type="text"
+                  value={editableData.organization_name || ''}
+                  onChange={(e) => setEditableData({...editableData, organization_name: e.target.value})}
+                  disabled={!isEditing}
+                  placeholder="University/Company name"
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white font-mono text-sm focus:outline-none focus:border-teal-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+              </div>
             </div>
           </div>
 
           <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-6">
             <p className="text-blue-300 text-sm font-mono">
-              ℹ️ Please verify that the details above are correct. Once you click "Verify & Join Team", your account will be marked as verified (green background).
+              ℹ️ {isEditing ? 'Please fill in the required fields (*) and click "Verify & Join Team".' : 'Review your details and click "Verify & Join Team" to complete registration.'}
             </p>
           </div>
 

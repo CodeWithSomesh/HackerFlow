@@ -27,6 +27,7 @@ export interface Hackathon {
     category: string;
     level: string[];
     prizeValue: number;
+    teamCount?: number;
   }
 
 export const mockHackathons: Hackathon[] = [
