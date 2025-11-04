@@ -14,7 +14,7 @@ import {
   Loader2
 } from 'lucide-react'
 import Link from 'next/link'
-import { toast } from 'sonner'
+import { showCustomToast } from '@/components/toast-notification'
 import {
   getMatchPreferences,
   updateMatchPreferences,
@@ -61,9 +61,9 @@ export default function PreferencesPage() {
     const result = await updateMatchPreferences(preferences)
 
     if (result.success) {
-      toast.success('Preferences saved successfully!')
+      showCustomToast('success', 'Preferences saved successfully!')
     } else {
-      toast.error(result.error || 'Failed to save preferences')
+      showCustomToast('error', result.error || 'Failed to save preferences')
     }
 
     setSaving(false)

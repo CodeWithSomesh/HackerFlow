@@ -29,6 +29,11 @@ function isAdminPath(pathname: string | null): boolean {
   return pathname.startsWith("/admin/")
 }
 
+function isFindTeammatesPath(pathname: string | null): boolean {
+  if (!pathname) return false
+  return pathname.startsWith("/find-teammates")
+}
+
 export function NavbarGate() {
   const pathname = usePathname()
   if (isOnboardingPath(pathname)) return null
@@ -46,6 +51,7 @@ export function FooterGate() {
   if (isHackathonDetailsPath(pathname)) return null
   if (isDashboardPath(pathname)) return null
   if (isAdminPath(pathname)) return null
+  if (isFindTeammatesPath(pathname)) return null
   return <Footer />
 }
 

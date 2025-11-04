@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { getAllUsers, promoteToAdmin, demoteToUser, checkAdminAccess } from '@/lib/actions/admin-actions'
-import { Shield, ShieldCheck, User, ChevronUp, ChevronDown } from 'lucide-react'
+import { getAllUsers, promoteToAdmin, demoteToUser, checkAdminAccess, searchUsersByEmail } from '@/lib/actions/admin-actions'
+import { Shield, ShieldCheck, User, ChevronUp, ChevronDown, Search } from 'lucide-react'
+import { Input } from '@/components/ui/input'
 import { showCustomToast } from '@/components/toast-notification'
 import {
   Dialog,
@@ -17,6 +18,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { useRouter } from 'next/navigation'
+// ===== DUMMY DATA IMPORTS - REMOVE BEFORE PRODUCTION =====
+import { DUMMY_USERS, isDummyDataEnabled, mergeDummyData } from '@/lib/dummy-data/admin-dummy-data'
+// ========================================================
 
 export default function AdminManagementPage() {
   const router = useRouter()
@@ -26,8 +30,17 @@ export default function AdminManagementPage() {
   const [selectedUser, setSelectedUser] = useState<any>(null)
   const [actionType, setActionType] = useState<'promote' | 'demote' | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<any[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  // ===== DUMMY DATA STATE - REMOVE BEFORE PRODUCTION =====
+  const [useDummyData, setUseDummyData] = useState(false)
+  // ========================================================
 
   useEffect(() => {
+    // ===== DUMMY DATA INITIALIZATION - REMOVE BEFORE PRODUCTION =====
+    setUseDummyData(isDummyDataEnabled())
+    // ================================================================
     checkSuperadminAccess()
   }, [])
 
@@ -49,9 +62,22 @@ export default function AdminManagementPage() {
     const result = await getAllUsers()
 
     if (result.success) {
-      setUsers(result.data)
+      // ===== DUMMY DATA MERGE - REMOVE BEFORE PRODUCTION =====
+      // Replace the next 2 lines with: setUsers(result.data || [])
+      const realData = result.data || []
+      const mergedData = mergeDummyData(realData, DUMMY_USERS)
+      setUsers(mergedData)
+      // ========================================================
     } else {
-      showCustomToast('error', 'Failed to load users')
+      // ===== DUMMY DATA FALLBACK - REMOVE BEFORE PRODUCTION =====
+      // Remove this entire if-else block and keep only the else part
+      if (isDummyDataEnabled()) {
+        setUsers(DUMMY_USERS)
+      } else {
+        showCustomToast('error', 'Failed to load users')
+        setUsers([])
+      }
+      // ===========================================================
     }
 
     setLoading(false)
@@ -99,6 +125,28 @@ export default function AdminManagementPage() {
     }
 
     setIsProcessing(false)
+  }
+
+  async function handleSearch() {
+    if (!searchQuery.trim()) {
+      setSearchResults([])
+      return
+    }
+
+    setIsSearching(true)
+    const result = await searchUsersByEmail(searchQuery)
+    if (result.success) {
+      setSearchResults(result.data || [])
+    } else {
+      showCustomToast('error', 'Failed to search users')
+      setSearchResults([])
+    }
+    setIsSearching(false)
+  }
+
+  function clearSearch() {
+    setSearchQuery('')
+    setSearchResults([])
   }
 
   const getRoleBadge = (role: string) => {
@@ -154,6 +202,7 @@ export default function AdminManagementPage() {
           Manage admin roles and permissions (Superadmin Only)
         </p>
       </div>
+      {/* ===== DUMMY DATA TOGGLE REMOVED - Now in layout ===== */}
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -245,6 +294,108 @@ export default function AdminManagementPage() {
                 </div>
               ))}
             </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Search Users */}
+      <Card className="bg-gradient-to-br from-gray-900 to-black border-2 border-gray-800">
+        <CardHeader>
+          <CardTitle className="text-white font-blackops flex items-center gap-2">
+            <Search className="h-5 w-5 text-purple-400" />
+            Search Users by Email
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-3 mb-4">
+            <Input
+              type="email"
+              placeholder="Enter email to search..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+              className="bg-black border-gray-700 text-white font-mono"
+            />
+            <Button
+              onClick={handleSearch}
+              disabled={isSearching}
+              className="bg-purple-600 hover:bg-purple-700 font-mono"
+            >
+              <Search className="h-4 w-4 mr-2" />
+              {isSearching ? 'Searching...' : 'Search'}
+            </Button>
+            {searchQuery && (
+              <Button
+                onClick={clearSearch}
+                variant="outline"
+                className="border-gray-700 text-gray-300 hover:bg-gray-800 font-mono"
+              >
+                Clear
+              </Button>
+            )}
+          </div>
+
+          {/* Search Results */}
+          {searchResults.length > 0 && (
+            <div className="space-y-3">
+              <p className="text-gray-400 font-mono text-sm">
+                Found {searchResults.length} user(s)
+              </p>
+              {searchResults.map((user) => (
+                <div
+                  key={user.user_id}
+                  className="p-4 bg-gray-800/50 rounded-md flex items-center justify-between gap-4"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <p className="font-bold text-white">{user.full_name || 'N/A'}</p>
+                      {getRoleBadge(user.role)}
+                      {user.user_primary_type && (
+                        <Badge className="bg-gray-700/50 text-gray-400 font-mono text-xs">
+                          {user.user_primary_type}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-400 font-mono">{user.email}</p>
+                    {user.organization_name && (
+                      <p className="text-xs text-gray-500 font-mono mt-1">{user.organization_name}</p>
+                    )}
+                  </div>
+                  {user.role === 'user' && (
+                    <Button
+                      onClick={() => openActionDialog(user, 'promote')}
+                      size="sm"
+                      className="bg-green-600 hover:bg-green-700 text-white font-mono"
+                    >
+                      <ChevronUp className="h-4 w-4 mr-1" />
+                      Promote to Admin
+                    </Button>
+                  )}
+                  {user.role === 'admin' && (
+                    <Button
+                      onClick={() => openActionDialog(user, 'demote')}
+                      size="sm"
+                      variant="outline"
+                      className="border-red-500/50 text-red-400 hover:bg-red-500/10 font-mono"
+                    >
+                      <ChevronDown className="h-4 w-4 mr-1" />
+                      Demote
+                    </Button>
+                  )}
+                  {user.role === 'superadmin' && (
+                    <Badge className="bg-purple-500/20 text-purple-400 border border-purple-400 font-mono">
+                      Protected
+                    </Badge>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {searchQuery && searchResults.length === 0 && !isSearching && (
+            <p className="text-center text-gray-400 font-mono text-sm">
+              No users found with email containing "{searchQuery}"
+            </p>
           )}
         </CardContent>
       </Card>

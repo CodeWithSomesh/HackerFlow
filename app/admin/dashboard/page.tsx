@@ -233,7 +233,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Hackathon Status Overview */}
-      <Card className="bg-gradient-to-br from-gray-900 to-black border-2 border-gray-800">
+      {/* <Card className="bg-gradient-to-br from-gray-900 to-black border-2 border-gray-800">
         <CardHeader>
           <CardTitle className="text-white font-blackops flex items-center gap-2">
             <FileCheck className="h-5 w-5 text-purple-400" />
@@ -262,7 +262,7 @@ export default function AdminDashboardPage() {
             </div>
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
     </div>
   )
 }

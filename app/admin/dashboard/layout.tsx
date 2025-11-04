@@ -32,6 +32,9 @@ import { signOut } from '@/app/utils/actions'
 import Image from 'next/image'
 import HackerFlowLogo from '@/assets/hackerflow-logo.png'
 import { checkAdminAccess } from '@/lib/actions/admin-actions'
+// ===== DUMMY DATA IMPORT - REMOVE BEFORE PRODUCTION =====
+import { DummyDataToggle } from '@/components/ui/dummy-data-toggle'
+// ========================================================
 
 export default function AdminDashboardLayout({
   children,
@@ -47,6 +50,9 @@ export default function AdminDashboardLayout({
   const [isSuperadmin, setIsSuperadmin] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  // ===== DUMMY DATA STATE - REMOVE BEFORE PRODUCTION =====
+  const [useDummyData, setUseDummyData] = useState(false)
+  // ========================================================
 
   useEffect(() => {
     checkAccess()
@@ -98,13 +104,14 @@ export default function AdminDashboardLayout({
   const baseNavItems = [
     { href: '/admin/dashboard', label: 'Overview', icon: Home },
     { href: '/admin/dashboard/revenue', label: 'Revenue', icon: DollarSign },
-    { href: '/admin/dashboard/approvals', label: 'Approvals', icon: FileCheck },
+    { href: '/admin/dashboard/hackathon-management/approvals', label: 'Hackathons', icon: FileCheck },
     { href: '/admin/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
+    { href: '/admin/dashboard/user-management', label: 'Users', icon: Users },
   ]
 
-  // Add Admin Management tab only for superadmin
+  // Add Admin Roles tab only for superadmin
   const navItems = isSuperadmin
-    ? [...baseNavItems, { href: '/admin/dashboard/users', label: 'Admin Management', icon: Shield }]
+    ? [...baseNavItems, { href: '/admin/dashboard/users', label: 'Admin Roles', icon: Shield }]
     : baseNavItems
 
   const SidebarContent_Component = () => (
@@ -262,6 +269,12 @@ export default function AdminDashboardLayout({
             </div>
 
             <div className="flex items-center gap-3 ml-auto">
+              {/* ===== DUMMY DATA TOGGLE - REMOVE BEFORE PRODUCTION ===== */}
+              <div className="hidden lg:block">
+                <DummyDataToggle onToggle={setUseDummyData} defaultValue={false} />
+              </div>
+              {/* ======================================================== */}
+
               {/* User Menu */}
               <DropdownMenu>
                 <DropdownMenuTrigger className="flex items-center gap-2 focus:outline-none">

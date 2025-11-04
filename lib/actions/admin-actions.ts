@@ -92,6 +92,67 @@ export async function getPendingHackathons() {
 }
 
 /**
+ * Get ALL hackathons for admin (pending, verified, rejected)
+ */
+export async function getAllHackathonsForAdmin() {
+  try {
+    const supabase = await createClient()
+
+    // Check admin access
+    const accessCheck = await checkAdminAccess()
+    if (!accessCheck.isAdmin) {
+      return { success: false, message: 'Unauthorized access' }
+    }
+
+    // Fetch hackathons
+    const { data: hackathonsData, error: hackathonsError } = await supabase
+      .from('hackathons')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (hackathonsError) throw hackathonsError
+
+    // Fetch user profiles separately
+    const { data: profilesData, error: profilesError } = await supabase
+      .from('user_profiles')
+      .select('user_id, full_name, email, organization_name')
+
+    // Don't throw error if profiles fail, just continue without them
+    const profilesMap = new Map(profilesData?.map(p => [p.user_id, p]) || [])
+
+    // Transform the data to match the expected format
+    const transformedData = hackathonsData?.map(h => {
+      const profile = profilesMap.get(h.created_by)
+      return {
+        id: h.id,
+        title: h.title,
+        organization: h.organization,
+        about: h.about,
+        identity_document_url: h.identity_document_url,
+        authorization_letter_url: h.authorization_letter_url,
+        verification_status: h.verification_status,
+        status: h.status,
+        created_by: h.created_by,
+        created_at: h.created_at,
+        approved_by: h.approved_by,
+        approved_at: h.approved_at,
+        rejected_by: h.rejected_by,
+        rejected_at: h.rejected_at,
+        rejection_reason: h.rejection_reason,
+        organizer_name: profile?.full_name || 'N/A',
+        organizer_email: profile?.email || 'N/A',
+        organizer_organization: profile?.organization_name || ''
+      }
+    }) || []
+
+    return { success: true, data: transformedData }
+  } catch (error) {
+    console.error('Error fetching all hackathons:', error)
+    return { success: false, message: 'Failed to fetch hackathons' }
+  }
+}
+
+/**
  * Get user statistics for admin dashboard
  */
 export async function getUserStats() {
@@ -214,6 +275,39 @@ export async function getAllUsers() {
   } catch (error) {
     console.error('Error fetching all users:', error)
     return { success: false, message: 'Failed to fetch users' }
+  }
+}
+
+/**
+ * Search users by email (admin only)
+ */
+export async function searchUsersByEmail(emailQuery: string) {
+  try {
+    const supabase = await createClient()
+
+    // Check admin access
+    const accessCheck = await checkAdminAccess()
+    if (!accessCheck.isAdmin) {
+      return { success: false, message: 'Unauthorized access' }
+    }
+
+    if (!emailQuery || emailQuery.trim().length === 0) {
+      return { success: true, data: [] }
+    }
+
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('user_id, full_name, email, role, user_primary_type, organization_name, created_at')
+      .ilike('email', `%${emailQuery}%`)
+      .order('email', { ascending: true })
+      .limit(20)
+
+    if (error) throw error
+
+    return { success: true, data: data || [] }
+  } catch (error) {
+    console.error('Error searching users by email:', error)
+    return { success: false, message: 'Failed to search users' }
   }
 }
 

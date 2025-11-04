@@ -65,8 +65,6 @@ export function ProfileCard({ profile, swipeDirection, onPan }: ProfileCardProps
   }
 
   const topSkills = [...(profile.programming_languages || []), ...(profile.frameworks || [])].slice(0, 5)
-  const experienceStars = profile.experience_level?.toLowerCase().includes('beginner') ? 1 :
-    profile.experience_level?.toLowerCase().includes('intermediate') ? 2 : 3
 
   return (
     <motion.div
@@ -84,6 +82,21 @@ export function ProfileCard({ profile, swipeDirection, onPan }: ProfileCardProps
       <div className="relative h-80 bg-gradient-to-br from-teal-600 via-cyan-500 to-blue-600 flex items-center justify-center">
         <div className="text-white text-8xl font-blackops">
           {profile.full_name?.charAt(0).toUpperCase()}
+        </div>
+
+        {/* Compatibility Score Badge - Top Right (OkCupid style) - Responsive */}
+        <div className="absolute top-3 right-3 sm:top-4 sm:right-4 block lg:hidden">
+          <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center shadow-2xl border-2  border-white p-8  ${
+            profile.compatibilityScore >= 80 ? 'bg-gradient-to-br from-green-500 to-emerald-600' :
+            profile.compatibilityScore >= 60 ? 'bg-gradient-to-br from-yellow-500 to-amber-600' :
+            'bg-gradient-to-br from-orange-500 to-red-600'
+          }`}>
+            <div className="text-center">
+              <div className="text-xl sm:text-2xl font-blackops text-white leading-none">
+                {Math.round(profile.compatibilityScore)}%
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Info Banner */}
@@ -132,32 +145,18 @@ export function ProfileCard({ profile, swipeDirection, onPan }: ProfileCardProps
           </div>
         </div>
 
-        {/* Experience */}
-        <div>
-          <h3 className="text-sm font-blackops text-teal-400 uppercase tracking-wide mb-3">
-            Experience
-          </h3>
-          <div className="flex items-center gap-2 mb-2">
-            {[...Array(5)].map((_, idx) => (
-              <Star
-                key={idx}
-                className={`w-5 h-5 ${
-                  idx < experienceStars
-                    ? 'text-yellow-400 fill-yellow-400'
-                    : 'text-gray-700'
-                }`}
-              />
-            ))}
-          </div>
-          <p className="text-sm text-gray-400 font-mono capitalize">
-            {profile.experience_level || 'Beginner'}
-          </p>
-          {profile.githubStats && (
-            <p className="text-sm text-gray-400 font-mono mt-1">
-              {profile.githubStats.contributions} GitHub contributions this year
+        {/* GitHub Contributions */}
+        {profile.githubStats && profile.githubStats.contributions > 0 && (
+          <div>
+            <h3 className="text-sm font-blackops text-teal-400 uppercase tracking-wide mb-3">
+              GitHub Activity
+            </h3>
+            <p className="text-gray-300 font-mono">
+              <span className="text-2xl font-bold text-teal-400">{profile.githubStats.contributions}</span>
+              <span className="text-sm text-gray-400 ml-2">contributions this year</span>
             </p>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* About */}
         {profile.bio && (
@@ -165,7 +164,7 @@ export function ProfileCard({ profile, swipeDirection, onPan }: ProfileCardProps
             <h3 className="text-sm font-blackops text-teal-400 uppercase tracking-wide mb-3">
               About
             </h3>
-            <p className="text-gray-300 text-sm font-mono leading-relaxed line-clamp-3">
+            <p className="text-gray-300 text-sm font-mono leading-relaxed ">
               {profile.bio}
             </p>
           </div>
@@ -346,95 +345,72 @@ export function ContributionGraph({ profile }: { profile: MatchProfile }) {
 }
 
 // =====================================================
-// MATCH SCORE COMPONENT
+// UNIFIED MATCH INSIGHTS COMPONENT (for right column)
 // =====================================================
 
-export function MatchScore({ score }: { score: number }) {
-  const getScoreColor = () => {
-    if (score >= 80) return 'from-green-500 to-emerald-600'
-    if (score >= 60) return 'from-yellow-500 to-amber-600'
-    return 'from-orange-500 to-red-600'
+export function MatchInsights({ profile }: { profile: MatchProfile }) {
+  const getScoreLabel = () => {
+    if (profile.compatibilityScore >= 90) return 'Perfect Match'
+    if (profile.compatibilityScore >= 80) return 'Great Match'
+    if (profile.compatibilityScore >= 70) return 'Good Match'
+    if (profile.compatibilityScore >= 60) return 'Decent Match'
+    return 'Potential Match'
   }
 
-  const getScoreLabel = () => {
-    if (score >= 90) return 'Perfect Match'
-    if (score >= 80) return 'Great Match'
-    if (score >= 70) return 'Good Match'
-    if (score >= 60) return 'Decent Match'
-    return 'Potential Match'
+  const getScoreColor = () => {
+    if (profile.compatibilityScore >= 80) return 'from-green-500 to-emerald-600'
+    if (profile.compatibilityScore >= 60) return 'from-yellow-500 to-amber-600'
+    return 'from-orange-500 to-red-600'
   }
 
   return (
     <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-6 border-2 border-green-500/50 shadow-xl shadow-green-500/20">
-      <div className="flex flex-col items-center">
-        <div className={`w-32 h-32 rounded-full bg-gradient-to-br ${getScoreColor()} flex items-center justify-center shadow-2xl mb-4 border-4 border-white/10`}>
-          <div className="text-5xl font-blackops text-white">
-            {Math.round(score)}%
+      {/* Score Badge */}
+      <div className="flex flex-col items-center mb-6">
+        <div className={`w-28 h-28 rounded-full bg-gradient-to-br ${getScoreColor()} flex items-center justify-center shadow-2xl mb-3 border-4 border-white/10`}>
+          <div className="text-4xl font-blackops text-white">
+            {Math.round(profile.compatibilityScore)}%
           </div>
         </div>
 
-        <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center gap-2 mb-1">
           <Sparkles className="w-5 h-5 text-green-400" />
           <h3 className="text-xl font-blackops text-green-300">
             {getScoreLabel()}
           </h3>
         </div>
 
-        <p className="text-sm text-gray-400 font-mono text-center">
-          Based on skills, experience, and interests
+        <p className="text-xs text-gray-400 font-mono text-center">
+          Based on skills, hackathon activity, and GitHub contributions
         </p>
       </div>
-    </div>
-  )
-}
 
-// =====================================================
-// AI MATCH INSIGHT COMPONENT
-// =====================================================
-
-export function AIMatchInsight({ factors, profile }: { factors: any; profile: MatchProfile }) {
-  const insights = factors.whyGreatTogether || []
-
-  return (
-    <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-6 border-2 border-pink-500/50 shadow-xl shadow-pink-500/20">
-      <div className="flex items-center gap-2 mb-4">
-        <Sparkles className="w-5 h-5 text-pink-400" />
-        <h3 className="text-lg font-blackops text-pink-300 uppercase tracking-wide">
-          AI Match Insight
-        </h3>
-      </div>
-
-      <div className="mb-4">
-        <h4 className="text-sm font-mono font-bold text-pink-400 mb-3 uppercase tracking-wide">
-          Why You'll Work Great Together
-        </h4>
-
-        <div className="space-y-2">
-          {insights.length > 0 ? (
-            insights.map((insight: string, idx: number) => (
-              <div key={idx} className="flex items-start gap-2">
-                <Check className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-gray-300 font-mono">{insight}</p>
-              </div>
-            ))
-          ) : (
-            <p className="text-sm text-gray-400 font-mono">
-              You both have complementary skills that would make a great team!
-            </p>
-          )}
+      {/* Match Insights */}
+      {profile.matchingFactors?.whyGreatTogether && profile.matchingFactors.whyGreatTogether.length > 0 && (
+        <div className="space-y-3 pt-4 border-t border-green-500/20">
+          <p className="text-sm font-blackops text-green-400 uppercase tracking-wide">
+            Why You'll Work Great Together
+          </p>
+          {profile.matchingFactors.whyGreatTogether.map((insight: string, idx: number) => (
+            <div key={idx} className="flex items-start gap-2">
+              <Check className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-gray-300 font-mono leading-relaxed">{insight}</p>
+            </div>
+          ))}
         </div>
-      </div>
+      )}
 
-      {factors.sharedLanguages && factors.sharedLanguages.length > 0 && (
-        <div className="pt-4 border-t border-gray-700">
-          <h4 className="text-xs font-mono font-bold text-gray-500 mb-2 uppercase tracking-wide">
+      {/* Shared Skills Tags */}
+      {profile.matchingFactors?.sharedLanguages && profile.matchingFactors.sharedLanguages.length > 0 && (
+        <div className="pt-4 border-t border-green-500/20 mt-4">
+          <p className="text-xs font-blackops text-green-400 uppercase tracking-wide mb-2">
             Shared Skills
-          </h4>
+          </p>
           <div className="flex flex-wrap gap-2">
-            {factors.sharedLanguages.slice(0, 4).map((lang: string, idx: number) => (
+            {profile.matchingFactors.sharedLanguages.slice(0, 6).map((lang: string, idx: number) => (
               <span
                 key={idx}
-                className="px-2 py-1 rounded-md text-xs font-mono font-bold bg-pink-500/20 border border-pink-400 text-pink-300"
+                className="px-2 py-1 rounded-md text-xs font-mono font-bold bg-green-500/20 border border-green-400/40 text-green-300"
               >
                 {lang}
               </span>
