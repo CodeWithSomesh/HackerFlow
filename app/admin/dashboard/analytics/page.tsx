@@ -6,6 +6,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { getUserStats, getAllHackathons, getAllRegistrations, getAllTeams } from '@/lib/actions/admin-actions'
 import { Users, Calendar, Trophy, UserCheck } from 'lucide-react'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+// ===== DUMMY DATA IMPORT - REMOVE BEFORE PRODUCTION =====
+import { isDummyDataEnabled, DUMMY_USER_STATS, DUMMY_HACKATHONS, DUMMY_REGISTRATIONS, DUMMY_TEAMS } from '@/lib/dummy-data/admin-dummy-data'
+// ========================================================
 
 export default function AnalyticsPage() {
   const [userStats, setUserStats] = useState<any>(null)
@@ -20,6 +23,17 @@ export default function AnalyticsPage() {
 
   async function loadAnalyticsData() {
     setLoading(true)
+
+    // ===== DUMMY DATA LOGIC - REMOVE BEFORE PRODUCTION =====
+    if (isDummyDataEnabled()) {
+      setUserStats(DUMMY_USER_STATS)
+      setHackathons(DUMMY_HACKATHONS)
+      setRegistrations(DUMMY_REGISTRATIONS)
+      setTeams(DUMMY_TEAMS)
+      setLoading(false)
+      return
+    }
+    // ========================================================
 
     const [userResult, hackathonResult, registrationResult, teamResult] = await Promise.all([
       getUserStats(),

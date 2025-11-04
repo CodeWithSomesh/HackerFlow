@@ -5,7 +5,8 @@ import { Search, Filter, MapPin, Calendar, Users, Trophy, Clock, Star, ExternalL
 import Image, { StaticImageData } from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { mockHackathons, Hackathon } from "@/lib/mockHackathons2";
+// import { mockHackathons, Hackathon } from "@/lib/mockHackathons2";
+import { Hackathon } from "@/lib/mockHackathons2";
 import { fetchPublishedHackathons } from "@/lib/actions/createHackathon-actions";
 import { IconUserStar } from "@tabler/icons-react";
 
@@ -43,8 +44,11 @@ const Hackathons = () => {
       const result = await fetchPublishedHackathons();
       
       if (result.success && result.data) {
+        // Filter only verified hackathons
+        const verifiedHackathons = result.data.filter((hack: any) => hack.verification_status === 'verified');
+
         // Transform DB data to match our interface
-        const transformedData: Hackathon[] = result.data.map((hack: any, index:number) => ({
+        const transformedData: Hackathon[] = verifiedHackathons.map((hack: any, index:number) => ({
           id: hack.id,
           title: hack.title,
           description: hack.about || 'No description available',
@@ -72,7 +76,7 @@ const Hackathons = () => {
 
         // Extract unique categories from all hackathons
         const categories = new Set<string>();
-        result.data.forEach((hack: any) => {
+        verifiedHackathons.forEach((hack: any) => {
           if (hack.categories && Array.isArray(hack.categories)) {
             hack.categories.forEach((cat: string) => {
               // Convert to proper camel case (each word capitalized)
@@ -142,7 +146,9 @@ const Hackathons = () => {
     return parseInt(numStr) || 0;
   };
 
-  const allHackathons = [...dbHackathons, ...mockHackathons];
+  // Comment out mock data - only showing verified hackathons from DB
+  // const allHackathons = [...dbHackathons, ...mockHackathons];
+  const allHackathons = [...dbHackathons];
 
   const filteredHackathons = allHackathons.filter(hackathon => {
     const matchesSearch = hackathon.title.toLowerCase().includes(searchTerm.toLowerCase()) ||

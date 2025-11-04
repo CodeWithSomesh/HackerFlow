@@ -104,7 +104,7 @@ export default function AdminDashboardLayout({
   const baseNavItems = [
     { href: '/admin/dashboard', label: 'Overview', icon: Home },
     { href: '/admin/dashboard/revenue', label: 'Revenue', icon: DollarSign },
-    { href: '/admin/dashboard/hackathon-management/approvals', label: 'Hackathons', icon: FileCheck },
+    { href: '/admin/dashboard/hackathon-management', label: 'Hackathons', icon: FileCheck },
     { href: '/admin/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
     { href: '/admin/dashboard/user-management', label: 'Users', icon: Users },
   ]
