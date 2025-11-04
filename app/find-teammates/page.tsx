@@ -42,8 +42,7 @@ import {
   HackathonExperience,
   GitHubActivity,
   ContributionGraph,
-  MatchScore,
-  AIMatchInsight,
+  MatchInsights,
   RecentProjects,
   MatchModal,
   LoadingState,
@@ -280,20 +279,20 @@ export default function FindTeammatesPage() {
   // Render header function for reuse
   const renderHeader = () => (
     <div className="bg-gradient-to-r from-teal-600 via-cyan-500 to-yellow-400 border-y-4 border-pink-400 shadow-2xl">
-      <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-5xl font-blackops text-white drop-shadow-lg">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-blackops text-white drop-shadow-lg">
               Find Your Hackathon Buddy
             </h1>
-            <p className="text-xl text-white/90 font-mono">
+            <p className="text-sm sm:text-lg lg:text-xl text-white/90 font-mono">
               Discover amazing teammates with AI-powered matching 🚀
             </p>
           </div>
         </div>
 
         {/* Controls Row */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {/* Dummy Data Toggle */}
           <button
             onClick={toggleDummyData}
@@ -346,29 +345,18 @@ export default function FindTeammatesPage() {
       {renderHeader()}
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6 pb-32 lg:pb-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Section - Stats */}
-          <div className="lg:col-span-1">
-            <HackathonExperience profile={currentProfile} />
-            <div className="mt-6">
-              <GitHubActivity profile={currentProfile} />
-            </div>
-            <div className="mt-6">
-              <ContributionGraph profile={currentProfile} />
-            </div>
-          </div>
-
-          {/* Center Section - Profile Card with Controls */}
-          <div className="lg:col-span-1">
+          {/* Center Section - Profile Card (shown first on mobile) */}
+          <div className="lg:col-span-1 lg:order-2 order-1 space-y-6">
             <ProfileCard
               profile={currentProfile}
               swipeDirection={swipeDirection}
               onPan={handlePan}
             />
 
-            {/* Swipe Controls - Integrated Below Card */}
-            <div className="mt-6">
+            {/* Desktop Controls - Below Card */}
+            <div className="hidden lg:flex flex-col items-center gap-4">
               <div className="flex justify-center items-center gap-6">
                 <motion.button
                   whileHover={{ scale: 1.1 }}
@@ -405,26 +393,65 @@ export default function FindTeammatesPage() {
               </div>
 
               {/* Keyboard Shortcuts Hint */}
-              <div className="text-center mt-4 text-sm text-gray-500 font-mono">
+              <div className="text-center text-sm text-gray-500 font-mono">
                 Use <kbd className="px-2 py-1 bg-gray-900 border border-gray-700 rounded">←</kbd> and{' '}
                 <kbd className="px-2 py-1 bg-gray-900 border border-gray-700 rounded">→</kbd> keys to swipe
               </div>
             </div>
           </div>
 
-          {/* Right Section - Match Score & Insights */}
-          <div className="lg:col-span-1">
-            <MatchScore score={currentProfile.compatibilityScore} />
-            <div className="mt-6">
-              <AIMatchInsight
-                factors={currentProfile.matchingFactors}
-                profile={currentProfile}
-              />
-            </div>
-            <div className="mt-6">
-              <RecentProjects projects={currentProfile.recentProjects} />
+          {/* Right Section - Match Insights & Recent Projects (shown second on mobile, after card) */}
+          <div className="lg:col-span-1 lg:order-3 order-2 space-y-6">
+            <MatchInsights profile={currentProfile} />
+            <RecentProjects projects={currentProfile.recentProjects} />
+          </div>
+
+          {/* Left Section - Stats (shown third on mobile, after match insights) */}
+          <div className="lg:col-span-1 lg:order-1 order-3 space-y-6">
+            <HackathonExperience profile={currentProfile} />
+            <GitHubActivity profile={currentProfile} />
+            <div className="hidden lg:block">
+              <ContributionGraph profile={currentProfile} />
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Fixed Bottom Controls (Mobile) */}
+      <div className="fixed bottom-0 left-0 right-0 lg:hidden bg-gradient-to-t from-black via-black/95 to-transparent pt-8 pb-6 px-6 z-50">
+        <div className="flex justify-center items-center gap-6 mb-2">
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleSwipeLeft}
+            disabled={isAnimating}
+            className="w-16 h-16 rounded-full bg-gray-900 border-4 border-red-500 flex items-center justify-center shadow-xl hover:shadow-2xl hover:shadow-red-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <X className="w-8 h-8 text-red-500" />
+          </motion.button>
+
+          {canUndo && (
+            <motion.button
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleUndo}
+              className="w-12 h-12 rounded-full bg-gray-900 border-2 border-gray-700 flex items-center justify-center shadow-lg hover:shadow-xl hover:border-teal-400 transition-all"
+            >
+              <Undo2 className="w-5 h-5 text-gray-400 hover:text-teal-400" />
+            </motion.button>
+          )}
+
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleSwipeRight}
+            disabled={isAnimating}
+            className="w-16 h-16 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 flex items-center justify-center shadow-xl hover:shadow-2xl hover:shadow-pink-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Heart className="w-8 h-8 text-white" fill="white" />
+          </motion.button>
         </div>
       </div>
 

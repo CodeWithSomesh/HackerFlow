@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import {
   Home,
@@ -22,7 +22,53 @@ export default function AdminLoginPage() {
   })
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isCheckingSession, setIsCheckingSession] = useState(true)
   const [error, setError] = useState("")
+
+  // Check if user is already logged in when page loads
+  useEffect(() => {
+    checkExistingSession()
+  }, [])
+
+  const checkExistingSession = async () => {
+    setIsCheckingSession(true)
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+
+      if (user) {
+        // User is already logged in, check their role
+        const { data: profile, error: profileError } = await supabase
+          .from('user_profiles')
+          .select('role, full_name')
+          .eq('user_id', user.id)
+          .single()
+
+        if (profileError) {
+          console.error('Error fetching profile:', profileError)
+          showCustomToast('error', 'Failed to verify admin access. Please try again.')
+          setIsCheckingSession(false)
+          return
+        }
+
+        // Check if user has admin or superadmin role
+        if (profile && (profile.role === 'admin' || profile.role === 'superadmin')) {
+          showCustomToast('success', `Welcome back, ${profile.full_name || profile.role}!`)
+          router.push("/admin/dashboard")
+        } else {
+          // User is logged in but not an admin
+          showCustomToast('error', 'Access denied. Only administrators can access this portal.')
+          setTimeout(() => {
+            router.push("/")
+          }, 2000)
+        }
+      }
+    } catch (error) {
+      console.error('Error checking session:', error)
+    } finally {
+      setIsCheckingSession(false)
+    }
+  }
 
   const handleHomeClick = () => {
     router.push("/")
@@ -50,7 +96,7 @@ export default function AdminLoginPage() {
       // Check if user has admin or superadmin role
       const { data: profile, error: profileError } = await supabase
         .from('user_profiles')
-        .select('role')
+        .select('role, full_name')
         .eq('user_id', user.id)
         .single()
 
@@ -60,18 +106,42 @@ export default function AdminLoginPage() {
       if (!profile || (profile.role !== 'admin' && profile.role !== 'superadmin')) {
         // Sign out if not admin
         await supabase.auth.signOut()
-        throw new Error("Access denied. Only administrators can access this portal.")
+        setError("Access denied. Only administrators can access this portal.")
+        showCustomToast('error', 'Access denied. Only administrators can access this portal.')
+        setTimeout(() => {
+          router.push("/")
+        }, 2000)
+        return
       }
 
-      showCustomToast('success', `Welcome back, ${profile.role}!`)
+      showCustomToast('success', `Welcome back, ${profile.full_name || profile.role}!`)
       router.push("/admin/dashboard")
 
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "An error occurred during sign in")
-      showCustomToast('error', "Sign in failed")
+      const errorMessage = err instanceof Error ? err.message : "An error occurred during sign in"
+      setError(errorMessage)
+      showCustomToast('error', errorMessage)
     } finally {
       setIsLoading(false)
     }
+  }
+
+  // Show loading screen while checking existing session
+  if (isCheckingSession) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <div className="text-center">
+          <div className="relative w-20 h-20 mx-auto mb-6">
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl blur-lg opacity-50 animate-pulse"></div>
+            <div className="relative w-full h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
+              <ShieldCheck className="w-10 h-10 text-white animate-pulse" />
+            </div>
+          </div>
+          <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400 font-mono text-lg">Checking admin access...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -134,6 +204,11 @@ export default function AdminLoginPage() {
 
               <h2 className="text-2xl font-blackops text-purple-300 mb-2">ADMIN LOGIN</h2>
               <p className="text-gray-300 font-mono text-sm">Enter your administrator credentials</p>
+              <div className="mt-4 bg-cyan-500/10 border border-cyan-500/30 rounded-md p-3">
+                <p className="text-cyan-300 font-mono text-xs">
+                  💡 Already logged in? Just visit this page and you'll be automatically verified!
+                </p>
+              </div>
             </div>
 
             <form onSubmit={handleAdminSignIn} className="space-y-6">

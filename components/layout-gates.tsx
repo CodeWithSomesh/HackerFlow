@@ -24,12 +24,23 @@ function isDashboardPath(pathname: string | null): boolean {
   return pathname.startsWith("/dashboard/")
 }
 
+function isAdminPath(pathname: string | null): boolean {
+  if (!pathname) return false
+  return pathname.startsWith("/admin/")
+}
+
+function isFindTeammatesPath(pathname: string | null): boolean {
+  if (!pathname) return false
+  return pathname.startsWith("/find-teammates")
+}
+
 export function NavbarGate() {
   const pathname = usePathname()
   if (isOnboardingPath(pathname)) return null
   if (isAuthPath(pathname)) return null
   if (isHackathonDetailsPath(pathname)) return null
   if (isDashboardPath(pathname)) return null
+  if (isAdminPath(pathname)) return null
   return <Navbar />
 }
 
@@ -39,6 +50,8 @@ export function FooterGate() {
   if (isAuthPath(pathname)) return null
   if (isHackathonDetailsPath(pathname)) return null
   if (isDashboardPath(pathname)) return null
+  if (isAdminPath(pathname)) return null
+  if (isFindTeammatesPath(pathname)) return null
   return <Footer />
 }
 

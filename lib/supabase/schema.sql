@@ -190,6 +190,19 @@ CREATE POLICY "Users can insert their own profile" ON user_profiles
 CREATE POLICY "Users can update their own profile" ON user_profiles
   FOR UPDATE USING (auth.uid() = user_id);
 
+-- Allow users to view other hacker profiles for matchmaking (unless hidden)
+CREATE POLICY "Users can view other hacker profiles for matchmaking" ON user_profiles
+  FOR SELECT
+  USING (
+    user_primary_type = 'hacker'
+    AND user_id != auth.uid()
+    AND NOT EXISTS (
+      SELECT 1 FROM match_preferences
+      WHERE match_preferences.user_id = user_profiles.user_id
+      AND match_preferences.hide_profile = true
+    )
+  );
+
 -- GitHub projects policies
 CREATE POLICY "Users can view their own GitHub projects" ON github_projects
   FOR SELECT USING (auth.uid() = user_id);

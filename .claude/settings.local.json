@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node scripts/check-admin-user.js:*)"
+      "Bash(node scripts/check-admin-user.js:*)",
+      "Bash(supabase:*)"
     ],
     "deny": [],
     "ask": []
