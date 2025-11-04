@@ -335,162 +335,168 @@ export default function HackerDashboardLayout({
               <span className="font-blackops text-xl text-white">HackerFlow</span>
             </div>
 
-            <div className="flex items-center gap-3">
-              {/* Role Switcher - Visible on all tabs */}
-              {hasHackerRole && (
-                <Button
-                  onClick={switchToHacker}
-                  size="sm"
-                  className="hidden md:flex bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-500 hover:to-teal-600 text-white font-mono font-bold border-2 border-teal-400/50 hover:border-teal-300 transition-all shadow-lg hover:shadow-teal-500/50"
-                >
-                  <Users className="h-4 w-4 mr-2" />
-                  Switch to Hacker
-                </Button>
-              )}
-
-              {/* Create Hackathon Button */}
-              <Link href="/organize/step1" className="hidden md:block">
-                <Button
-                  size="sm"
-                  className="bg-purple-600 hover:bg-purple-500 text-white font-mono font-bold"
-                >
-                  <Folder className="h-4 w-4 mr-2" />
-                  Create Hackathon
-                </Button>
-              </Link>
-
-              {/* Dummy Data Toggle */}
-              <div className="hidden lg:block">
-                <DummyDataToggle onToggle={() => {}} defaultValue={true} />
-              </div>
-
-              {/* Notifications */}
-              <Popover open={notificationsOpen} onOpenChange={setNotificationsOpen}>
-                <PopoverTrigger asChild>
+            <div className="flex w-full items-center justify-between gap-3">
+              <div className='flex items-center gap-2'>
+                {/* Role Switcher - Visible on all tabs */}
+                {hasHackerRole && (
                   <Button
-                    variant="ghost"
-                    size="icon"
-                    className="relative text-white hover:bg-gray-800"
+                    onClick={switchToHacker}
+                    size="sm"
+                    className="hidden md:flex bg-gradient-to-r p-5 from-teal-600 to-teal-700 hover:from-teal-500 hover:to-teal-600 text-white font-mono font-bold border-2 border-teal-400/50 hover:border-teal-300 transition-all shadow-lg hover:shadow-teal-500/50"
                   >
-                    <Bell className="h-5 w-5" />
-                    {unreadCount > 0 && (
-                      <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
-                        {unreadCount > 9 ? '9+' : unreadCount}
-                      </span>
-                    )}
+                    <Users className="h-4 w-4 mr-2" />
+                    Switch to Hacker Dashboard
                   </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80 bg-gray-900 border-gray-800 p-0" align="end">
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800">
-                    <h3 className="font-blackops text-white">Notifications</h3>
-                    {unreadCount > 0 && (
-                      <button
-                        onClick={handleMarkAllAsRead}
-                        className="text-xs text-teal-400 hover:text-teal-300 font-mono font-bold"
-                      >
-                        Mark all as read
-                      </button>
-                    )}
-                  </div>
-                  <div className="max-h-96 overflow-y-auto">
-                    {notifications.length === 0 ? (
-                      <div className="text-center py-8">
-                        <Bell className="h-12 w-12 text-gray-600 mx-auto mb-2" />
-                        <p className="text-gray-400 font-mono text-sm">No notifications yet</p>
-                      </div>
-                    ) : (
-                      <div className="divide-y divide-gray-800">
-                        {notifications.map((notification) => (
-                          <button
-                            key={notification.id}
-                            onClick={() => handleNotificationClick(notification)}
-                            className={`w-full text-left px-4 py-3 hover:bg-gray-800 transition-colors ${
-                              !notification.read ? 'bg-teal-500/5' : ''
-                            }`}
-                          >
-                            <div className="flex items-start gap-3">
-                              <span className="text-2xl flex-shrink-0">
-                                {getNotificationIcon(notification.type)}
-                              </span>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <p className="font-semibold text-white text-sm">
-                                    {notification.title}
-                                  </p>
-                                  {!notification.read && (
-                                    <span className="h-2 w-2 rounded-full bg-teal-400"></span>
-                                  )}
-                                </div>
-                                <p className="text-gray-400 text-xs mt-1">
-                                  {notification.message}
-                                </p>
-                                <p className="text-gray-500 text-xs mt-1">
-                                  {getTimeAgo(notification.created_at)}
-                                </p>
-                              </div>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </PopoverContent>
-              </Popover>
+                )}
 
-              {/* User Menu */}
-              <DropdownMenu>
-                <DropdownMenuTrigger className="hidden md:flex items-center gap-2 focus:outline-none">
-                  <Avatar className="h-10 w-10 bg-gradient-to-br from-teal-400 to-cyan-500">
-                    <AvatarImage src={profile?.profile_image} />
-                    <AvatarFallback className="bg-gradient-to-br from-teal-400 to-cyan-500 text-black font-bold">
-                      {getInitials(profile?.full_name, user?.email)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <ChevronDown className="h-4 w-4 text-gray-400" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-64 bg-gray-900 border-gray-800" align="end">
-                  <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-semibold text-white">
-                        {profile?.full_name || 'User'}
-                      </p>
-                      <p className="text-xs text-gray-400">{user?.email}</p>
-                      <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-mono font-bold bg-purple-500/20 text-purple-400 border border-purple-400 w-fit mt-1">
-                        Organizer Dashboard
-                      </span>
+                {/* Create Hackathon Button */}
+                <Link href="/organize/step1" className="hidden md:block">
+                  <Button
+                    size="sm"
+                    className="bg-purple-700 p-5 hover:bg-purple-500 text-white font-mono border-2 border-purple-400/50 hover:border-purple-300 font-bold"
+                  >
+                    <Folder className="h-4 w-4 mr-2" />
+                    Create Hackathon
+                  </Button>
+                </Link>
+
+                {/* Dummy Data Toggle */}
+                <div className="hidden lg:block">
+                  <DummyDataToggle onToggle={() => {}} defaultValue={true} />
+                </div>
+              </div>
+              
+              <div className='flex items-center gap-2'>
+                {/* Notifications */}
+                <Popover open={notificationsOpen} onOpenChange={setNotificationsOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="relative text-white hover:bg-gray-800"
+                    >
+                      <Bell className="h-5 w-5" />
+                      {unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
+                          {unreadCount > 9 ? '9+' : unreadCount}
+                        </span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80 bg-gray-900 border-gray-800 p-0" align="end">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800">
+                      <h3 className="font-blackops text-white">Notifications</h3>
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={handleMarkAllAsRead}
+                          className="text-xs text-teal-400 hover:text-teal-300 font-mono font-bold"
+                        >
+                          Mark all as read
+                        </button>
+                      )}
                     </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator className="bg-gray-800" />
-                  {hasHackerRole && (
-                    <>
-                      <DropdownMenuItem onClick={switchToHacker} className="cursor-pointer">
-                        <Trophy className="h-4 w-4 mr-2" />
-                        Switch to Hacker Dashboard
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator className="bg-gray-800" />
-                    </>
-                  )}
-                  <DropdownMenuItem asChild>
-                    <Link href="/profile" className="cursor-pointer">
-                      View Profile
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/dashboard/settings" className="cursor-pointer">
-                      Settings
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator className="bg-gray-800" />
-                  <DropdownMenuItem asChild>
-                    <form action={signOut} className="w-full">
-                      <button type="submit" className="flex items-center w-full text-red-400 hover:text-red-300">
-                        <LogOut className="h-4 w-4 mr-2" />
-                        Sign Out
-                      </button>
-                    </form>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    <div className="max-h-96 overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <div className="text-center py-8">
+                          <Bell className="h-12 w-12 text-gray-600 mx-auto mb-2" />
+                          <p className="text-gray-400 font-mono text-sm">No notifications yet</p>
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-gray-800">
+                          {notifications.map((notification) => (
+                            <button
+                              key={notification.id}
+                              onClick={() => handleNotificationClick(notification)}
+                              className={`w-full text-left px-4 py-3 hover:bg-gray-800 transition-colors ${
+                                !notification.read ? 'bg-teal-500/5' : ''
+                              }`}
+                            >
+                              <div className="flex items-start gap-3">
+                                <span className="text-2xl flex-shrink-0">
+                                  {getNotificationIcon(notification.type)}
+                                </span>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-semibold text-white text-sm">
+                                      {notification.title}
+                                    </p>
+                                    {!notification.read && (
+                                      <span className="h-2 w-2 rounded-full bg-teal-400"></span>
+                                    )}
+                                  </div>
+                                  <p className="text-gray-400 text-xs mt-1">
+                                    {notification.message}
+                                  </p>
+                                  <p className="text-gray-500 text-xs mt-1">
+                                    {getTimeAgo(notification.created_at)}
+                                  </p>
+                                </div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+
+                {/* User Menu */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="hidden md:flex items-center gap-2 focus:outline-none">
+                    <Avatar className="h-10 w-10 bg-gradient-to-br from-teal-400 to-cyan-500">
+                      <AvatarImage src={profile?.profile_image} />
+                      <AvatarFallback className="bg-gradient-to-br from-teal-400 to-cyan-500 text-black font-bold">
+                        {getInitials(profile?.full_name, user?.email)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <ChevronDown className="h-4 w-4 text-gray-400" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-64 bg-gray-900 border-gray-400 border-2" align="end">
+                    <DropdownMenuLabel className="font-normal">
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-semibold text-white">
+                          {profile?.full_name || 'User'}
+                        </p>
+                        <p className="text-xs text-gray-400">{user?.email}</p>
+                        <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-mono font-bold bg-purple-500/20 text-purple-400 border border-purple-400 w-fit mt-1">
+                          Organizer Dashboard
+                        </span>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator className="bg-gray-500" />
+                    {hasHackerRole && (
+                      <>
+                        <DropdownMenuItem onClick={switchToHacker} className="cursor-pointer">
+                          {/* <Trophy className="h-4 w-4 mr-2" /> */}
+                          Switch to Hacker Dashboard
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator className="bg-gray-500" />
+                      </>
+                    )}
+                    <DropdownMenuItem asChild>
+                      <Link href="/profile" className="cursor-pointer">
+                        View Profile
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator className="bg-gray-500" />
+                    <DropdownMenuItem asChild>
+                      <Link href="/dashboard/settings" className="cursor-pointer">
+                        Settings
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator className="bg-gray-500" />
+                    <DropdownMenuItem asChild>
+                      <form action={signOut} className="w-full">
+                        <button type="submit" className="flex items-center w-full text-red-400 hover:text-red-300">
+                          <LogOut className="h-4 w-4 mr-2" />
+                          Sign Out
+                        </button>
+                      </form>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              
             </div>
           </div>
         </header>

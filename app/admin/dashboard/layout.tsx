@@ -268,9 +268,9 @@ export default function AdminDashboardLayout({
               <span className="font-blackops text-xl text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">ADMIN</span>
             </div>
 
-            <div className="flex items-center gap-3 ml-auto">
+            <div className="flex items-center gap-3 justify-between w-full">
               {/* ===== DUMMY DATA TOGGLE - REMOVE BEFORE PRODUCTION ===== */}
-              <div className="hidden lg:block">
+              <div className="hidden md:block">
                 <DummyDataToggle onToggle={setUseDummyData} defaultValue={false} />
               </div>
               {/* ======================================================== */}
@@ -286,7 +286,7 @@ export default function AdminDashboardLayout({
                   </Avatar>
                   <ChevronDown className="h-4 w-4 text-gray-400 hidden md:block" />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-64 bg-gray-900 border-gray-800" align="end">
+                <DropdownMenuContent className="w-64 bg-gray-900 border-2 border-gray-400" align="end">
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-semibold text-white">
@@ -298,13 +298,13 @@ export default function AdminDashboardLayout({
                       </span>
                     </div>
                   </DropdownMenuLabel>
-                  <DropdownMenuSeparator className="bg-gray-800" />
+                  <DropdownMenuSeparator className="bg-gray-500" />
                   <DropdownMenuItem asChild>
                     <Link href="/" className="cursor-pointer">
                       Back to Home
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator className="bg-gray-800" />
+                  <DropdownMenuSeparator className="bg-gray-500" />
                   <DropdownMenuItem asChild>
                     <form action={signOut} className="w-full">
                       <button type="submit" className="flex items-center w-full text-red-400 hover:text-red-300">

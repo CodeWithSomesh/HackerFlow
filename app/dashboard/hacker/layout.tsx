@@ -345,10 +345,10 @@ export default function HackerDashboardLayout({
                   <Button
                     onClick={switchToOrganizer}
                     size="sm"
-                    className="hidden md:flex bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white font-mono font-bold border-2 border-purple-400/50 hover:border-purple-300 transition-all shadow-lg hover:shadow-purple-500/50"
+                    className="hidden md:flex bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white font-mono font-bold border-2 border-purple-400/50 hover:border-purple-300 transition-all shadow-lg p-5 hover:shadow-purple-500/50"
                   >
                     <Folder className="h-4 w-4 mr-2" />
-                    Switch to Organizer
+                    Switch to Organizer Dashboard
                   </Button>
                 )}
 
@@ -443,7 +443,7 @@ export default function HackerDashboardLayout({
                     </Avatar>
                     <ChevronDown className="h-4 w-4 text-gray-400" />
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-64 bg-gray-900 border-gray-800" align="end">
+                  <DropdownMenuContent className="w-64 bg-gray-900 border-2 border-gray-400" align="end">
                     <DropdownMenuLabel className="font-normal">
                       <div className="flex flex-col space-y-1">
                         <p className="text-sm font-semibold text-white">
@@ -455,14 +455,14 @@ export default function HackerDashboardLayout({
                         </span>
                       </div>
                     </DropdownMenuLabel>
-                    <DropdownMenuSeparator className="bg-gray-800" />
+                    <DropdownMenuSeparator className="bg-gray-500" />
                     {hasOrganizerRole && (
                       <>
                         <DropdownMenuItem onClick={switchToOrganizer} className="cursor-pointer">
-                          <Users className="h-4 w-4 mr-2" />
+                          {/* <Users className="h-4 w-4 mr-2" /> */}
                           Switch to Organizer Dashboard
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator className="bg-gray-800" />
+                        <DropdownMenuSeparator className="bg-gray-500" />
                       </>
                     )}
                     <DropdownMenuItem asChild>
@@ -470,12 +470,13 @@ export default function HackerDashboardLayout({
                         View Profile
                       </Link>
                     </DropdownMenuItem>
+                    <DropdownMenuSeparator className="bg-gray-500" />
                     <DropdownMenuItem asChild>
                       <Link href="/dashboard/settings" className="cursor-pointer">
                         Settings
                       </Link>
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator className="bg-gray-800" />
+                    <DropdownMenuSeparator className="bg-gray-500" />
                     <DropdownMenuItem asChild>
                       <form action={signOut} className="w-full">
                         <button type="submit" className="flex items-center w-full text-red-400 hover:text-red-300">
