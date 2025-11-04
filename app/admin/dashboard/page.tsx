@@ -7,6 +7,9 @@ import { getRevenueStats, getUserStats, getPendingHackathons } from '@/lib/actio
 import { DollarSign, Users, FileCheck, TrendingUp, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+// ===== DUMMY DATA IMPORT - REMOVE BEFORE PRODUCTION =====
+import { isDummyDataEnabled, DUMMY_REVENUE_STATS, DUMMY_USER_STATS } from '@/lib/dummy-data/admin-dummy-data'
+// ========================================================
 
 export default function AdminDashboardPage() {
   const [revenueStats, setRevenueStats] = useState<any>(null)
@@ -20,6 +23,16 @@ export default function AdminDashboardPage() {
 
   async function loadDashboardData() {
     setLoading(true)
+
+    // ===== DUMMY DATA LOGIC - REMOVE BEFORE PRODUCTION =====
+    if (isDummyDataEnabled()) {
+      setRevenueStats(DUMMY_REVENUE_STATS)
+      setUserStats(DUMMY_USER_STATS)
+      setPendingCount(DUMMY_REVENUE_STATS.pending_approvals)
+      setLoading(false)
+      return
+    }
+    // ========================================================
 
     const [revenueResult, userResult, pendingResult] = await Promise.all([
       getRevenueStats(),

@@ -209,124 +209,126 @@ export const DUMMY_USERS = [
 ]
 
 export const DUMMY_REVENUE_STATS = {
-  total_paid_hackathons: 47,
-  total_revenue: 940.00,
-  revenue_last_6_months: 820.00,
-  revenue_this_month: 180.00,
-  revenue_today: 40.00,
+  total_paid_hackathons: 152,
+  total_revenue: 3040.00,
+  revenue_last_6_months: 2680.00,
+  revenue_this_month: 420.00,
+  revenue_today: 80.00,
   pending_approvals: 5,
   approved_hackathons: 42,
   rejected_hackathons: 5
 }
 
 export const DUMMY_USER_STATS = {
-  total_users: 247,
-  total_admins: 3,
-  total_superadmins: 1,
-  total_hackers: 178,
-  total_organizers: 69,
-  new_users_this_month: 23,
-  new_users_today: 5
+  total_users: 2847,
+  total_admins: 8,
+  total_superadmins: 2,
+  total_hackers: 2456,
+  total_organizers: 391,
+  new_users_this_month: 187,
+  new_users_today: 23
 }
 
 export const DUMMY_REVENUE_OVER_TIME = [
-  { month: 'Aug 2024', revenue: 120.00 },
-  { month: 'Sep 2024', revenue: 140.00 },
-  { month: 'Oct 2024', revenue: 100.00 },
-  { month: 'Nov 2024', revenue: 160.00 },
-  { month: 'Dec 2024', revenue: 180.00 },
-  { month: 'Jan 2025', revenue: 120.00 },
-  { month: 'Feb 2025', revenue: 180.00 }
+  { month: 'Aug 2024', revenue: 320.00 },
+  { month: 'Sep 2024', revenue: 380.00 },
+  { month: 'Oct 2024', revenue: 440.00 },
+  { month: 'Nov 2024', revenue: 520.00 },
+  { month: 'Dec 2024', revenue: 600.00 },
+  { month: 'Jan 2025', revenue: 420.00 }
 ]
 
-export const DUMMY_HACKATHONS = [
-  {
-    id: 'hack-1',
-    title: 'Summer Code Sprint 2024',
-    organization: 'Tech University',
-    verification_status: 'confirmed',
-    status: 'completed',
-    posting_fee: 20.00,
-    posting_fee_paid: true,
-    posting_fee_paid_at: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString(),
-    created_at: new Date(Date.now() - 150 * 24 * 60 * 60 * 1000).toISOString(),
-    user_profiles: {
-      full_name: 'Prof. Anderson',
-      email: 'anderson@tech.edu',
-      organization_name: 'Tech University'
-    }
-  },
-  {
-    id: 'hack-2',
-    title: 'Startup Weekend Hackathon',
-    organization: 'Innovation Hub',
-    verification_status: 'confirmed',
-    status: 'published',
-    posting_fee: 20.00,
-    posting_fee_paid: true,
-    posting_fee_paid_at: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(),
-    created_at: new Date(Date.now() - 50 * 24 * 60 * 60 * 1000).toISOString(),
-    user_profiles: {
-      full_name: 'Sarah Startup',
-      email: 'sarah@innovationhub.com',
-      organization_name: 'Innovation Hub'
-    }
-  }
-]
+// Generate comprehensive dummy hackathons for analytics
+export const DUMMY_HACKATHONS = (() => {
+  const hackathons = []
+  const statuses = ['published', 'draft', 'waiting_for_approval']
+  const statusCounts = { published: 98, draft: 37, waiting_for_approval: 17 }
 
-export const DUMMY_REGISTRATIONS = [
-  {
-    id: 'reg-1',
-    user_id: 'dummy-user-1',
-    hackathon_id: 'hack-1',
-    team_id: null,
-    registration_type: 'individual',
-    created_at: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString(),
-    hackathons: {
-      title: 'Summer Code Sprint 2024',
-      organization: 'Tech University'
-    },
-    user_profiles: {
-      full_name: 'Alice Developer',
-      email: 'alice.developer@email.com'
-    }
-  },
-  {
-    id: 'reg-2',
-    user_id: 'dummy-user-3',
-    hackathon_id: 'hack-2',
-    team_id: 'team-1',
-    registration_type: 'team',
-    created_at: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
-    hackathons: {
-      title: 'Startup Weekend Hackathon',
-      organization: 'Innovation Hub'
-    },
-    user_profiles: {
-      full_name: 'Charlie Hacker',
-      email: 'charlie.hacker@email.com'
+  let id = 1
+  for (const [status, count] of Object.entries(statusCounts)) {
+    for (let i = 0; i < count; i++) {
+      hackathons.push({
+        id: `dummy-hack-${id++}`,
+        title: `Hackathon ${status} ${i + 1}`,
+        organization: `Org ${i + 1}`,
+        verification_status: status === 'published' ? 'confirmed' : 'pending',
+        status,
+        posting_fee: 20.00,
+        posting_fee_paid: status === 'published',
+        posting_fee_paid_at: status === 'published' ? new Date(Date.now() - Math.random() * 180 * 24 * 60 * 60 * 1000).toISOString() : null,
+        created_at: new Date(Date.now() - Math.random() * 180 * 24 * 60 * 60 * 1000).toISOString(),
+        user_profiles: {
+          full_name: `Organizer ${i + 1}`,
+          email: `organizer${i + 1}@email.com`,
+          organization_name: `Org ${i + 1}`
+        }
+      })
     }
   }
-]
 
-export const DUMMY_TEAMS = [
-  {
-    id: 'team-1',
-    team_name: 'Code Warriors',
-    hackathon_id: 'hack-2',
-    team_leader_id: 'dummy-user-3',
-    max_members: 4,
-    created_at: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
-    hackathons: {
-      title: 'Startup Weekend Hackathon',
-      organization: 'Innovation Hub'
-    },
-    user_profiles: {
-      full_name: 'Charlie Hacker',
-      email: 'charlie.hacker@email.com'
+  return hackathons
+})()
+
+// Generate comprehensive dummy registrations for analytics
+export const DUMMY_REGISTRATIONS = (() => {
+  const registrations = []
+  const monthsAgo = [5, 4, 3, 2, 1, 0] // 6 months
+  const countsPerMonth = [145, 178, 192, 215, 238, 187]
+
+  let id = 1
+  monthsAgo.forEach((monthOffset, idx) => {
+    const count = countsPerMonth[idx]
+    for (let i = 0; i < count; i++) {
+      const date = new Date()
+      date.setMonth(date.getMonth() - monthOffset)
+      date.setDate(Math.floor(Math.random() * 28) + 1)
+
+      registrations.push({
+        id: `dummy-reg-${id++}`,
+        user_id: `dummy-user-${(i % 100) + 1}`,
+        hackathon_id: `dummy-hack-${(i % 98) + 1}`,
+        team_id: i % 3 === 0 ? `dummy-team-${(i % 50) + 1}` : null,
+        registration_type: i % 3 === 0 ? 'team' : 'individual',
+        created_at: date.toISOString(),
+        hackathons: {
+          title: `Hackathon ${(i % 98) + 1}`,
+          organization: `Org ${(i % 50) + 1}`
+        },
+        user_profiles: {
+          full_name: `User ${(i % 100) + 1}`,
+          email: `user${(i % 100) + 1}@email.com`
+        }
+      })
     }
+  })
+
+  return registrations
+})()
+
+// Generate comprehensive dummy teams for analytics
+export const DUMMY_TEAMS = (() => {
+  const teams = []
+  for (let i = 0; i < 385; i++) {
+    teams.push({
+      id: `dummy-team-${i + 1}`,
+      team_name: `Team ${i + 1}`,
+      hackathon_id: `dummy-hack-${(i % 98) + 1}`,
+      team_leader_id: `dummy-user-${(i % 100) + 1}`,
+      max_members: 4,
+      created_at: new Date(Date.now() - Math.random() * 180 * 24 * 60 * 60 * 1000).toISOString(),
+      hackathons: {
+        title: `Hackathon ${(i % 98) + 1}`,
+        organization: `Org ${(i % 50) + 1}`
+      },
+      user_profiles: {
+        full_name: `User ${(i % 100) + 1}`,
+        email: `user${(i % 100) + 1}@email.com`
+      }
+    })
   }
-]
+
+  return teams
+})()
 
 // ===== HELPER FUNCTIONS - REMOVE BEFORE PRODUCTION =====
 

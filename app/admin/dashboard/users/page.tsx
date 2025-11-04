@@ -44,6 +44,15 @@ export default function AdminManagementPage() {
     checkSuperadminAccess()
   }, [])
 
+  // Auto-search when query changes (with debounce)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      handleSearch()
+    }, 300) // 300ms debounce
+
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
   async function checkSuperadminAccess() {
     const accessCheck = await checkAdminAccess()
 

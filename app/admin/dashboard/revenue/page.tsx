@@ -6,6 +6,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { getRevenueStats, getRevenueOverTime } from '@/lib/actions/admin-actions'
 import { DollarSign, TrendingUp, Calendar, Wallet } from 'lucide-react'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+// ===== DUMMY DATA IMPORT - REMOVE BEFORE PRODUCTION =====
+import { isDummyDataEnabled, DUMMY_REVENUE_STATS, DUMMY_REVENUE_OVER_TIME } from '@/lib/dummy-data/admin-dummy-data'
+// ========================================================
 
 export default function RevenuePage() {
   const [revenueStats, setRevenueStats] = useState<any>(null)
@@ -18,6 +21,15 @@ export default function RevenuePage() {
 
   async function loadRevenueData() {
     setLoading(true)
+
+    // ===== DUMMY DATA LOGIC - REMOVE BEFORE PRODUCTION =====
+    if (isDummyDataEnabled()) {
+      setRevenueStats(DUMMY_REVENUE_STATS)
+      setRevenueOverTime(DUMMY_REVENUE_OVER_TIME)
+      setLoading(false)
+      return
+    }
+    // ========================================================
 
     const [statsResult, overTimeResult] = await Promise.all([
       getRevenueStats(),
