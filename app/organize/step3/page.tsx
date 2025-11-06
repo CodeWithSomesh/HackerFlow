@@ -2849,7 +2849,7 @@ export default function OrganizeStep3Page() {
                 Review Again
               </AlertDialogCancel>
               <AlertDialogAction
-                onClick={handlePublish}  // ✅ Simply call handlePublish
+                onClick={handlePublish}  
                 disabled={isPublishing}
                 className="bg-gradient-to-r py-6 from-yellow-500 via-orange-500 to-red-500 hover:from-yellow-600 hover:via-orange-600 hover:to-red-600 text-white font-mono font-bold disabled:opacity-50"
               >

@@ -50,3 +50,6 @@ next-env.d.ts
 /sql
 .sql*
 */sql
+
+nul
+NUL

@@ -8,7 +8,7 @@ import HackerFlowLogo from '@/assets/hackerflow-logo.png';
 
 export function Footer() {
     return (
-        <footer className="relative mt-20 border-t-4 border-teal-400 bg-gradient-to-br from-gray-900 via-black to-gray-900 overflow-hidden">
+        <footer className="relative mt-20 border-t-4 border-teal-400 bg-gradient-to-br bg-black/10 overflow-hidden">
         {/* Animated Background Effects */}
         <div className="absolute inset-0 pointer-events-none opacity-30">
           <div className="absolute top-0 left-1/4 w-96 h-96 bg-teal-500/20 rounded-full blur-3xl animate-pulse"></div>
