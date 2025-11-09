@@ -512,7 +512,7 @@ export default function UserManagementPage() {
                       </div>
 
                       {/* Actions */}
-                      <div className="flex gap-2">
+                      {/* <div className="flex gap-2">
                         {user.role === 'user' && (
                           <Button
                             onClick={() => openActionDialog(user, 'promote')}
@@ -539,7 +539,7 @@ export default function UserManagementPage() {
                             Protected
                           </Badge>
                         )}
-                      </div>
+                      </div> */}
                     </div>
                   </div>
                 ))}

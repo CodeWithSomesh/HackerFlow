@@ -55,7 +55,7 @@ export default function HackerHackathonsPage() {
         {
           id: '1',
           hackathon_id: 'h1',
-          hackathon_title: 'AI Innovation Hackathon 2024',
+          hackathon_title: 'Educ-A-Thon 2.0',
           organization: 'TechCorp Malaysia',
           participation_type: 'team',
           registration_status: 'confirmed',
