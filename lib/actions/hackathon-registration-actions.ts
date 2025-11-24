@@ -134,9 +134,18 @@ export async function registerForHackathon(
       return { success: false, error: 'User not authenticated' };
     }
 
+    console.log('\n📝 ========== REGISTER FOR HACKATHON ==========');
+    console.log('📝 User ID:', user.id);
+    console.log('📝 Hackathon ID:', hackathonId);
+    console.log('📝 Registration Type:', teamData ? 'Team' : 'Individual');
+    if (teamData) {
+      console.log('📝 Team Name:', teamData.teamName);
+    }
+
     // Check if user is already registered
     const { isRegistered } = await checkUserRegistration(hackathonId);
     if (isRegistered) {
+      console.log('📝 ❌ User already registered');
       return { success: false, error: 'You are already registered for this hackathon' };
     }
 
@@ -148,13 +157,17 @@ export async function registerForHackathon(
       .single();
 
     if (hackathonError) {
+      console.log('📝 ❌ Failed to fetch hackathon details:', hackathonError);
       return { success: false, error: 'Failed to fetch hackathon details' };
     }
+
+    console.log('📝 Hackathon Type:', hackathon.participation_type);
 
     let teamId = null;
 
     // If team-based, create team
     if (hackathon.participation_type === 'team' && teamData) {
+      console.log('📝 Creating team...');
       const { data: team, error: teamError } = await supabase
         .from('hackathon_teams')
         .insert({
@@ -169,13 +182,15 @@ export async function registerForHackathon(
         .single();
 
       if (teamError) {
-        console.error('Error creating team:', teamError);
+        console.error('📝 ❌ Error creating team:', teamError);
         return { success: false, error: 'Failed to create team. Team name might already exist.' };
       }
 
       teamId = team.id;
+      console.log('📝 ✅ Team created successfully, Team ID:', teamId);
 
       // Add team leader as first member
+      console.log('📝 Adding team leader as first member...');
       const { error: memberError } = await supabase
         .from('hackathon_team_members')
         .insert({
@@ -196,14 +211,16 @@ export async function registerForHackathon(
         });
 
       if (memberError) {
-        console.error('Error adding team leader:', memberError);
+        console.error('📝 ❌ Error adding team leader:', memberError);
         // Rollback team creation
         await supabase.from('hackathon_teams').delete().eq('id', teamId);
         return { success: false, error: 'Failed to add team leader' };
       }
+      console.log('📝 ✅ Team leader added successfully');
     }
 
     // Create registration record
+    console.log('📝 Creating registration record...');
     const { data: registration, error: regError } = await supabase
       .from('hackathon_registrations')
       .insert({
@@ -224,13 +241,204 @@ export async function registerForHackathon(
       .single();
 
     if (regError) {
-      console.error('Error creating registration:', regError);
+      console.error('📝 ❌ Error creating registration:', regError);
       // Rollback team creation if exists
       if (teamId) {
         await supabase.from('hackathon_teams').delete().eq('id', teamId);
       }
       return { success: false, error: 'Failed to complete registration' };
     }
+
+    console.log('📝 ✅ Registration created successfully, Registration ID:', registration.id);
+
+    // Increment participants count in hackathons table
+    console.log('📝 Incrementing participants count...');
+    try {
+      await supabase.rpc('increment_hackathon_participants', {
+        hackathon_id_param: hackathonId
+      });
+      console.log('📝 ✅ Participants count incremented by 1');
+    } catch (error) {
+      console.error('📝 ❌ Error incrementing participant count:', error);
+      // Don't fail the registration if this fails
+    }
+
+    // Increment teams count if team was created
+    if (teamId) {
+      console.log('📝 Incrementing teams count...');
+      try {
+        await supabase.rpc('increment_hackathon_teams', {
+          hackathon_id_param: hackathonId
+        });
+        console.log('📝 ✅ Teams count incremented by 1');
+      } catch (error) {
+        console.error('📝 ❌ Error incrementing teams count:', error);
+        // Don't fail the registration if this fails
+      }
+    }
+
+    // Send email notification to organizer if team was created
+    if (teamId) {
+      console.log('📝 Sending email notification to organizer...');
+      try {
+        // Fetch hackathon details
+        const { data: hackathonData, error: hackathonError } = await supabase
+          .from('hackathons')
+          .select('title, created_by')
+          .eq('id', hackathonId)
+          .single();
+
+        console.log('📝 Hackathon query result:', hackathonData ? 'Found' : 'Not found');
+        if (hackathonError) {
+          console.error('📝 Hackathon query error:', hackathonError);
+        }
+
+        if (hackathonData && hackathonData.created_by) {
+          const hackathonTitle = hackathonData.title;
+          console.log('📝 Hackathon Title:', hackathonTitle);
+          console.log('📝 Organizer User ID:', hackathonData.created_by);
+
+          // Fetch organizer details from user_profiles
+          const { data: organizerProfile, error: profileError } = await supabase
+            .from('user_profiles')
+            .select('email, name')
+            .eq('user_id', hackathonData.created_by)
+            .single();
+
+          console.log('📝 Organizer profile query result:', organizerProfile ? 'Found' : 'Not found');
+          if (profileError) {
+            console.error('📝 Organizer profile query error:', profileError);
+          }
+
+          if (organizerProfile) {
+            const organizerEmail = organizerProfile.email;
+            const organizerName = organizerProfile.name;
+
+            console.log('📝 Organizer Email:', organizerEmail);
+            console.log('📝 Organizer Name:', organizerName);
+
+            if (organizerEmail) {
+              const isDevelopment = !process.env.BREVO_API_KEY;
+
+            if (isDevelopment) {
+              console.log('\n📧 ========== TEAM REGISTRATION NOTIFICATION (DEV MODE) ==========');
+              console.log('📧 To:', organizerEmail);
+              console.log('📧 Organizer:', organizerName);
+              console.log('📧 Hackathon:', hackathonTitle);
+              console.log('📧 Team Name:', teamData?.teamName);
+              console.log('📧 Team Leader:', `${registrationData.firstName} ${registrationData.lastName}`);
+              console.log('📧 Email:', registrationData.email);
+              console.log('📧 Mobile:', registrationData.mobile);
+              console.log('📧 Organization:', registrationData.organizationName);
+              console.log('📧 =============================================================\n');
+            } else {
+              const brevo = await import('@getbrevo/brevo');
+              const apiInstance = new brevo.TransactionalEmailsApi();
+              apiInstance.setApiKey(brevo.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY || '');
+
+              const sendSmtpEmail = new brevo.SendSmtpEmail();
+              sendSmtpEmail.subject = `New Team Registered for ${hackathonTitle}!`;
+              sendSmtpEmail.to = [{ email: organizerEmail, name: organizerName || 'Organizer' }];
+              sendSmtpEmail.htmlContent = `
+                <!DOCTYPE html>
+                <html>
+                  <head>
+                    <meta charset="utf-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>New Team Registration</title>
+                  </head>
+                  <body style="font-family: 'Arial', sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <div style="background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%); padding: 30px; border-radius: 10px 10px 0 0;">
+                      <h1 style="color: white; margin: 0; font-size: 28px;">🎉 HackerFlow</h1>
+                    </div>
+
+                    <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
+                      <h2 style="color: #8b5cf6; margin-top: 0;">New Team Registered! 🚀</h2>
+
+                      <p>Hi ${organizerName || 'Organizer'},</p>
+
+                      <p>Great news! A new team has registered for your hackathon <strong>"${hackathonTitle}"</strong>.</p>
+
+                      <div style="background: #f3e8ff; padding: 20px; border-left: 4px solid #8b5cf6; margin: 20px 0;">
+                        <h3 style="margin-top: 0; color: #6b21a8;">Team Details:</h3>
+                        <table style="width: 100%; color: #4c1d95;">
+                          <tr>
+                            <td style="padding: 8px 0;"><strong>Team Name:</strong></td>
+                            <td style="padding: 8px 0;">${teamData?.teamName || 'N/A'}</td>
+                          </tr>
+                          <tr>
+                            <td style="padding: 8px 0;"><strong>Team Leader:</strong></td>
+                            <td style="padding: 8px 0;">${registrationData.firstName} ${registrationData.lastName}</td>
+                          </tr>
+                          <tr>
+                            <td style="padding: 8px 0;"><strong>Email:</strong></td>
+                            <td style="padding: 8px 0;">${registrationData.email}</td>
+                          </tr>
+                          <tr>
+                            <td style="padding: 8px 0;"><strong>Mobile:</strong></td>
+                            <td style="padding: 8px 0;">${registrationData.mobile}</td>
+                          </tr>
+                          ${registrationData.organizationName ? `
+                          <tr>
+                            <td style="padding: 8px 0;"><strong>Organization:</strong></td>
+                            <td style="padding: 8px 0;">${registrationData.organizationName}</td>
+                          </tr>
+                          ` : ''}
+                          <tr>
+                            <td style="padding: 8px 0;"><strong>Location:</strong></td>
+                            <td style="padding: 8px 0;">${registrationData.location}</td>
+                          </tr>
+                          <tr>
+                            <td style="padding: 8px 0;"><strong>Participant Type:</strong></td>
+                            <td style="padding: 8px 0;">${registrationData.participantType}</td>
+                          </tr>
+                        </table>
+                      </div>
+
+                      <div style="background: #dbeafe; padding: 20px; border-left: 4px solid #3b82f6; margin: 25px 0;">
+                        <p style="margin: 0; color: #1e40af; font-size: 14px;">
+                          <strong>💡 Tip:</strong> You can view all registered teams and manage participants from your organizer dashboard.
+                        </p>
+                      </div>
+
+                      <p style="margin-top: 25px; font-size: 16px; color: #334155;">
+                        Keep track of your registrations and ensure a smooth hackathon experience! 💻✨
+                      </p>
+
+                      <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+
+                      <p style="color: #666; font-size: 12px; margin-bottom: 0;">
+                        Best regards,<br>
+                        The HackerFlow Team
+                      </p>
+                    </div>
+                  </body>
+                </html>
+              `;
+              sendSmtpEmail.sender = {
+                name: process.env.BREVO_SENDER_NAME || 'HackerFlow',
+                email: process.env.BREVO_FROM_EMAIL || 'noreply@yourdomain.com'
+              };
+
+              await apiInstance.sendTransacEmail(sendSmtpEmail);
+              console.log('📝 ✅ Team registration email sent to organizer:', organizerEmail);
+            }
+            } else {
+              console.log('📝 ⚠️ Organizer email not found');
+            }
+          } else {
+            console.log('📝 ⚠️ Organizer profile not found in user_profiles');
+          }
+        } else {
+          console.log('📝 ⚠️ Hackathon details not found');
+        }
+      } catch (emailError) {
+        console.error('📝 ❌ Error sending organizer notification:', emailError);
+        // Don't fail the registration if email fails
+      }
+    }
+
+    console.log('📝 ==========================================\n');
 
     revalidatePath(`/hackathons/${hackathonId}`);
     return {
@@ -242,7 +450,7 @@ export async function registerForHackathon(
       }
     };
   } catch (error) {
-    console.error('Error in registerForHackathon:', error);
+    console.error('📝 ❌ Error in registerForHackathon:', error);
     return { success: false, error: 'An unexpected error occurred' };
   }
 }
@@ -384,17 +592,27 @@ export async function updateTeamMemberStatus(memberId: string, status: 'accepted
       return { success: false, error: 'User not authenticated' };
     }
 
+    console.log('\n👥 ========== UPDATE TEAM MEMBER STATUS ==========');
+    console.log('👥 Member ID:', memberId);
+    console.log('👥 New Status:', status);
+    console.log('👥 User ID:', user.id);
+
     const updateData: any = { status };
     if (status === 'accepted') {
       updateData.joined_at = new Date().toISOString();
     }
 
-    // Get member's team_id before update
+    // Get member's team_id and hackathon_id before update
     const { data: member } = await supabase
       .from('hackathon_team_members')
-      .select('team_id')
+      .select('team_id, hackathon_teams(hackathon_id)')
       .eq('id', memberId)
       .single();
+
+    if (member) {
+      console.log('👥 Team ID:', member.team_id);
+      console.log('👥 Hackathon ID:', (member as any).hackathon_teams?.hackathon_id);
+    }
 
     const { error } = await supabase
       .from('hackathon_team_members')
@@ -403,19 +621,41 @@ export async function updateTeamMemberStatus(memberId: string, status: 'accepted
       .eq('user_id', user.id);
 
     if (error) {
-      console.error('Error updating member status:', error);
+      console.error('👥 ❌ Error updating member status:', error);
       return { success: false, error: 'Failed to update status' };
     }
+
+    console.log('👥 ✅ Member status updated successfully');
 
     // Update team size count
     if (member?.team_id) {
       await updateTeamSize(member.team_id);
+      console.log('👥 ✅ Team size updated');
     }
+
+    // Increment participants count in hackathons table when member accepts
+    if (status === 'accepted' && member?.team_id) {
+      const hackathonId = (member as any).hackathon_teams?.hackathon_id;
+      if (hackathonId) {
+        console.log('👥 Incrementing participants count...');
+        try {
+          await supabase.rpc('increment_hackathon_participants', {
+            hackathon_id_param: hackathonId
+          });
+          console.log('👥 ✅ Participants count incremented by 1');
+        } catch (error) {
+          console.error('👥 ❌ Error incrementing participant count:', error);
+          // Don't fail the status update if this fails
+        }
+      }
+    }
+
+    console.log('👥 ==========================================\n');
 
     revalidatePath('/hackathons');
     return { success: true };
   } catch (error) {
-    console.error('Error in updateTeamMemberStatus:', error);
+    console.error('👥 ❌ Error in updateTeamMemberStatus:', error);
     return { success: false, error: 'An unexpected error occurred' };
   }
 }
@@ -805,6 +1045,10 @@ export async function cancelRegistration(hackathonId: string) {
       return { success: false, error: 'User not authenticated' };
     }
 
+    console.log('\n🚫 ========== CANCEL REGISTRATION ==========');
+    console.log('🚫 User ID:', user.id);
+    console.log('🚫 Hackathon ID:', hackathonId);
+
     // Get registration and team
     const { data: registration } = await supabase
       .from('hackathon_registrations')
@@ -814,20 +1058,35 @@ export async function cancelRegistration(hackathonId: string) {
       .single();
 
     if (!registration) {
+      console.log('🚫 Registration not found');
       return { success: false, error: 'Registration not found' };
     }
 
-    // If has team, verify user is team leader
+    let memberCount = 0;
+    let isTeamRegistration = false;
+
+    // If has team, verify user is team leader and count members
     if (registration.team_id) {
+      isTeamRegistration = true;
+      console.log('🚫 Team ID:', registration.team_id);
+
       const { data: team } = await supabase
         .from('hackathon_teams')
-        .select('team_leader_id')
+        .select('team_leader_id, hackathon_team_members(id, status)')
         .eq('id', registration.team_id)
         .single();
 
       if (!team || team.team_leader_id !== user.id) {
+        console.log('🚫 Only team leader can cancel registration');
         return { success: false, error: 'Only team leader can cancel registration' };
       }
+
+      // Count accepted members (these are the ones that were counted in participants)
+      const acceptedMembers = (team.hackathon_team_members as any[]).filter(
+        (m: any) => m.status === 'accepted'
+      );
+      memberCount = acceptedMembers.length;
+      console.log('🚫 Accepted members count:', memberCount);
 
       // Delete team (cascade will delete members)
       const { error: teamError } = await supabase
@@ -836,9 +1095,25 @@ export async function cancelRegistration(hackathonId: string) {
         .eq('id', registration.team_id);
 
       if (teamError) {
-        console.error('Error deleting team:', teamError);
+        console.error('🚫 Error deleting team:', teamError);
         return { success: false, error: 'Failed to cancel registration' };
       }
+
+      console.log('🚫 Team deleted successfully');
+
+      // Decrement teams count
+      try {
+        await supabase.rpc('decrement_hackathon_teams', {
+          hackathon_id_param: hackathonId
+        });
+        console.log('🚫 ✅ Teams count decremented by 1');
+      } catch (error) {
+        console.error('🚫 ❌ Error decrementing teams count:', error);
+      }
+    } else {
+      // Individual registration - count as 1
+      memberCount = 1;
+      console.log('🚫 Individual registration');
     }
 
     // Delete registration
@@ -849,14 +1124,31 @@ export async function cancelRegistration(hackathonId: string) {
       .eq('user_id', user.id);
 
     if (regError) {
-      console.error('Error deleting registration:', regError);
+      console.error('🚫 Error deleting registration:', regError);
       return { success: false, error: 'Failed to cancel registration' };
     }
+
+    console.log('🚫 Registration deleted successfully');
+
+    // Decrement participants count by the number of accepted members
+    if (memberCount > 0) {
+      try {
+        await supabase.rpc('decrement_hackathon_participants', {
+          hackathon_id_param: hackathonId,
+          count_param: memberCount
+        });
+        console.log(`🚫 ✅ Participants count decremented by ${memberCount}`);
+      } catch (error) {
+        console.error('🚫 ❌ Error decrementing participants count:', error);
+      }
+    }
+
+    console.log('🚫 ==========================================\n');
 
     revalidatePath(`/hackathons/${hackathonId}`);
     return { success: true };
   } catch (error) {
-    console.error('Error in cancelRegistration:', error);
+    console.error('🚫 Error in cancelRegistration:', error);
     return { success: false, error: 'An unexpected error occurred' };
   }
 }
@@ -901,6 +1193,7 @@ export async function completeTeam(teamId: string) {
       .from('hackathon_teams')
       .update({
         is_completed: true,
+        status: 'confirmed',
         completed_at: new Date().toISOString()
       })
       .eq('id', teamId);

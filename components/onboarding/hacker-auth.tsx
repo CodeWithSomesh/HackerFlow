@@ -1,12 +1,12 @@
 "use client"
 
-import { useState } from "react"
-import { 
-  Github, 
-  Home, 
-  Mail, 
-  Eye, 
-  EyeOff, 
+import { useState, useEffect } from "react"
+import {
+  Github,
+  Home,
+  Mail,
+  Eye,
+  EyeOff,
   Sparkles,
   AlertCircle,
   CheckCircle
@@ -30,6 +30,7 @@ export function HackerAuth() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [error, setError] = useState("")
   const [validations, setValidations] = useState({
     minLength: false,
@@ -38,6 +39,38 @@ export function HackerAuth() {
     hasNumber: false,
     hasSpecialChar: false,
   })
+
+  // Check if user is already logged in (regardless of profile completion)
+  useEffect(() => {
+    const checkExistingUser = async () => {
+      try {
+        console.log('[Hacker Auth] Starting auth check...')
+        const supabase = createClient()
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+
+        if (userError) {
+          console.log('[Hacker Auth] Error getting user:', userError)
+          setIsCheckingAuth(false)
+          return
+        }
+
+        if (user) {
+          console.log('[Hacker Auth] User is logged in, redirecting to hackathons')
+          showCustomToast('info', "You're already logged in!")
+          router.push('/hackathons')
+          return
+        } else {
+          console.log('[Hacker Auth] No user found, allowing access to auth page')
+        }
+      } catch (err) {
+        console.error('[Hacker Auth] Error in checkExistingUser:', err)
+      } finally {
+        setIsCheckingAuth(false)
+      }
+    }
+
+    checkExistingUser()
+  }, [router])
 
   const validatePassword = (pwd: string) => {
     const newValidations = {
@@ -139,6 +172,18 @@ export function HackerAuth() {
       </span>
     </div>
   )
+
+  // Show loading state while checking authentication
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-pink-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-300 font-mono">Checking authentication...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen">

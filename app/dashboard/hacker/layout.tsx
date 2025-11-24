@@ -33,7 +33,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarNav, SidebarNavItem, useSidebar } from '@/components/ui/sidebar'
-import { getUserNotifications, markNotificationAsRead, markAllNotificationsAsRead } from '@/lib/actions/dashboard-actions'
+import { getUserNotifications, markNotificationAsRead, markAllNotificationsAsRead, checkAndAwardBadges } from '@/lib/actions/dashboard-actions'
 import { signOut } from '@/app/utils/actions'
 import { DummyDataToggle } from '@/components/ui/dummy-data-toggle'
 import Image from 'next/image'
@@ -69,11 +69,21 @@ export default function HackerDashboardLayout({
   useEffect(() => {
     loadUserData()
     loadNotifications()
+    checkAndAwardUserBadges()
 
     // Poll for new notifications every 30 seconds
     const interval = setInterval(loadNotifications, 30000)
     return () => clearInterval(interval)
   }, [])
+
+  async function checkAndAwardUserBadges() {
+    try {
+      // Check and award any eligible badges
+      await checkAndAwardBadges()
+    } catch (error) {
+      console.error('Error checking badges:', error)
+    }
+  }
 
   async function loadUserData() {
     const supabase = createClient()

@@ -224,14 +224,15 @@ export default function OrganizeRegistrationDetailsPage() {
 
             {/* Optional settings */}
             <div className="mt-5 grid gap-2">
-              <Label className="text-gray-200 font-mono">Number of Registrations Allowed (Optional)</Label>
+              <Label className="text-gray-200 font-mono">Number of Registrations Allowed</Label>
               <Input 
                 type="number"
                 {...register('maxRegistrations', { 
                   valueAsNumber: true,
                   setValueAs: (v) => v === '' ? null : parseInt(v)
                 })}
-                placeholder="Leave empty for unlimited registrations" 
+                // placeholder="Leave empty for unlimited registrations" 
+                placeholder='200'
                 className="bg-black border-gray-700 text-gray-100" 
               />
             </div>

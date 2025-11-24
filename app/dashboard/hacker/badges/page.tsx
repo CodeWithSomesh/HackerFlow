@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { createClient } from '@/lib/supabase/client'
+import { checkAndAwardBadges } from '@/lib/actions/dashboard-actions'
 import {
   Award,
   Trophy,
@@ -189,6 +190,9 @@ export default function BadgesPage() {
         return
       }
 
+      // Check and award any new badges before fetching
+      await checkAndAwardBadges()
+
       // Get earned badges
       const { data: badges } = await supabase
         .from('user_badges')
@@ -242,7 +246,7 @@ export default function BadgesPage() {
   }
 
   const isBadgeEarned = (badgeId: string) => {
-    return earnedBadges.some(b => b.badge_id === badgeId)
+    return earnedBadges.some(b => b.badge_type === badgeId)
   }
 
   const getBadgeProgress = (badgeId: string) => {
@@ -390,7 +394,7 @@ export default function BadgesPage() {
           <CardContent>
             <div className="text-2xl mb-1">
               {earnedBadges.length > 0
-                ? BADGE_DEFINITIONS.find(b => b.id === earnedBadges[0].badge_id)?.icon || '🏅'
+                ? BADGE_DEFINITIONS.find(b => b.id === earnedBadges[0].badge_type)?.icon || earnedBadges[0].badge_icon || '🏅'
                 : '🔒'}
             </div>
             <p className="text-xs text-gray-400 font-mono">
@@ -456,7 +460,7 @@ export default function BadgesPage() {
                               <span className="text-sm text-green-400 font-mono font-bold">
                                 Earned on{' '}
                                 {new Date(
-                                  earnedBadges.find(b => b.badge_id === badge.id)?.earned_at
+                                  earnedBadges.find(b => b.badge_type === badge.id)?.earned_at
                                 ).toLocaleDateString()}
                               </span>
                             </div>
@@ -508,7 +512,7 @@ export default function BadgesPage() {
                       <span className="text-sm text-green-400 font-mono font-bold">
                         Earned on{' '}
                         {new Date(
-                          earnedBadges.find(b => b.badge_id === badge.id)?.earned_at
+                          earnedBadges.find(b => b.badge_type === badge.id)?.earned_at
                         ).toLocaleDateString()}
                       </span>
                     </div>

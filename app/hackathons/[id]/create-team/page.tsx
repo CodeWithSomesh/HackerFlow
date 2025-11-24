@@ -16,7 +16,7 @@ import {
   checkUserRegistration,
 } from "@/lib/actions/hackathon-registration-actions";
 import { fetchHackathonById } from "@/lib/actions/createHackathon-actions";
-import { createClient } from "@/lib/supabase/client";
+import { createTeamAction } from "@/lib/actions/create-team-actions";
 import { showCustomToast } from "@/components/toast-notification";
 
 interface CreateTeamPageProps {
@@ -118,81 +118,42 @@ export default function CreateTeamPage({ params }: CreateTeamPageProps) {
     setSuccessMessage('');
 
     try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      console.log('🎯 [CLIENT] Calling createTeamAction...');
 
-      if (!user) {
-        setErrorMessage('User not authenticated');
-        return;
-      }
-
-      // Create team
-      const { data: team, error: teamError } = await supabase
-        .from('hackathon_teams')
-        .insert({
-          hackathon_id: resolvedParams.id,
-          team_name: formData.teamName,
-          team_leader_id: user.id,
-          looking_for_teammates: formData.lookingForTeammates,
-          team_size_current: 1,
-          team_size_max: hackathon.team_size_max,
-        })
-        .select()
-        .single();
-
-      if (teamError) {
-        console.error('Error creating team:', teamError);
-        setErrorMessage(teamError.message || 'Failed to create team. Team name might already exist.');
-        setSubmitting(false);
-        return;
-      }
-
-      // Add team leader as first member
-      const { error: memberError } = await supabase
-        .from('hackathon_team_members')
-        .insert({
-          team_id: team.id,
-          user_id: user.id,
+      const result = await createTeamAction(
+        resolvedParams.id,
+        registration.id,
+        {
+          teamName: formData.teamName,
+          lookingForTeammates: formData.lookingForTeammates,
+          teamSizeMax: hackathon.team_size_max,
+        },
+        {
           email: registration.email,
           mobile: registration.mobile,
-          first_name: registration.first_name,
-          last_name: registration.last_name,
-          organization_name: registration.organization_name,
-          participant_type: registration.participant_type,
-          passout_year: registration.passout_year,
+          firstName: registration.first_name,
+          lastName: registration.last_name,
+          organizationName: registration.organization_name,
+          participantType: registration.participant_type,
+          passoutYear: registration.passout_year,
           domain: registration.domain,
           location: registration.location,
-          is_leader: true,
-          status: 'accepted',
-          joined_at: new Date().toISOString(),
-        });
+        }
+      );
 
-      if (memberError) {
-        console.error('Error adding team leader:', memberError);
-        // Rollback team creation
-        await supabase.from('hackathon_teams').delete().eq('id', team.id);
-        setErrorMessage('Failed to add you as team leader');
-        setSubmitting(false);
-        return;
+      if (result.success) {
+        console.log('🎯 [CLIENT] Team created successfully!');
+        setSuccessMessage('Team created successfully! Redirecting...');
+        showCustomToast('success', 'Team created successfully! Redirecting...');
+        setTimeout(() => {
+          router.push(`/hackathons/${resolvedParams.id}/team`);
+        }, 1500);
+      } else {
+        console.error('🎯 [CLIENT] Error creating team:', result.error);
+        setErrorMessage(result.error || 'Failed to create team');
       }
-
-      // Update registration with team ID
-      const { error: updateError } = await supabase
-        .from('hackathon_registrations')
-        .update({ team_id: team.id })
-        .eq('id', registration.id);
-
-      if (updateError) {
-        console.error('Error updating registration:', updateError);
-      }
-
-      setSuccessMessage('Team created successfully! Redirecting...');
-      showCustomToast('success', 'Team created successfully! Redirecting...');
-      setTimeout(() => {
-        router.push(`/hackathons/${resolvedParams.id}/team`);
-      }, 1500);
     } catch (error) {
-      console.error('Error creating team:', error);
+      console.error('🎯 [CLIENT] Unexpected error:', error);
       setErrorMessage('An unexpected error occurred');
     } finally {
       setSubmitting(false);

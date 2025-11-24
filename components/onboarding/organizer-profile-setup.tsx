@@ -5,6 +5,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { saveOrganizerProfile } from "@/lib/actions/profile-actions"
+import { createClient } from "@/lib/supabase/client"
 import { ProgressIndicator } from "./progress-indicator"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { 
@@ -158,6 +159,39 @@ export function OrganizerProfileSetup() {
       setFormData(prev => ({ ...prev, fullName: userFullName }))
     }
   }, [])
+
+  // Check if user is already registered (has a profile record) and redirect if so
+  useEffect(() => {
+    const checkProfileExists = async () => {
+      const supabase = createClient()
+      const { data: { user }, error } = await supabase.auth.getUser()
+
+      if (error || !user) {
+        console.log('No authenticated user, redirecting to Login Page')
+        router.push('/auth/login')
+        return
+      }
+
+      // Check if profile record exists (user is already registered)
+      const { data: profile, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single()
+
+      // If profile exists, user is already registered - redirect to hackathons
+      if (profile && !profileError) {
+        console.log('User already registered, redirecting to hackathons')
+        showCustomToast('info', "You're already registered!")
+        router.push('/hackathons')
+        return
+      }
+
+      console.log('New user - allowing access to profile setup')
+    }
+
+    checkProfileExists()
+  }, [router])
 
   const organizationTypes = [
     { value: "individual", label: "Individual", icon: Users },

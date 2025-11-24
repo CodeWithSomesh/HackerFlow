@@ -5,6 +5,10 @@ import { ArrowRight, Zap, Users, Target, Trophy, Calendar, Search } from "lucide
 import { useRouter } from 'next/navigation'
 import { useState } from "react"
 import Image from "next/image"
+import DiscoverHackathonsImage from '@/assets/landingPage/DiscoverHackathons.png'
+import AIMatchingImage from '@/assets/landingPage/AIMatching.png'
+import HackathonDetailsImage from '@/assets/landingPage/HackathonDetails.png'
+import AnalyticsPageImage from '@/assets/landingPage/AnalyticsPage.png'
 
 const featureTabs = [
   {
@@ -236,11 +240,48 @@ export function HeroSection() {
                     {/* Feature Image Placeholder */}
                     <div className="flex-1 w-full lg:w-auto">
                       <div className={`relative rounded-xl overflow-hidden border-2 ${activeTab === activeFeature.id ? 'border-white/20' : 'border-gray-700'} bg-gradient-to-br ${activeFeature.color} p-1`}>
-                        <div className="bg-gray-900 rounded-lg p-8 min-h-[300px] flex items-center justify-center">
+                        <div className="bg-gray-900 rounded-lg min-h-[300px] flex items-center justify-center px-1">
                           <div className="text-center">
-                            <activeFeature.icon className="w-24 h-24 text-gray-700 mx-auto mb-4" />
-                            <p className="text-gray-600 font-mono text-sm">Feature Screenshot</p>
-                            <p className="text-gray-700 font-mono text-xs mt-2">Add your feature image here</p>
+                            {activeFeature.id === 'discover' && (
+                              <Image
+                                src={DiscoverHackathonsImage}
+                                alt="HackerFlow Logo"
+                                className="rounded-md"
+                              />
+                            )}
+
+                            {activeFeature.id === 'match' && (
+                              <Image
+                                src={AIMatchingImage}
+                                alt="HackerFlow Logo"
+                                className="rounded-md"
+                              />
+                            )}
+
+                            {activeFeature.id === 'compete' && (
+                              <Image
+                                src={HackathonDetailsImage}
+                                alt="HackerFlow Logo"
+                                className="rounded-md"
+                              />
+                            )}
+
+                            {activeFeature.id === 'organize' && (
+                              <Image
+                                src={AnalyticsPageImage}
+                                alt="HackerFlow Logo"
+                                className="rounded-md"
+                              />
+                            )}
+
+                            {!activeFeature.id && (
+                              <div>
+                                <activeFeature.icon className="w-24 h-24 text-gray-700 mx-auto mb-4" />
+                                <p className="text-gray-600 font-mono text-sm">Feature Screenshot</p>
+                                <p className="text-gray-700 font-mono text-xs mt-2">Add your feature image here</p> 
+                              </div>
+                            )}
+                            
                           </div>
                         </div>
                       </div>

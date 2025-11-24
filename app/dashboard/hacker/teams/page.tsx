@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getHackerTeamMemberships } from '@/lib/actions/dashboard-actions'
@@ -12,6 +13,7 @@ import { Users, Crown, ExternalLink, Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 
 export default function TeamsPage() {
+  const router = useRouter()
   const [teams, setTeams] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -149,15 +151,23 @@ export default function TeamsPage() {
       {filteredTeams.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredTeams.map((team) => (
-            <Card key={team.id} className="bg-gradient-to-br from-gray-900 to-black border-2 border-gray-800 hover:border-teal-400 transition-all">
+            <Card
+              key={team.id}
+              className="bg-gradient-to-br from-gray-900 to-black border-2 border-gray-800 hover:border-teal-400 transition-all cursor-pointer group"
+              onClick={() => router.push(`/hackathons/${team.hackathon_id}/team`)}
+            >
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <CardTitle className="text-white font-blackops flex items-center gap-2 text-lg mb-2">
+                    <CardTitle className="text-white font-blackops flex items-center gap-2 text-lg mb-2 group-hover:text-teal-400 transition-colors">
                       <Users className="h-5 w-5 text-teal-400" />
                       {team.team_name}
                     </CardTitle>
-                    <Link href={`/hackathons/${team.hackathon_id}`} className="text-sm text-gray-400 hover:text-teal-400 font-mono flex items-center gap-1">
+                    <Link
+                      href={`/hackathons/${team.hackathon_id}`}
+                      className="text-sm text-gray-400 hover:text-teal-400 font-mono flex items-center gap-1"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       {team.hackathon_title}
                       <ExternalLink className="h-3 w-3" />
                     </Link>
@@ -175,27 +185,30 @@ export default function TeamsPage() {
                   {/* Team Size */}
                   <div className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
                     <span className="text-sm text-gray-400 font-mono">Team Size</span>
-                    <span className="text-white font-bold">
-                      {team.team_size_current} / {team.team_size_max}
+                    <span className="text-white font-bold font-mono">
+                      {team.hackathon_team_members?.length || team.team_size_current || 0} / {team.team_size_max}
                     </span>
                   </div>
 
                   {/* Status */}
                   <div className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
                     <span className="text-sm text-gray-400 font-mono">Status</span>
-                    <Badge variant={team.status === 'active' ? 'default' : 'secondary'} className={team.status === 'active' ? 'bg-green-600' : ''}>
-                      {team.status}
+                    <Badge variant={team.status === 'active' ? 'default' : 'secondary'} className={team.status === 'active' ? 'bg-green-600' : 'font-mono'}>
+                      {team.status.charAt(0).toUpperCase() + team.status.slice(1)}
                     </Badge>
                   </div>
 
                   {/* Members Avatars */}
                   <div>
-                    <p className="text-sm text-gray-400 font-mono mb-2">Members</p>
+                    <p className="text-md text-white font-mono mb-4 underline">Members</p>
                     <div className="flex items-center gap-2 flex-wrap">
-                      {team.members.slice(0, 5).map((member: any) => (
+                      {(team.hackathon_team_members || team.members || []).slice(0, 5).map((member: any) => (
                         <div key={member.id} className="relative group">
-                          <Avatar className="h-10 w-10 bg-gradient-to-br from-purple-400 to-pink-500 border-2 border-gray-800">
-                            <AvatarFallback className="bg-gradient-to-br from-purple-400 to-pink-500 text-white font-bold text-xs">
+                          <Avatar className="h-20 w-20 p-2 bg-gradient-to-br from-purple-400 to-pink-500 border-2 border-gray-800">
+                            {member.profile_image ? (
+                              <AvatarImage src={member.profile_image} alt={`${member.first_name} ${member.last_name}`} />
+                            ) : null}
+                            <AvatarFallback className="bg-gradient-to-br from-purple-400 to-pink-500 text-white font-bold font-blackops text-lg">
                               {getInitials(member.first_name + ' ' + member.last_name)}
                             </AvatarFallback>
                           </Avatar>
@@ -205,10 +218,10 @@ export default function TeamsPage() {
                           </div>
                         </div>
                       ))}
-                      {team.members.length > 5 && (
+                      {(team.hackathon_team_members || team.members || []).length > 5 && (
                         <div className="h-10 w-10 rounded-full bg-gray-800 flex items-center justify-center border-2 border-gray-700">
                           <span className="text-xs font-bold text-gray-400">
-                            +{team.members.length - 5}
+                            +{(team.hackathon_team_members || team.members || []).length - 5}
                           </span>
                         </div>
                       )}

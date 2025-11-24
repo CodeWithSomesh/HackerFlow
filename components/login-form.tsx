@@ -164,13 +164,34 @@ export function LoginForm() {
       })
       if (error) throw error
 
-      // Get user data to determine user type
+      // Get user data to determine user type and check profile completion
       const { data: { user } } = await supabase.auth.getUser()
       console.log(user)
-      // const userType = user?.user_metadata?.user_primary_type
-      
-      showCustomToast('success', "Welcome Back!")
-      router.push("/hackathons")
+
+      if (user) {
+        // Check if user has a profile record (is registered)
+        const { data: profile, error: profileError } = await supabase
+          .from('user_profiles')
+          .select('id, user_primary_type')
+          .eq('user_id', user.id)
+          .single()
+
+        const userType = profile?.user_primary_type || user.user_metadata?.user_primary_type || 'hacker'
+
+        if (!profile || profileError) {
+          // No profile record - new user, redirect to profile setup
+          showCustomToast('info', "Please complete your profile setup")
+          if (userType === 'organizer') {
+            router.push("/onboarding/organizer/profile-setup")
+          } else {
+            router.push("/onboarding/hacker/profile-setup")
+          }
+        } else {
+          // Profile exists - already registered, redirect to hackathons
+          showCustomToast('success', "Welcome Back!")
+          router.push("/hackathons")
+        }
+      }
 
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "An error occurred during sign in")

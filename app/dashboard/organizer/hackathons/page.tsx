@@ -167,10 +167,10 @@ export default function OrganizerHackathonsPage() {
                   <TableHeader>
                     <TableRow className="border-gray-800 hover:bg-gray-900">
                       <TableHead className="text-gray-300 font-mono">Hackathon</TableHead>
-                      <TableHead className="text-gray-300 font-mono">Status</TableHead>
-                      <TableHead className="text-gray-300 font-mono">Participants</TableHead>
-                      <TableHead className="text-gray-300 font-mono">Registration Period</TableHead>
-                      <TableHead className="text-gray-300 font-mono">Created</TableHead>
+                      <TableHead className="text-gray-300 font-mono text-center">Status</TableHead>
+                      <TableHead className="text-gray-300 font-mono text-center">Participants</TableHead>
+                      <TableHead className="text-gray-300 font-mono text-center">Registration Period</TableHead>
+                      <TableHead className="text-gray-300 font-mono text-center">Created</TableHead>
                       <TableHead className="text-gray-300 font-mono text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -202,21 +202,21 @@ export default function OrganizerHackathonsPage() {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className='font-mono text-center'>
                           {getStatusBadge(hackathon.status)}
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 justify-center">
                             <Users className="h-4 w-4 text-purple-400" />
-                            <span className="text-white font-bold">{hackathon.participant_count || 0}</span>
+                            <span className="text-white text-lg font-bold font-blackops">{hackathon.participant_count || 0}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-gray-300 font-mono text-sm">
+                        <TableCell className="text-gray-300 font-mono text-sm text-center">
                           {new Date(hackathon.registration_start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                           {' - '}
                           {new Date(hackathon.registration_end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </TableCell>
-                        <TableCell className="text-gray-300 font-mono text-sm">
+                        <TableCell className="text-gray-300 font-mono text-sm text-center">
                           {new Date(hackathon.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                         </TableCell>
                         <TableCell className="text-right">

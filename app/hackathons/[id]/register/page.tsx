@@ -567,11 +567,13 @@ export default function HackathonRegister({ params }: HackathonRegisterProps) {
                 className="w-5 h-5 mt-0.5 rounded border-2 border-gray-700 bg-gray-800 checked:bg-teal-500 focus:ring-2 focus:ring-teal-400"
               />
               <label className="text-gray-300 text-sm font-mono">
-                By registering for this opportunity, you agree to share the data mentioned in this form or any form henceforth on this opportunity with the organizer of this opportunity for further analysis, processing, and outreach. Your data will also be used by Unstop for providing you regular and constant updates on this opportunity. You also agree to the{' '}
+                By registering for this opportunity, you agree to share the data mentioned in this form or any form henceforth on this opportunity with the organizer of this opportunity for further analysis, processing, and outreach. 
+                Your data will also be used by HackerFlow for providing you regular and constant updates on this opportunity. 
+                {/* You also agree to the{' '}
                 <a href="#" className="text-teal-400 hover:underline">privacy policy</a>{' '}
                 and{' '}
                 <a href="#" className="text-teal-400 hover:underline">terms of use</a>{' '}
-                of Unstop.
+                of HackerFlow. */}
               </label>
             </div>
             {errors.agreeToTerms && (

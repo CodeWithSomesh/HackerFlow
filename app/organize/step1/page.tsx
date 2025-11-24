@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Upload, Globe, Lock, CalendarClock, Building, MapPin } from 'lucide-react'
+import { Upload, Globe, CalendarClock, Building, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -64,7 +64,6 @@ export default function OrganizeStep1Page() {
     },
   })
 
-  const visibility = watch('visibility')
   const mode = watch('mode')
 
   useEffect(() => {
@@ -283,46 +282,8 @@ export default function OrganizeStep1Page() {
               </div>
             </div>
 
-            {/* Visibility */}
-            <div className="grid mt-6 gap-2">
-              <Label className="text-gray-200 font-mono">Visibility *</Label>
-              <div className="grid sm:grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setValue('visibility', 'public')}
-                  className={`flex items-start gap-3 p-4 rounded-md border transition-colors ${
-                    visibility === 'public'
-                      ? 'border-teal-400 bg-teal-500/10'
-                      : 'border-gray-700 bg-gray-900/40 hover:bg-gray-800/40'
-                  }`}
-                >
-                  <div className="w-9 h-9 rounded-md bg-teal-500/20 text-teal-400 flex items-center justify-center">
-                    <Globe className="w-5 h-5" />
-                  </div>
-                  <div className="text-left">
-                    <div className="font-mono text-white">Open publicly on HackerFlow</div>
-                    <div className="text-xs text-gray-400">Visible to all users</div>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setValue('visibility', 'invite')}
-                  className={`flex items-start gap-3 p-4 rounded-md border transition-colors ${
-                    visibility === 'invite'
-                      ? 'border-teal-400 bg-teal-500/10'
-                      : 'border-gray-700 bg-gray-900/40 hover:bg-gray-800/40'
-                  }`}
-                >
-                  <div className="w-9 h-9 rounded-md bg-blue-500/20 text-blue-400 flex items-center justify-center">
-                    <Lock className="w-5 h-5" />
-                  </div>
-                  <div className="text-left">
-                    <div className="font-mono text-white">Invite Only</div>
-                    <div className="text-xs text-gray-400">Accessible via link</div>
-                  </div>
-                </button>
-              </div>
-            </div>
+            {/* Visibility - Hidden field, always set to public */}
+            <input type="hidden" {...register('visibility')} value="public" />
 
             {/* Mode of event */}
             <div className="mt-6 grid gap-2">

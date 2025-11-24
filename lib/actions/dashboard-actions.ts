@@ -108,12 +108,12 @@ export async function getHackerDashboardStats(userId?: string) {
 
     const targetUserId = userId || user.id;
 
-    // Get total participations (confirmed registrations)
+    // Get total participations (all valid registrations)
     const { count: totalParticipations } = await supabase
       .from('hackathon_registrations')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', targetUserId)
-      .eq('registration_status', 'confirmed');
+      .in('registration_status', ['confirmed', 'approved', 'registered', 'active']);
 
     // Get total wins
     const { count: hackathonsWon } = await supabase
@@ -134,7 +134,7 @@ export async function getHackerDashboardStats(userId?: string) {
       .from('hackathon_registrations')
       .select('hackathons(registration_end_date)', { count: 'exact', head: true })
       .eq('user_id', targetUserId)
-      .eq('registration_status', 'confirmed')
+      .in('registration_status', ['confirmed', 'approved', 'registered', 'active'])
       .gte('hackathons.registration_end_date', new Date().toISOString());
 
     // Calculate win rate
@@ -199,7 +199,7 @@ export async function getHackerParticipationHistory(
         )
       `)
       .eq('user_id', targetUserId)
-      .eq('registration_status', 'confirmed')
+      .in('registration_status', ['confirmed', 'approved', 'registered', 'active'])
       .order('created_at', { ascending: false });
 
     // Apply filters
@@ -271,7 +271,7 @@ export async function getHackerParticipationHistory(
       .from('hackathon_registrations')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', targetUserId)
-      .eq('registration_status', 'confirmed');
+      .in('registration_status', ['confirmed', 'approved', 'registered', 'active']);
 
     return {
       success: true,
@@ -392,7 +392,7 @@ export async function getHackerTeamMemberships(userId?: string) {
         )
       `)
       .eq('user_id', targetUserId)
-      .eq('status', 'active')
+      .in('status', ['active', 'accepted', 'joined', 'confirmed'])
       .order('joined_at', { ascending: false });
 
     if (membershipsError) {
@@ -406,11 +406,29 @@ export async function getHackerTeamMemberships(userId?: string) {
       .from('hackathon_team_members')
       .select('id, team_id, user_id, email, first_name, last_name, is_leader')
       .in('team_id', teamIds)
-      .eq('status', 'active');
+      .in('status', ['active', 'accepted', 'joined', 'confirmed']);
+
+    // Get profile images for all team members
+    const userIds = allMembers?.map(m => m.user_id).filter(Boolean) || [];
+    const { data: profiles } = await supabase
+      .from('user_profiles')
+      .select('user_id, profile_image')
+      .in('user_id', userIds);
+
+    // Create a map of user_id to profile_image
+    const profileImageMap = new Map(
+      profiles?.map(p => [p.user_id, p.profile_image]) || []
+    );
+
+    // Add profile images to members
+    const membersWithImages = allMembers?.map(member => ({
+      ...member,
+      profile_image: profileImageMap.get(member.user_id) || null,
+    })) || [];
 
     // Group members by team
     const membersByTeam = new Map<string, any[]>();
-    allMembers?.forEach(member => {
+    membersWithImages?.forEach(member => {
       if (!membersByTeam.has(member.team_id)) {
         membersByTeam.set(member.team_id, []);
       }
@@ -466,7 +484,7 @@ export async function getHackerUpcomingDeadlines(userId?: string, limit: number 
         )
       `)
       .eq('user_id', targetUserId)
-      .eq('registration_status', 'confirmed')
+      .in('registration_status', ['confirmed', 'approved', 'registered', 'active'])
       .gte('hackathons.registration_end_date', now)
       .order('hackathons(registration_end_date)', { ascending: true })
       .limit(limit);
@@ -516,7 +534,7 @@ export async function getHackerPerformanceAnalytics(userId?: string) {
       .from('hackathon_registrations')
       .select('created_at')
       .eq('user_id', targetUserId)
-      .eq('registration_status', 'confirmed')
+      .in('registration_status', ['confirmed', 'approved', 'registered', 'active'])
       .gte('created_at', twelveMonthsAgo.toISOString())
       .order('created_at', { ascending: true });
 
@@ -532,7 +550,7 @@ export async function getHackerPerformanceAnalytics(userId?: string) {
       .from('hackathon_registrations')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', targetUserId)
-      .eq('registration_status', 'confirmed');
+      .in('registration_status', ['confirmed', 'approved', 'registered', 'active']);
 
     const { count: totalWins } = await supabase
       .from('hackathon_winners')
@@ -548,7 +566,7 @@ export async function getHackerPerformanceAnalytics(userId?: string) {
         )
       `)
       .eq('user_id', targetUserId)
-      .eq('registration_status', 'confirmed');
+      .in('registration_status', ['confirmed', 'approved', 'registered', 'active']);
 
     const categoryCount = categoriesData?.reduce((acc, item) => {
       const categories = (item.hackathons as any)?.categories || [];
@@ -610,7 +628,7 @@ export async function getHackerBadges(userId?: string) {
       .from('hackathon_registrations')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', targetUserId)
-      .eq('registration_status', 'confirmed');
+      .in('registration_status', ['confirmed', 'approved', 'registered', 'active']);
 
     const { count: winCount } = await supabase
       .from('hackathon_winners')
@@ -622,7 +640,7 @@ export async function getHackerBadges(userId?: string) {
       .select('*', { count: 'exact', head: true })
       .eq('user_id', targetUserId)
       .eq('participant_type', 'team')
-      .eq('registration_status', 'confirmed');
+      .in('registration_status', ['confirmed', 'approved', 'registered', 'active']);
 
     // Calculate progress toward next badges
     const earnedBadgeTypes = new Set(badges?.map(b => b.badge_type) || []);
@@ -794,7 +812,7 @@ export async function getOrganizerDashboardStats(userId?: string) {
       .from('hackathon_registrations')
       .select('*', { count: 'exact', head: true })
       .in('hackathon_id', hackathonIds)
-      .eq('registration_status', 'confirmed');
+      .in('registration_status', ['confirmed', 'approved', 'registered', 'active']);
 
     // Get active hackathons (published and registration still open)
     const now = new Date().toISOString();
@@ -806,13 +824,20 @@ export async function getOrganizerDashboardStats(userId?: string) {
       .gte('registration_end_date', now);
 
     // Get total prize pool distributed
-    const { data: winners } = await supabase
+    console.log('📊 Fetching distributed prizes for hackathons:', hackathonIds);
+    const { data: winners, error: winnersError } = await supabase
       .from('hackathon_winners')
-      .select('prize_amount')
+      .select('prize_amount, payment_status')
       .in('hackathon_id', hackathonIds)
       .eq('payment_status', 'credited');
 
+    console.log('📊 Winners with credited status:', winners);
+    if (winnersError) {
+      console.error('📊 Error fetching winners:', winnersError);
+    }
+
     const totalPrizePoolDistributed = winners?.reduce((sum, w) => sum + (Number(w.prize_amount) || 0), 0) || 0;
+    console.log('📊 Total Prize Pool Distributed:', totalPrizePoolDistributed);
 
     // Calculate average participants per hackathon
     const avgParticipantsPerHackathon = totalHackathons ? Math.round((totalParticipants || 0) / totalHackathons) : 0;
@@ -879,16 +904,44 @@ export async function getOrganizerHackathons(
       .from('hackathon_registrations')
       .select('hackathon_id')
       .in('hackathon_id', hackathonIds)
-      .eq('registration_status', 'confirmed');
+      .in('registration_status', ['confirmed', 'approved', 'registered', 'active']);
 
     const countsByHackathon = registrationCounts?.reduce((acc, r) => {
       acc[r.hackathon_id] = (acc[r.hackathon_id] || 0) + 1;
       return acc;
     }, {} as Record<string, number>) || {};
 
+    // Get team counts for each hackathon
+    const { data: teamCounts } = await supabase
+      .from('hackathon_teams')
+      .select('hackathon_id')
+      .in('hackathon_id', hackathonIds);
+
+    const teamCountsByHackathon = teamCounts?.reduce((acc, t) => {
+      acc[t.hackathon_id] = (acc[t.hackathon_id] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>) || {};
+
+    // Get distributed prize amounts for each hackathon (credited winners only)
+    const { data: distributedPrizes } = await supabase
+      .from('hackathon_winners')
+      .select('hackathon_id, prize_amount')
+      .in('hackathon_id', hackathonIds)
+      .eq('payment_status', 'credited');
+
+    const prizesByHackathon = distributedPrizes?.reduce((acc, w) => {
+      if (!acc[w.hackathon_id]) {
+        acc[w.hackathon_id] = 0;
+      }
+      acc[w.hackathon_id] += Number(w.prize_amount) || 0;
+      return acc;
+    }, {} as Record<string, number>) || {};
+
     const hackathonsWithCounts = hackathons?.map(h => ({
       ...h,
       participant_count: countsByHackathon[h.id] || 0,
+      team_count: teamCountsByHackathon[h.id] || 0,
+      distributed_prize_pool: prizesByHackathon[h.id] || 0,
     })) || [];
 
     return {
@@ -949,7 +1002,7 @@ export async function getHackathonParticipants(
         )
       `, { count: 'exact' })
       .eq('hackathon_id', hackathonId)
-      .eq('registration_status', 'confirmed')
+      .in('registration_status', ['confirmed', 'approved', 'registered', 'active'])
       .order('created_at', { ascending: false });
 
     // Apply type filter
@@ -1168,10 +1221,10 @@ export async function saveHackathonWinners(
       return { success: false, error: 'User not authenticated' };
     }
 
-    // Verify user owns this hackathon
+    // Verify user owns this hackathon and get hackathon details
     const { data: hackathon } = await supabase
       .from('hackathons')
-      .select('created_by')
+      .select('created_by, title')
       .eq('id', hackathonId)
       .single();
 
@@ -1199,10 +1252,171 @@ export async function saveHackathonWinners(
       return { success: false, error: insertError.message };
     }
 
+    // Send email notifications to winners
+    try {
+      for (const winnerData of winnersData) {
+        const { prize_position, prize_amount, team_id } = winnerData;
+        const hackathonTitle = hackathon.title;
+
+        if (team_id) {
+          // Team winner - send email to all team members
+          const { data: team } = await supabase
+            .from('hackathon_teams')
+            .select(`
+              team_name,
+              hackathon_team_members(user_id, email, first_name, last_name, status)
+            `)
+            .eq('id', team_id)
+            .single();
+
+          if (team && team.hackathon_team_members) {
+            const members = (team.hackathon_team_members as any[]).filter(
+              m => m.status === 'accepted'
+            );
+
+            await sendWinnerNotificationEmails(
+              members,
+              hackathonTitle,
+              prize_position,
+              prize_amount,
+              team.team_name
+            );
+          }
+        } else {
+          // Individual winner - send email to individual
+          const { data: profile } = await supabase
+            .from('user_profiles')
+            .select('email, full_name')
+            .eq('user_id', winnerData.user_id)
+            .single();
+
+          if (profile) {
+            await sendWinnerNotificationEmails(
+              [{ email: profile.email, first_name: profile.full_name || 'Winner', last_name: '' }],
+              hackathonTitle,
+              prize_position,
+              prize_amount
+            );
+          }
+        }
+      }
+    } catch (emailError) {
+      console.error('Error sending winner notification emails:', emailError);
+      // Don't fail the operation if emails fail
+    }
+
     return { success: true, data: insertedWinners };
   } catch (error) {
     console.error('Error saving hackathon winners:', error);
     return { success: false, error: 'An unexpected error occurred' };
+  }
+}
+
+async function sendWinnerNotificationEmails(
+  recipients: Array<{ email: string; first_name: string; last_name?: string }>,
+  hackathonTitle: string,
+  prizePosition: string,
+  prizeAmount: number,
+  teamName?: string
+) {
+  const isDevelopment = !process.env.BREVO_API_KEY;
+
+  if (isDevelopment) {
+    console.log('\n🏆 ========== WINNER NOTIFICATION EMAILS (DEV MODE) ==========');
+    console.log('🏆 Hackathon:', hackathonTitle);
+    console.log('🏆 Prize:', prizePosition, `- RM${prizeAmount.toLocaleString()}`);
+    if (teamName) console.log('🏆 Team:', teamName);
+    console.log('🏆 Recipients:', recipients.length);
+    recipients.forEach((recipient) => {
+      console.log(`   - ${recipient.first_name} ${recipient.last_name || ''} (${recipient.email})`);
+    });
+    console.log('🏆 ================================================\n');
+  } else {
+    const brevo = await import('@getbrevo/brevo');
+    const apiInstance = new brevo.TransactionalEmailsApi();
+    apiInstance.setApiKey(brevo.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY || '');
+
+    for (const recipient of recipients) {
+      const recipientName = `${recipient.first_name} ${recipient.last_name || ''}`.trim();
+      const isTeam = !!teamName;
+
+      const sendSmtpEmail = new brevo.SendSmtpEmail();
+      sendSmtpEmail.subject = `🏆 Congratulations! You Won ${prizePosition} in ${hackathonTitle}!`;
+      sendSmtpEmail.to = [{ email: recipient.email, name: recipientName }];
+      sendSmtpEmail.htmlContent = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>You're a Winner!</title>
+          </head>
+          <body style="font-family: 'Arial', sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%); padding: 30px; border-radius: 10px 10px 0 0;">
+              <h1 style="color: white; margin: 0; font-size: 28px;">🏆 HackerFlow</h1>
+            </div>
+
+            <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
+              <h2 style="color: #f59e0b; margin-top: 0;">🎉 Congratulations, You're a Winner! 🎉</h2>
+
+              <p>Hi ${recipientName},</p>
+
+              <p>We are thrilled to announce that ${isTeam ? `your team <strong>"${teamName}"</strong>` : 'you'} ${isTeam ? 'has' : 'have'} won <strong>${prizePosition}</strong> in <strong>${hackathonTitle}</strong>!</p>
+
+              <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 25px; border-radius: 10px; margin: 25px 0; text-align: center; border: 3px solid #f59e0b;">
+                <div style="font-size: 48px; margin-bottom: 10px;">🏆</div>
+                <h3 style="color: #92400e; margin: 10px 0; font-size: 24px;">${prizePosition}</h3>
+                <p style="color: #78350f; font-size: 32px; font-weight: bold; margin: 10px 0;">RM${prizeAmount.toLocaleString()}</p>
+              </div>
+
+              <p style="font-size: 16px; color: #334155; line-height: 1.8;">
+                Your ${isTeam ? 'team\'s' : ''} hard work, creativity, and dedication have truly paid off. This is a remarkable achievement, and ${isTeam ? 'your team' : 'you'} should be incredibly proud!
+              </p>
+
+              <div style="background: #dbeafe; padding: 20px; border-left: 4px solid #3b82f6; margin: 25px 0;">
+                <p style="margin: 0; color: #1e40af;">
+                  <strong>📧 What's Next:</strong><br>
+                  The hackathon organizers will contact you shortly regarding the prize distribution process and payment details.
+                </p>
+              </div>
+
+              <h3 style="color: #334155; margin-top: 25px;">🌟 This Achievement Represents:</h3>
+              <ul style="color: #666; line-height: 1.8;">
+                <li><strong>Innovation:</strong> Your creative approach to problem-solving</li>
+                <li><strong>Technical Excellence:</strong> Your exceptional coding and development skills</li>
+                <li><strong>Perseverance:</strong> Your determination throughout the hackathon</li>
+                ${isTeam ? '<li><strong>Teamwork:</strong> Your ability to collaborate effectively with your team</li>' : ''}
+                <li><strong>Passion:</strong> Your genuine enthusiasm for technology and innovation</li>
+              </ul>
+
+              <div style="background: #f0fdf4; padding: 20px; border-left: 4px solid #10b981; margin: 25px 0;">
+                <p style="margin: 0; color: #065f46; font-size: 14px;">
+                  <strong>💡 Keep Going!</strong> This victory is just the beginning. Continue building, learning, and creating amazing things!
+                </p>
+              </div>
+
+              <p style="margin-top: 25px; font-size: 16px; color: #334155;">
+                Once again, congratulations on this fantastic achievement! We can't wait to see what ${isTeam ? 'your team' : 'you'} ${isTeam ? 'create' : 'creates'} next! 🚀
+              </p>
+
+              <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+
+              <p style="color: #666; font-size: 12px; margin-bottom: 0;">
+                Congratulations,<br>
+                The HackerFlow Team
+              </p>
+            </div>
+          </body>
+        </html>
+      `;
+      sendSmtpEmail.sender = {
+        name: process.env.BREVO_SENDER_NAME || 'HackerFlow',
+        email: process.env.BREVO_FROM_EMAIL || 'noreply@yourdomain.com'
+      };
+
+      await apiInstance.sendTransacEmail(sendSmtpEmail);
+      console.log(`✅ Winner notification email sent to ${recipientName} (${recipient.email})`);
+    }
   }
 }
 
@@ -1290,7 +1504,7 @@ export async function getOrganizerAnalytics(userId?: string, hackathonId?: strin
         .from('hackathon_registrations')
         .select('created_at, participant_type')
         .eq('hackathon_id', hackathonId)
-        .eq('registration_status', 'confirmed')
+        .in('registration_status', ['confirmed', 'approved', 'registered', 'active'])
         .order('created_at', { ascending: true });
 
       // Group by date
@@ -1312,6 +1526,38 @@ export async function getOrganizerAnalytics(userId?: string, hackathonId?: strin
       const teamCount = registrations?.filter(r => r.participant_type === 'team').length || 0;
       const individualCount = registrations?.filter(r => r.participant_type === 'individual').length || 0;
 
+      // Get completion rate for this hackathon
+      const { count: hackathonTotalTeams } = await supabase
+        .from('hackathon_teams')
+        .select('*', { count: 'exact', head: true })
+        .eq('hackathon_id', hackathonId);
+
+      const { count: hackathonCompletedTeams } = await supabase
+        .from('hackathon_teams')
+        .select('*', { count: 'exact', head: true })
+        .eq('hackathon_id', hackathonId)
+        .eq('is_completed', true);
+
+      const hackathonCompletionRate = hackathonTotalTeams && hackathonTotalTeams > 0
+        ? Math.round(((hackathonCompletedTeams || 0) / hackathonTotalTeams) * 100)
+        : 0;
+
+      // Get average team size for this hackathon
+      const { data: hackathonTeams } = await supabase
+        .from('hackathon_teams')
+        .select('team_size_current')
+        .eq('hackathon_id', hackathonId);
+
+      const hackathonAvgTeamSize = hackathonTeams && hackathonTeams.length > 0
+        ? Math.round(hackathonTeams.reduce((sum, t) => sum + (t.team_size_current || 0), 0) / hackathonTeams.length)
+        : 0;
+
+      // Get total winners for this hackathon
+      const { count: hackathonTotalWinners } = await supabase
+        .from('hackathon_winners')
+        .select('*', { count: 'exact', head: true })
+        .eq('hackathon_id', hackathonId);
+
       return {
         success: true,
         data: {
@@ -1324,6 +1570,9 @@ export async function getOrganizerAnalytics(userId?: string, hackathonId?: strin
             individual: individualCount,
           },
           totalRegistrations: registrations?.length || 0,
+          completionRate: hackathonCompletionRate,
+          avgTeamSize: hackathonAvgTeamSize,
+          totalWinners: hackathonTotalWinners || 0,
         },
       };
     }
@@ -1344,7 +1593,7 @@ export async function getOrganizerAnalytics(userId?: string, hackathonId?: strin
       .from('hackathon_registrations')
       .select('created_at, hackathon_id, participant_type')
       .in('hackathon_id', hackathonIds)
-      .eq('registration_status', 'confirmed')
+      .in('registration_status', ['confirmed', 'approved', 'registered', 'active'])
       .gte('created_at', sixMonthsAgo.toISOString())
       .order('created_at', { ascending: true });
 
@@ -1370,9 +1619,53 @@ export async function getOrganizerAnalytics(userId?: string, hackathonId?: strin
     const teamTotal = allRegistrations?.filter(r => r.participant_type === 'team').length || 0;
     const individualTotal = allRegistrations?.filter(r => r.participant_type === 'individual').length || 0;
 
+    // Get total registrations count (all time, not just last 6 months)
+    const { count: totalRegistrations } = await supabase
+      .from('hackathon_registrations')
+      .select('*', { count: 'exact', head: true })
+      .in('hackathon_id', hackathonIds)
+      .in('registration_status', ['confirmed', 'approved', 'registered', 'active']);
+
+    // Get completion rate (completed teams / total teams)
+    // This represents participants who have finalized their team registrations
+    const { count: totalTeams } = await supabase
+      .from('hackathon_teams')
+      .select('*', { count: 'exact', head: true })
+      .in('hackathon_id', hackathonIds);
+
+    const { count: completedTeams } = await supabase
+      .from('hackathon_teams')
+      .select('*', { count: 'exact', head: true })
+      .in('hackathon_id', hackathonIds)
+      .eq('is_completed', true);
+
+    const completionRate = totalTeams && totalTeams > 0
+      ? Math.round(((completedTeams || 0) / totalTeams) * 100)
+      : 0;
+
+    // Get average team size
+    const { data: teams } = await supabase
+      .from('hackathon_teams')
+      .select('team_size_current')
+      .in('hackathon_id', hackathonIds);
+
+    const avgTeamSize = teams && teams.length > 0
+      ? Math.round(teams.reduce((sum, t) => sum + (t.team_size_current || 0), 0) / teams.length)
+      : 0;
+
+    // Get total winners
+    const { count: totalWinners } = await supabase
+      .from('hackathon_winners')
+      .select('*', { count: 'exact', head: true })
+      .in('hackathon_id', hackathonIds);
+
     return {
       success: true,
       data: {
+        totalRegistrations: totalRegistrations || 0,
+        completionRate,
+        avgTeamSize,
+        totalWinners: totalWinners || 0,
         registrationsOverTime: Object.entries(monthlyRegistrations).map(([month, count]) => ({
           month,
           count,
@@ -1386,6 +1679,56 @@ export async function getOrganizerAnalytics(userId?: string, hackathonId?: strin
     };
   } catch (error) {
     console.error('Error fetching organizer analytics:', error);
+    return { success: false, error: 'An unexpected error occurred' };
+  }
+}
+
+export async function getDistributedPrizesByHackathon(userId?: string) {
+  try {
+    const supabase = await createClient();
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return { success: false, error: 'User not authenticated' };
+    }
+
+    const targetUserId = userId || user.id;
+
+    // Get all hackathons by this organizer
+    const { data: hackathons } = await supabase
+      .from('hackathons')
+      .select('id, title')
+      .eq('created_by', targetUserId);
+
+    const hackathonIds = hackathons?.map(h => h.id) || [];
+
+    // Get all winners with credited status for these hackathons
+    const { data: winners } = await supabase
+      .from('hackathon_winners')
+      .select('hackathon_id, prize_amount')
+      .in('hackathon_id', hackathonIds)
+      .eq('payment_status', 'credited');
+
+    // Group winners by hackathon and sum prize amounts
+    const prizesByHackathon = winners?.reduce((acc, winner) => {
+      if (!acc[winner.hackathon_id]) {
+        acc[winner.hackathon_id] = 0;
+      }
+      acc[winner.hackathon_id] += Number(winner.prize_amount) || 0;
+      return acc;
+    }, {} as Record<string, number>) || {};
+
+    // Create result array with hackathon names
+    const distributedPrizes = hackathons?.map(h => ({
+      hackathon_id: h.id,
+      title: h.title,
+      distributed_prize: prizesByHackathon[h.id] || 0,
+    })).filter(h => h.distributed_prize > 0) || [];
+
+    return { success: true, data: distributedPrizes };
+  } catch (error) {
+    console.error('Error fetching distributed prizes by hackathon:', error);
     return { success: false, error: 'An unexpected error occurred' };
   }
 }
@@ -1421,7 +1764,7 @@ export async function exportParticipants(hackathonId: string, format: 'csv' = 'c
         )
       `)
       .eq('hackathon_id', hackathonId)
-      .eq('registration_status', 'confirmed')
+      .in('registration_status', ['confirmed', 'approved', 'registered', 'active'])
       .order('created_at', { ascending: false });
 
     if (participantsError) {
@@ -1603,6 +1946,215 @@ export async function createNotification(
     return { success: true, data: notification };
   } catch (error) {
     console.error('Error creating notification:', error);
+    return { success: false, error: 'An unexpected error occurred' };
+  }
+}
+
+// =====================================================
+// BADGE AWARDING SYSTEM
+// =====================================================
+
+interface BadgeDefinition {
+  badge_type: string;
+  badge_name: string;
+  badge_description: string;
+  badge_icon: string;
+  category: string;
+  checkEligibility: (stats: any) => boolean;
+}
+
+const BADGE_DEFINITIONS: BadgeDefinition[] = [
+  {
+    badge_type: 'first_participation',
+    badge_name: 'First Steps',
+    badge_description: 'Participate in your first hackathon',
+    badge_icon: '🎯',
+    category: 'participation',
+    checkEligibility: (stats) => stats.participations >= 1,
+  },
+  {
+    badge_type: 'participation_streak_3',
+    badge_name: 'On a Roll',
+    badge_description: 'Participate in 3 hackathons',
+    badge_icon: '🔥',
+    category: 'participation',
+    checkEligibility: (stats) => stats.participations >= 3,
+  },
+  {
+    badge_type: 'participation_streak_10',
+    badge_name: 'Veteran Hacker',
+    badge_description: 'Participate in 10 hackathons',
+    badge_icon: '⭐',
+    category: 'participation',
+    checkEligibility: (stats) => stats.participations >= 10,
+  },
+  {
+    badge_type: 'first_win',
+    badge_name: 'First Victory',
+    badge_description: 'Win your first hackathon',
+    badge_icon: '🏆',
+    category: 'achievement',
+    checkEligibility: (stats) => stats.wins >= 1,
+  },
+  {
+    badge_type: 'win_streak_3',
+    badge_name: 'Champion',
+    badge_description: 'Win 3 hackathons',
+    badge_icon: '👑',
+    category: 'achievement',
+    checkEligibility: (stats) => stats.wins >= 3,
+  },
+  {
+    badge_type: 'win_streak_5',
+    badge_name: 'Legend',
+    badge_description: 'Win 5 hackathons',
+    badge_icon: '💎',
+    category: 'achievement',
+    checkEligibility: (stats) => stats.wins >= 5,
+  },
+  {
+    badge_type: 'team_player',
+    badge_name: 'Team Player',
+    badge_description: 'Join a team in a hackathon',
+    badge_icon: '🤝',
+    category: 'social',
+    checkEligibility: (stats) => stats.teamsJoined >= 1,
+  },
+  {
+    badge_type: 'team_leader',
+    badge_name: 'Team Leader',
+    badge_description: 'Create and lead a team',
+    badge_icon: '👨‍💼',
+    category: 'social',
+    checkEligibility: (stats) => stats.teamsLed >= 1,
+  },
+  {
+    badge_type: 'prize_collector',
+    badge_name: 'Prize Collector',
+    badge_description: 'Earn RM 10,000 in total prize money',
+    badge_icon: '💰',
+    category: 'achievement',
+    checkEligibility: (stats) => stats.totalPrize >= 10000,
+  },
+];
+
+export async function checkAndAwardBadges(userId?: string) {
+  try {
+    const supabase = await createClient();
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return { success: false, error: 'User not authenticated' };
+    }
+
+    const targetUserId = userId || user.id;
+
+    // Get user's earned badges
+    const { data: earnedBadges } = await supabase
+      .from('user_badges')
+      .select('badge_type')
+      .eq('user_id', targetUserId);
+
+    const earnedBadgeTypes = new Set(earnedBadges?.map(b => b.badge_type) || []);
+
+    // Get user stats
+    const { count: participations } = await supabase
+      .from('hackathon_registrations')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', targetUserId)
+      .in('registration_status', ['confirmed', 'approved', 'registered', 'active']);
+
+    const { count: wins } = await supabase
+      .from('hackathon_winners')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', targetUserId);
+
+    const { count: teamsJoined } = await supabase
+      .from('team_members')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', targetUserId);
+
+    const { count: teamsLed } = await supabase
+      .from('team_members')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', targetUserId)
+      .eq('is_leader', true);
+
+    const { data: prizeData } = await supabase
+      .from('hackathon_winners')
+      .select('prize_amount')
+      .eq('user_id', targetUserId);
+
+    const totalPrize = prizeData?.reduce((sum, p) => sum + (Number(p.prize_amount) || 0), 0) || 0;
+
+    const stats = {
+      participations: participations || 0,
+      wins: wins || 0,
+      teamsJoined: teamsJoined || 0,
+      teamsLed: teamsLed || 0,
+      totalPrize,
+    };
+
+    // Check which badges should be awarded
+    const badgesToAward: BadgeDefinition[] = [];
+
+    for (const badge of BADGE_DEFINITIONS) {
+      // Skip if badge is already earned
+      if (earnedBadgeTypes.has(badge.badge_type)) {
+        continue;
+      }
+
+      // Check if user is eligible for this badge
+      if (badge.checkEligibility(stats)) {
+        badgesToAward.push(badge);
+      }
+    }
+
+    // Award new badges
+    if (badgesToAward.length > 0) {
+      const badgeInserts = badgesToAward.map(badge => ({
+        user_id: targetUserId,
+        badge_type: badge.badge_type,
+        badge_name: badge.badge_name,
+        badge_description: badge.badge_description,
+        badge_icon: badge.badge_icon,
+        earned_at: new Date().toISOString(),
+      }));
+
+      const { error: insertError } = await supabase
+        .from('user_badges')
+        .insert(badgeInserts);
+
+      if (insertError) {
+        console.error('Error awarding badges:', insertError);
+        return { success: false, error: insertError.message };
+      }
+
+      // Create notifications for newly awarded badges
+      for (const badge of badgesToAward) {
+        await createNotification(
+          targetUserId,
+          'badge_earned',
+          'New Badge Earned!',
+          `You've earned the "${badge.badge_name}" badge: ${badge.badge_description}`,
+          '/dashboard/hacker/badges',
+          { badge_type: badge.badge_type, badge_name: badge.badge_name }
+        );
+      }
+
+      return {
+        success: true,
+        data: {
+          newBadges: badgesToAward.map(b => b.badge_type),
+          count: badgesToAward.length,
+        },
+      };
+    }
+
+    return { success: true, data: { newBadges: [], count: 0 } };
+  } catch (error) {
+    console.error('Error checking and awarding badges:', error);
     return { success: false, error: 'An unexpected error occurred' };
   }
 }

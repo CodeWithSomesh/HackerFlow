@@ -23,6 +23,8 @@ import Image from "next/image"
 import TeammatesImage from "@/assets/TeammatesImage.webp"
 import AIChatIcon from "@/assets/AI Chat Operator.png"
 import AIChatIcon2 from "@/assets/Ai Chat.png"
+import CyberpunHackathonImage from '@/assets/landingPage/CyberpunHackathon.png'
+import CyberpunkHackathonImage from '@/assets/landingPage/CyberpunkHakacthons.jpg'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -231,13 +233,24 @@ export function HackersBentoGrid() {
               <div className="absolute inset-0 bg-gradient-to-br from-teal-500/10 via-transparent to-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
 
               <div className="relative z-10 h-full flex flex-col">
-                <div className="p-3 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-xl w-fit mb-4">
-                  <Search className="w-8 h-8 text-white" />
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-3 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-xl">
+                    <Search className="w-8 h-8 text-white" />
+                  </div>
+                  <h3 className="text-3xl font-blackops text-white">Discover Epic Hackathons</h3>
                 </div>
-                <h3 className="text-2xl font-blackops text-white mb-3">Discover Epic Hackathons</h3>
-                <p className="text-gray-300 font-geist mb-4 flex-grow">
+                <p className="text-gray-300 font-geist flex-grow">
                   Browse thousands of hackathons across Malaysia. Filter by prize pool, location, and themes. Your next big win awaits!
                 </p>
+
+                <div className="my-4 w-full ">
+                  <Image
+                    src={CyberpunkHackathonImage}
+                    width={600}
+                    alt="HackerFlow Logo"
+                    className="rounded-md border-4 border-yellow-400 w-full"
+                  />
+                </div>
 
                 {/* Event Cards Mock */}
                 <div className="space-y-2">
@@ -315,10 +328,18 @@ export function HackersBentoGrid() {
                         <p className="text-white font-mono font-bold text-sm">Top Skills</p>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        <span className="px-3 py-1 bg-blue-500/20 border border-blue-500/30 rounded-full text-blue-300 text-xs font-mono">React</span>
-                        <span className="px-3 py-1 bg-purple-500/20 border border-purple-500/30 rounded-full text-purple-300 text-xs font-mono">Node.js</span>
-                        <span className="px-3 py-1 bg-pink-500/20 border border-pink-500/30 rounded-full text-pink-300 text-xs font-mono">AI/ML</span>
-                        <span className="px-3 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded-full text-cyan-300 text-xs font-mono">Python</span>
+                        <span className="px-3 py-1 bg-blue-500/20 border border-blue-500/30 rounded-full text-blue-300 text-xs font-mono whitespace-nowrap">React</span>
+                        <span className="px-3 py-1 bg-purple-500/20 border border-purple-500/30 rounded-full text-purple-300 text-xs font-mono whitespace-nowrap">Node.js</span>
+                        <span className="px-3 py-1 bg-pink-500/20 border border-pink-500/30 rounded-full text-pink-300 text-xs font-mono whitespace-nowrap">AI/ML</span>
+                        <span className="px-3 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded-full text-cyan-300 text-xs font-mono whitespace-nowrap">Python</span>
+                        <span className="px-3 py-1 bg-emerald-500/20 border border-emerald-500/30 rounded-full text-emerald-300 text-xs font-mono whitespace-nowrap">TypeScript</span>
+                        <span className="px-3 py-1 bg-orange-500/20 border border-orange-500/30 rounded-full text-orange-300 text-xs font-mono whitespace-nowrap">AWS</span>
+                        <span className="px-3 py-1 bg-rose-500/20 border border-rose-500/30 rounded-full text-rose-300 text-xs font-mono whitespace-nowrap">GraphQL</span>
+                        <span className="px-3 py-1 bg-indigo-500/20 border border-indigo-500/30 rounded-full text-indigo-300 text-xs font-mono whitespace-nowrap">Docker</span>
+                        <span className="px-3 py-1 bg-teal-500/20 border border-teal-500/30 rounded-full text-teal-300 text-xs font-mono whitespace-nowrap">PostgreSQL</span>
+                        <span className="px-3 py-1 bg-amber-500/20 border border-amber-500/30 rounded-full text-amber-300 text-xs font-mono whitespace-nowrap">Firebase</span>
+                        <span className="px-3 py-1 bg-violet-500/20 border border-violet-500/30 rounded-full text-violet-300 text-xs font-mono whitespace-nowrap">Next.js</span>
+                        <span className="px-3 py-1 bg-fuchsia-500/20 border border-fuchsia-500/30 rounded-full text-fuchsia-300 text-xs font-mono whitespace-nowrap">TensorFlow</span>
                       </div>
                     </div>
                     <button className="w-full py-3 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl text-white font-blackops hover:opacity-90 transition-opacity flex items-center justify-center gap-2">

@@ -156,7 +156,7 @@ export default function HackathonDetailPage() {
               </div>
 
               <div className="flex items-center gap-3 flex-wrap">
-                <Link href={`/organize/step1?id=${hackathonId}`}>
+                <Link href={`/organize/step3?id=${hackathon.id}`}>
                   <Button variant="outline" className="border-purple-400 text-purple-400 hover:bg-purple-400 hover:text-black">
                     <Edit className="h-4 w-4 mr-2" />
                     Edit
@@ -174,10 +174,10 @@ export default function HackathonDetailPage() {
                     View Public Page
                   </Button>
                 </Link>
-                <Button variant="outline" className="border-gray-700 text-gray-300">
+                {/* <Button variant="outline" className="border-gray-700 text-gray-300">
                   <Share2 className="h-4 w-4 mr-2" />
                   Share
-                </Button>
+                </Button> */}
               </div>
             </div>
           </div>
@@ -185,74 +185,49 @@ export default function HackathonDetailPage() {
       </Card>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <Card className="bg-gradient-to-br from-blue-500/10 to-blue-700/10 border-2 border-blue-500/50">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-blue-400 font-mono text-sm flex items-center gap-2">
-              <Users className="h-4 w-4" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <Card className="bg-gradient-to-br from-blue-500/10 to-blue-700/10 border-2 border-blue-500/50 hover:border-blue-400 transition-all">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-blue-400 font-mono text-base flex items-center gap-2">
+              <Users className="h-5 w-5" />
               Total Participants
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-blackops text-white">
+            <div className="text-5xl font-blackops text-white mb-2">
               {stats?.totalParticipants || 0}
             </div>
+            <p className="text-sm text-gray-400 font-mono">Registered for this event</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-purple-500/10 to-purple-700/10 border-2 border-purple-500/50">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-purple-400 font-mono text-sm flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Team Participants
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-blackops text-white">
-              {stats?.teamParticipants || 0}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-cyan-500/10 to-cyan-700/10 border-2 border-cyan-500/50">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-cyan-400 font-mono text-sm flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Individual
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-blackops text-white">
-              {stats?.individualParticipants || 0}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-green-500/10 to-green-700/10 border-2 border-green-500/50">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-green-400 font-mono text-sm flex items-center gap-2">
-              <Users className="h-4 w-4" />
+        <Card className="bg-gradient-to-br from-green-500/10 to-green-700/10 border-2 border-green-500/50 hover:border-green-400 transition-all">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-green-400 font-mono text-base flex items-center gap-2">
+              <Users className="h-5 w-5" />
               Total Teams
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-blackops text-white">
+            <div className="text-5xl font-blackops text-white mb-2">
               {stats?.totalTeams || 0}
             </div>
+            <p className="text-sm text-gray-400 font-mono">Teams formed and active</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-yellow-500/10 to-yellow-700/10 border-2 border-yellow-500/50">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-yellow-400 font-mono text-sm flex items-center gap-2">
-              <Trophy className="h-4 w-4" />
-              Winners
+        <Card className="bg-gradient-to-br from-yellow-500/10 to-yellow-700/10 border-2 border-yellow-500/50 hover:border-yellow-400 transition-all">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-yellow-400 font-mono text-base flex items-center gap-2">
+              <Trophy className="h-5 w-5" />
+              Winners Declared
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-blackops text-white">
+            <div className="text-5xl font-blackops text-white mb-2">
               {stats?.winnersCount || 0}
             </div>
+            <p className="text-sm text-gray-400 font-mono">Prize winners announced</p>
           </CardContent>
         </Card>
       </div>

@@ -3,7 +3,12 @@
     "allow": [
       "Bash(node scripts/check-admin-user.js:*)",
       "Bash(supabase:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(xargs ls:*)",
+      "Bash(npm run dev:*)",
+      "Bash(node:*)",
+      "Bash(route.ts)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": []

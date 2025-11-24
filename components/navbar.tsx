@@ -30,6 +30,11 @@ import {
 } from "@/components/ui/collapsible"
 import BrowseHackathonImage from '@/assets/browseHackathonImage2.png';
 import DashboardImage from '@/assets/dashboardImage2.png';
+import DiscoverHackathonsImage from '@/assets/landingPage/DiscoverHackathons.png'
+import AIMatchingImage from '@/assets/landingPage/AIMatching.png'
+import AIIdeaGeneratorImage from '@/assets/landingPage/AIIdeaGenerator.png'
+import HackathonDetailsImage from '@/assets/landingPage/HackathonDetails.png'
+import AnalyticsPageImage from '@/assets/landingPage/AnalyticsPage.png'
 
 // Updated ListItem component with image support
 const ListItem = forwardRef<
@@ -173,7 +178,7 @@ export function Navbar() {
                         title="Organize Hackathons"
                         href="/organize/step1"
                         className="hover:bg-gray-600"
-                        image={DashboardImage} 
+                        image={AnalyticsPageImage} 
                         imageAlt="Organize Hackathons"
                       >
                         Create and manage your own hackathon events.
@@ -192,7 +197,7 @@ export function Navbar() {
                         title="AI Hackathon Idea Generator"
                         href="/ai-idea-generator"
                         className="hover:bg-gray-600"
-                        image={BrowseHackathonImage} 
+                        image={AIIdeaGeneratorImage} 
                         imageAlt="AI Idea Generation"
                       >
                         Use AI to brainstorm and generate inovative project ideas for hackathons.
@@ -201,7 +206,7 @@ export function Navbar() {
                         title="AI Team Matchmaking"
                         href="/find-teammates"
                         className="hover:bg-gray-600"
-                        image={BrowseHackathonImage} 
+                        image={AIMatchingImage} 
                         imageAlt="Team Matchmaking"
                       >
                         Find the perfect teammates with AI-powered matching.

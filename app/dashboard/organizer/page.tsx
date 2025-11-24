@@ -47,8 +47,8 @@ export default function OrganizerDashboardOverview() {
     // For production: Remove dummy data section and localStorage check
     // ============================================================================
     const useDummyData = typeof window !== 'undefined'
-      ? localStorage.getItem('useDummyData') !== 'false'
-      : true
+      ? localStorage.getItem('useDummyData') === 'true'
+      : false
 
     if (useDummyData) {
       // ============================================================================
@@ -75,6 +75,7 @@ export default function OrganizerDashboardOverview() {
           organization: 'TechCorp Malaysia',
           status: 'published',
           participant_count: 45,
+          distributed_prize_pool: 15000,
           start_date: new Date(Date.now() + 604800000).toISOString(),
           end_date: new Date(Date.now() + 1209600000).toISOString()
         },
@@ -84,6 +85,7 @@ export default function OrganizerDashboardOverview() {
           organization: 'GreenTech Inc',
           status: 'published',
           participant_count: 38,
+          distributed_prize_pool: 12000,
           start_date: new Date(Date.now() + 1209600000).toISOString(),
           end_date: new Date(Date.now() + 1814400000).toISOString()
         },
@@ -93,6 +95,7 @@ export default function OrganizerDashboardOverview() {
           organization: 'BankTech Solutions',
           status: 'completed',
           participant_count: 52,
+          distributed_prize_pool: 18000,
           start_date: new Date(Date.now() - 2592000000).toISOString(),
           end_date: new Date(Date.now() - 1987200000).toISOString()
         },
@@ -102,6 +105,7 @@ export default function OrganizerDashboardOverview() {
           organization: 'MedTech Alliance',
           status: 'completed',
           participant_count: 41,
+          distributed_prize_pool: 10000,
           start_date: new Date(Date.now() - 5184000000).toISOString(),
           end_date: new Date(Date.now() - 4579200000).toISOString()
         },
@@ -111,6 +115,7 @@ export default function OrganizerDashboardOverview() {
           organization: 'Urban Tech Labs',
           status: 'draft',
           participant_count: 0,
+          distributed_prize_pool: 0,
           start_date: new Date(Date.now() + 2592000000).toISOString(),
           end_date: new Date(Date.now() + 3196800000).toISOString()
         }
@@ -295,7 +300,7 @@ export default function OrganizerDashboardOverview() {
           </CardHeader>
           <CardContent>
             <div className="text-4xl font-blackops text-white mb-1">
-              RM{((stats?.totalPrizePoolDistributed || 0) / 1000).toFixed(1)}K
+              RM{((stats?.totalPrizePoolDistributed || 0)).toFixed(2)}
             </div>
             <p className="text-xs text-gray-400 font-mono">Total awarded</p>
           </CardContent>
@@ -318,7 +323,7 @@ export default function OrganizerDashboardOverview() {
       </div>
 
       {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
         {/* Registrations Over Time */}
         <Card className="bg-gradient-to-br from-gray-900 to-black border-2 border-gray-800">
           <CardHeader>
@@ -362,7 +367,7 @@ export default function OrganizerDashboardOverview() {
         </Card>
 
         {/* Team vs Individual */}
-        <Card className="bg-gradient-to-br from-gray-900 to-black border-2 border-gray-800">
+        {/* <Card className="bg-gradient-to-br from-gray-900 to-black border-2 border-gray-800">
           <CardHeader>
             <CardTitle className="text-white font-blackops flex items-center gap-2">
               <Users className="h-5 w-5 text-cyan-400" />
@@ -414,11 +419,11 @@ export default function OrganizerDashboardOverview() {
               </div>
             )}
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
 
       {/* Participants Per Hackathon */}
-      <Card className="bg-gradient-to-br from-gray-900 to-black border-2 border-gray-800">
+      {/* <Card className="bg-gradient-to-br from-gray-900 to-black border-2 border-gray-800">
         <CardHeader>
           <CardTitle className="text-white font-blackops flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-green-400" />
@@ -462,6 +467,63 @@ export default function OrganizerDashboardOverview() {
           ) : (
             <div className="flex items-center justify-center h-64">
               <p className="text-gray-400 font-mono text-sm">No data available yet</p>
+            </div>
+          )}
+        </CardContent>
+      </Card> */}
+
+      {/* Distributed Prize Pool */}
+      <Card className="bg-gradient-to-br from-gray-900 to-black border-2 border-gray-800">
+        <CardHeader>
+          <CardTitle className="text-white font-blackops flex items-center gap-2">
+            <DollarSign className="h-5 w-5 text-yellow-400" />
+            Distributed Prize Pool
+          </CardTitle>
+          <CardDescription className="font-mono">
+            Prize money credited to winners across hackathons
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {recentHackathons && recentHackathons.length > 0 && recentHackathons.some((h: any) => (h.distributed_prize_pool || 0) > 0) ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart
+                data={recentHackathons
+                  .filter((h: any) => (h.distributed_prize_pool || 0) > 0)
+                  .map((h: any) => ({
+                    name: h.title.length > 20 ? h.title.substring(0, 20) + '...' : h.title,
+                    prize: h.distributed_prize_pool || 0,
+                  }))}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis
+                  dataKey="name"
+                  stroke="#9ca3af"
+                  style={{ fontSize: '10px' }}
+                  angle={-45}
+                  textAnchor="end"
+                  height={100}
+                />
+                <YAxis stroke="#9ca3af" style={{ fontSize: '12px' }} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#111827',
+                    border: '2px solid #f59e0b',
+                    borderRadius: '8px',
+                    color: '#ffffff',
+                    fontWeight: 'bold',
+                    padding: '12px',
+                  }}
+                  labelStyle={{ color: '#ffffff', fontWeight: 'bold', marginBottom: '4px' }}
+                  itemStyle={{ color: '#e5e7eb', padding: '4px 0' }}
+                  cursor={{ fill: 'rgba(245, 158, 11, 0.1)' }}
+                  formatter={(value: any) => `RM ${value.toLocaleString()}`}
+                />
+                <Bar dataKey="prize" fill="#f59e0b" />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-64">
+              <p className="text-gray-400 font-mono text-sm">No prize distributions yet</p>
             </div>
           )}
         </CardContent>

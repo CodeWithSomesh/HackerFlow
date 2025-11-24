@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 // import { Button } from "@/components/ui/button"
 // import { Input } from "@/components/ui/input"
@@ -27,6 +27,7 @@ export function OrganizerAuth() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [authMethod, setAuthMethod] = useState<"google" | "github" | "signin" | null>(null)
   const [error, setError] = useState("")
   const [validations, setValidations] = useState({
@@ -38,6 +39,38 @@ export function OrganizerAuth() {
   })
   // const searchParams = useSearchParams()
   // const authType = searchParams.get('authtype')?.toLocaleLowerCase()
+
+  // Check if user is already logged in (regardless of profile completion)
+  useEffect(() => {
+    const checkExistingUser = async () => {
+      try {
+        console.log('[Organizer Auth] Starting auth check...')
+        const supabase = createClient()
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+
+        if (userError) {
+          console.log('[Organizer Auth] Error getting user:', userError)
+          setIsCheckingAuth(false)
+          return
+        }
+
+        if (user) {
+          console.log('[Organizer Auth] User is logged in, redirecting to hackathons')
+          showCustomToast('info', "You're already logged in!")
+          router.push('/hackathons')
+          return
+        } else {
+          console.log('[Organizer Auth] No user found, allowing access to auth page')
+        }
+      } catch (err) {
+        console.error('[Organizer Auth] Error in checkExistingUser:', err)
+      } finally {
+        setIsCheckingAuth(false)
+      }
+    }
+
+    checkExistingUser()
+  }, [router])
 
   const validatePassword = (pwd: string) => {
     const newValidations = {
@@ -190,6 +223,18 @@ export function OrganizerAuth() {
       </span>
     </div>
   )
+
+  // Show loading state while checking authentication
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-300 font-mono">Checking authentication...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen">

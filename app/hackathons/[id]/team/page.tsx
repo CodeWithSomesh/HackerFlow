@@ -482,6 +482,16 @@ export default function TeamManagementPage({ params }: TeamPageProps) {
   const handleCompleteTeam = async () => {
     if (!team?.id) return;
 
+    // Check if all members are verified (status === 'accepted')
+    const unverifiedMembers = team.hackathon_team_members?.filter(
+      (m: any) => m.status !== 'accepted'
+    );
+
+    if (unverifiedMembers && unverifiedMembers.length > 0) {
+      showCustomToast('error', 'Cannot complete team. All team members must verify their accounts before completing the team.');
+      return;
+    }
+
     setCompletingTeam(true);
     try {
       const result = await completeTeam(team.id);
@@ -740,11 +750,11 @@ export default function TeamManagementPage({ params }: TeamPageProps) {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className={`${team.hackathon_team_members?.length < hackathon.team_size_max && !team?.is_completed ? "grid lg:grid-cols-[60%_38%] gap-4": "max-w-7xl mx-auto gap-4"}`}>
+        <div className={`${team.hackathon_team_members?.length < hackathon.team_size_max && !team?.is_completed ? "grid lg:grid-cols-[60%_38%] gap-x-4": "max-w-7xl mx-auto gap-4"}`}>
           {/* Left Section - Team Management */}
           <div className="space-y-6">
             {/* Team Info Card */}
-            <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-8">
+            <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-8 mb-4">
               <div className="flex items-center justify-between mb-6">
                 <h1 className="text-3xl font-blackops text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-teal-400">
                   CREATE A TEAM
@@ -985,7 +995,7 @@ export default function TeamManagementPage({ params }: TeamPageProps) {
           )}
 
           {/* Action Buttons */}
-          <div className="flex gap-5 justify-end">
+          <div className="flex gap-5 justify-end ">
             <Link
               href={`/hackathons/${resolvedParams.id}`}
               className="px-8 py-4 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-mono font-bold transition-all border-2 border-gray-700"

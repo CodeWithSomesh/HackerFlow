@@ -78,7 +78,7 @@ export default function CalendarPage() {
       // PRODUCTION CODE
       // This code fetches real data from the database
       // ============================================================================
-      const result = await getOrganizerHackathons()
+      const result = await getOrganizerHackathons(undefined, { limit: 1000 })
       if (result.success) {
         setHackathons(result.data)
       }
@@ -100,8 +100,8 @@ export default function CalendarPage() {
 
   const getHackathonsForDate = (date: Date) => {
     return hackathons.filter(hackathon => {
-      const startDate = new Date(hackathon.start_date)
-      const endDate = new Date(hackathon.end_date)
+      const startDate = new Date(hackathon.registration_start_date || hackathon.start_date)
+      const endDate = new Date(hackathon.registration_end_date || hackathon.end_date)
       const checkDate = new Date(date)
 
       return checkDate >= new Date(startDate.setHours(0, 0, 0, 0)) &&
@@ -301,18 +301,18 @@ export default function CalendarPage() {
         </CardHeader>
         <CardContent>
           {hackathons.filter(h => {
-            const startDate = new Date(h.start_date)
+            const startDate = new Date(h.registration_start_date || h.start_date)
             return startDate.getMonth() === currentMonth.getMonth() &&
                    startDate.getFullYear() === currentMonth.getFullYear()
           }).length > 0 ? (
             <div className="space-y-3">
               {hackathons
                 .filter(h => {
-                  const startDate = new Date(h.start_date)
+                  const startDate = new Date(h.registration_start_date || h.start_date)
                   return startDate.getMonth() === currentMonth.getMonth() &&
                          startDate.getFullYear() === currentMonth.getFullYear()
                 })
-                .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
+                .sort((a, b) => new Date(a.registration_start_date || a.start_date).getTime() - new Date(b.registration_start_date || b.start_date).getTime())
                 .map((hackathon) => (
                   <Link
                     key={hackathon.id}
@@ -323,12 +323,12 @@ export default function CalendarPage() {
                       <div className="flex-1 min-w-0">
                         <h4 className="font-bold text-white text-base mb-1">{hackathon.title}</h4>
                         <p className="text-sm text-gray-400 font-mono">
-                          {new Date(hackathon.start_date).toLocaleDateString('en-US', {
+                          {new Date(hackathon.registration_start_date || hackathon.start_date).toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric',
                           })}{' '}
                           -{' '}
-                          {new Date(hackathon.end_date).toLocaleDateString('en-US', {
+                          {new Date(hackathon.registration_end_date || hackathon.end_date).toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric',
                             year: 'numeric',

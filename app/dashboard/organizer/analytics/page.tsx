@@ -40,7 +40,7 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     loadAnalytics()
-  }, [])
+  }, [selectedHackathon])
 
   async function loadAnalytics() {
     setLoading(true)
@@ -93,7 +93,7 @@ export default function AnalyticsPage() {
           status: 'published',
           participant_count: 52,
           team_count: 13,
-          prize_pool: 15000,
+          distributed_prize_pool: 15000,
         },
         {
           id: 'h2',
@@ -101,7 +101,7 @@ export default function AnalyticsPage() {
           status: 'published',
           participant_count: 48,
           team_count: 12,
-          prize_pool: 12000,
+          distributed_prize_pool: 12000,
         },
         {
           id: 'h3',
@@ -109,7 +109,7 @@ export default function AnalyticsPage() {
           status: 'completed',
           participant_count: 45,
           team_count: 11,
-          prize_pool: 10000,
+          distributed_prize_pool: 10000,
         },
         {
           id: 'h4',
@@ -117,7 +117,7 @@ export default function AnalyticsPage() {
           status: 'completed',
           participant_count: 41,
           team_count: 10,
-          prize_pool: 18000,
+          distributed_prize_pool: 18000,
         },
         {
           id: 'h5',
@@ -125,7 +125,7 @@ export default function AnalyticsPage() {
           status: 'draft',
           participant_count: 35,
           team_count: 9,
-          prize_pool: 8000,
+          distributed_prize_pool: 8000,
         },
       ])
     } else {
@@ -133,8 +133,10 @@ export default function AnalyticsPage() {
       // PRODUCTION CODE
       // This code fetches real data from the database
       // ============================================================================
+      const hackathonId = selectedHackathon === 'all' ? undefined : selectedHackathon
+
       const [analyticsResult, hackathonsResult] = await Promise.all([
-        getOrganizerAnalytics(),
+        getOrganizerAnalytics(undefined, hackathonId),
         getOrganizerHackathons(),
       ])
 
@@ -255,81 +257,92 @@ export default function AnalyticsPage() {
         </Card>
       </div>
 
-      {/* Registration Trend */}
+      {/* Performance Summary Table */}
       <Card className="bg-gradient-to-br from-gray-900 to-black border-2 border-gray-800">
         <CardHeader>
           <CardTitle className="text-white font-blackops flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 text-purple-400" />
-            Registration Trend Over Time
+            <Calendar className="h-5 w-5 text-purple-400" />
+            Hackathon Performance Summary
           </CardTitle>
           <CardDescription className="font-mono">
-            Last 12 months registration activity
+            Detailed performance metrics for each event
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {analytics?.registrationsOverTime && analytics.registrationsOverTime.length > 0 ? (
-            <ResponsiveContainer width="100%" height={350}>
-              <AreaChart data={analytics.registrationsOverTime}>
-                <defs>
-                  <linearGradient id="colorRegistrations" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#a855f7" stopOpacity={0.8} />
-                    <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="month" stroke="#9ca3af" style={{ fontSize: '12px' }} />
-                <YAxis stroke="#9ca3af" style={{ fontSize: '12px' }} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#1f2937',
-                    border: '1px solid #374151',
-                    borderRadius: '8px',
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="count"
-                  stroke="#a855f7"
-                  strokeWidth={3}
-                  fillOpacity={1}
-                  fill="url(#colorRegistrations)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+          {hackathons && hackathons.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-700">
+                    <th className="text-left p-3 text-gray-400 font-mono text-sm">Hackathon</th>
+                    <th className="text-center p-3 text-gray-400 font-mono text-sm">Participants</th>
+                    <th className="text-center p-3 text-gray-400 font-mono text-sm">Teams</th>
+                    <th className="text-center p-3 text-gray-400 font-mono text-sm">Distributed Prize</th>
+                    <th className="text-center p-3 text-gray-400 font-mono text-sm">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {hackathons.map((hackathon) => (
+                    <tr key={hackathon.id} className="border-b border-gray-800 hover:bg-gray-800/50 transition-colors">
+                      <td className="p-3 text-white font-mono text-sm">{hackathon.title}</td>
+                      <td className="p-3 text-center text-cyan-400 font-bold font-mono text-lg">{hackathon.participant_count || 0}</td>
+                      <td className="p-3 text-center text-teal-400 font-bold font-mono text-lg">{hackathon.team_count || 0}</td>
+                      <td className="p-3 text-center text-yellow-400 font-bold font-blackops text-lg">
+                        RM {(hackathon.distributed_prize_pool || 0).toLocaleString()}
+                      </td>
+                      <td className="p-3 text-center">
+                        <span
+                          className={`px-2 py-1 rounded text-xs font-bold font-mono ${
+                            hackathon.status === 'published'
+                              ? 'bg-green-600 text-white'
+                              : hackathon.status === 'completed'
+                              ? 'bg-blue-600 text-white'
+                              : hackathon.status === 'draft'
+                              ? 'bg-gray-700 text-white'
+                              : 'bg-red-600 text-white'
+                          }`}
+                        >
+                          {hackathon.status.charAt(0).toUpperCase() + hackathon.status.slice(1)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           ) : (
-            <div className="flex items-center justify-center h-64">
-              <p className="text-gray-400 font-mono text-sm">No data available yet</p>
+            <div className="text-center py-8">
+              <BarChart3 className="h-12 w-12 text-gray-600 mx-auto mb-3" />
+              <p className="text-gray-400 font-mono text-sm">No hackathons to analyze yet</p>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Participants Per Hackathon */}
+      {/* Registration Trend - Only show for "All Hackathons" */}
+      {selectedHackathon === 'all' && (
         <Card className="bg-gradient-to-br from-gray-900 to-black border-2 border-gray-800">
           <CardHeader>
             <CardTitle className="text-white font-blackops flex items-center gap-2">
-              <Users className="h-5 w-5 text-cyan-400" />
-              Participants by Hackathon
+              <BarChart3 className="h-5 w-5 text-purple-400" />
+              Registration Trend Over Time
             </CardTitle>
             <CardDescription className="font-mono">
-              Comparison across your events
+              Last 12 months registration activity
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {analytics?.participantsPerHackathon && analytics.participantsPerHackathon.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={analytics.participantsPerHackathon}>
+            {analytics?.registrationsOverTime && analytics.registrationsOverTime.length > 0 ? (
+              <ResponsiveContainer width="100%" height={350}>
+                <AreaChart data={analytics.registrationsOverTime}>
+                  <defs>
+                    <linearGradient id="colorRegistrations" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#a855f7" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis
-                    dataKey="hackathon"
-                    stroke="#9ca3af"
-                    style={{ fontSize: '10px' }}
-                    angle={-45}
-                    textAnchor="end"
-                    height={80}
-                  />
+                  <XAxis dataKey="month" stroke="#9ca3af" style={{ fontSize: '12px' }} />
                   <YAxis stroke="#9ca3af" style={{ fontSize: '12px' }} />
                   <Tooltip
                     contentStyle={{
@@ -338,12 +351,15 @@ export default function AnalyticsPage() {
                       borderRadius: '8px',
                     }}
                   />
-                  <Bar dataKey="participants" fill="#14b8a6">
-                    {analytics.participantsPerHackathon.map((entry: any, index: number) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
+                  <Area
+                    type="monotone"
+                    dataKey="count"
+                    stroke="#a855f7"
+                    strokeWidth={3}
+                    fillOpacity={1}
+                    fill="url(#colorRegistrations)"
+                  />
+                </AreaChart>
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-64">
@@ -352,9 +368,61 @@ export default function AnalyticsPage() {
             )}
           </CardContent>
         </Card>
+      )}
+
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Participants Per Hackathon - Only show for "All Hackathons" */}
+        {selectedHackathon === 'all' && (
+          <Card className="bg-gradient-to-br from-gray-900 to-black border-2 border-gray-800">
+            <CardHeader>
+              <CardTitle className="text-white font-blackops flex items-center gap-2">
+                <Users className="h-5 w-5 text-cyan-400" />
+                Participants by Hackathon
+              </CardTitle>
+              <CardDescription className="font-mono">
+                Comparison across your events
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {analytics?.participantsPerHackathon && analytics.participantsPerHackathon.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={analytics.participantsPerHackathon}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                    <XAxis
+                      dataKey="hackathon"
+                      stroke="#9ca3af"
+                      style={{ fontSize: '10px' }}
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis stroke="#9ca3af" style={{ fontSize: '12px' }} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#1f2937',
+                        border: '1px solid #374151',
+                        borderRadius: '8px',
+                      }}
+                    />
+                    <Bar dataKey="participants" fill="#14b8a6">
+                      {analytics.participantsPerHackathon.map((entry: any, index: number) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-64">
+                  <p className="text-gray-400 font-mono text-sm">No data available yet</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Team vs Individual */}
-        <Card className="bg-gradient-to-br from-gray-900 to-black border-2 border-gray-800">
+        <Card className={`bg-gradient-to-br from-gray-900 to-black border-2 border-gray-800 ${selectedHackathon === 'all' ? '' : 'lg:col-span-2'}`}>
           <CardHeader>
             <CardTitle className="text-white font-blackops flex items-center gap-2">
               <Target className="h-5 w-5 text-teal-400" />
@@ -404,118 +472,58 @@ export default function AnalyticsPage() {
         </Card>
       </div>
 
-      {/* Prize Distribution */}
-      <Card className="bg-gradient-to-br from-gray-900 to-black border-2 border-gray-800">
-        <CardHeader>
-          <CardTitle className="text-white font-blackops flex items-center gap-2">
-            <DollarSign className="h-5 w-5 text-yellow-400" />
-            Prize Pool Distribution
-          </CardTitle>
-          <CardDescription className="font-mono">
-            Prize money awarded across hackathons
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {hackathons && hackathons.length > 0 ? (
-            <ResponsiveContainer width="100%" height={350}>
-              <BarChart
-                data={hackathons
-                  .filter(h => h.prize_pool > 0)
-                  .map(h => ({
-                    name: h.title.length > 20 ? h.title.substring(0, 20) + '...' : h.title,
-                    prize: h.prize_pool,
-                  }))}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis
-                  dataKey="name"
-                  stroke="#9ca3af"
-                  style={{ fontSize: '10px' }}
-                  angle={-45}
-                  textAnchor="end"
-                  height={100}
-                />
-                <YAxis stroke="#9ca3af" style={{ fontSize: '12px' }} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#1f2937',
-                    border: '1px solid #374151',
-                    borderRadius: '8px',
-                  }}
-                  formatter={(value: any) => `RM ${value.toLocaleString()}`}
-                />
-                <Bar dataKey="prize" fill="#f59e0b" />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="flex items-center justify-center h-64">
-              <p className="text-gray-400 font-mono text-sm">No prize data available yet</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Performance Summary Table */}
-      <Card className="bg-gradient-to-br from-gray-900 to-black border-2 border-gray-800">
-        <CardHeader>
-          <CardTitle className="text-white font-blackops flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-purple-400" />
-            Hackathon Performance Summary
-          </CardTitle>
-          <CardDescription className="font-mono">
-            Detailed performance metrics for each event
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {hackathons && hackathons.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-700">
-                    <th className="text-left p-3 text-gray-400 font-mono text-sm">Hackathon</th>
-                    <th className="text-center p-3 text-gray-400 font-mono text-sm">Participants</th>
-                    <th className="text-center p-3 text-gray-400 font-mono text-sm">Teams</th>
-                    <th className="text-center p-3 text-gray-400 font-mono text-sm">Prize Pool</th>
-                    <th className="text-center p-3 text-gray-400 font-mono text-sm">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {hackathons.map((hackathon) => (
-                    <tr key={hackathon.id} className="border-b border-gray-800 hover:bg-gray-800/50 transition-colors">
-                      <td className="p-3 text-white font-mono text-sm">{hackathon.title}</td>
-                      <td className="p-3 text-center text-cyan-400 font-bold">{hackathon.participant_count || 0}</td>
-                      <td className="p-3 text-center text-teal-400 font-bold">{hackathon.team_count || 0}</td>
-                      <td className="p-3 text-center text-yellow-400 font-bold">
-                        RM {(hackathon.prize_pool || 0).toLocaleString()}
-                      </td>
-                      <td className="p-3 text-center">
-                        <span
-                          className={`px-2 py-1 rounded text-xs font-bold ${
-                            hackathon.status === 'published'
-                              ? 'bg-green-600 text-white'
-                              : hackathon.status === 'completed'
-                              ? 'bg-blue-600 text-white'
-                              : hackathon.status === 'draft'
-                              ? 'bg-gray-700 text-white'
-                              : 'bg-red-600 text-white'
-                          }`}
-                        >
-                          {hackathon.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <BarChart3 className="h-12 w-12 text-gray-600 mx-auto mb-3" />
-              <p className="text-gray-400 font-mono text-sm">No hackathons to analyze yet</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Prize Distribution - Only show for "All Hackathons" */}
+      {selectedHackathon === 'all' && (
+        <Card className="bg-gradient-to-br from-gray-900 to-black border-2 border-gray-800">
+          <CardHeader>
+            <CardTitle className="text-white font-blackops flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-yellow-400" />
+              Distributed Prize Pool
+            </CardTitle>
+            <CardDescription className="font-mono">
+              Prize money credited to winners across hackathons
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {hackathons && hackathons.length > 0 && hackathons.some((h: any) => (h.distributed_prize_pool || 0) > 0) ? (
+              <ResponsiveContainer width="100%" height={350}>
+                <BarChart
+                  data={hackathons
+                    .filter((h: any) => (h.distributed_prize_pool || 0) > 0)
+                    .map((h: any) => ({
+                      name: h.title.length > 20 ? h.title.substring(0, 20) + '...' : h.title,
+                      prize: h.distributed_prize_pool || 0,
+                    }))}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis
+                    dataKey="name"
+                    stroke="#9ca3af"
+                    style={{ fontSize: '10px' }}
+                    angle={-45}
+                    textAnchor="end"
+                    height={100}
+                  />
+                  <YAxis stroke="#9ca3af" style={{ fontSize: '12px' }} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#1f2937',
+                      border: '1px solid #374151',
+                      borderRadius: '8px',
+                    }}
+                    formatter={(value: any) => `RM ${value.toLocaleString()}`}
+                  />
+                  <Bar dataKey="prize" fill="#f59e0b" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-64">
+                <p className="text-gray-400 font-mono text-sm">No prize distributions yet</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

@@ -29,7 +29,7 @@ export const createHackathonStep2Schema = z.object({
     teamSizeMax: z.number().min(1, 'Maximum team size must be at least 1'),
     registrationStartDate: z.string().min(1, 'Registration start date is required'),
     registrationEndDate: z.string().min(1, 'Registration end date is required'),
-    maxRegistrations: z.number().optional().nullable(),
+    maxRegistrations: z.union([z.number().positive('Must be a positive number if specified'), z.null()]).optional(),
   }).refine((data) => data.teamSizeMax >= data.teamSizeMin, {
     message: 'Maximum team size must be greater than or equal to minimum team size',
     path: ['teamSizeMax'],
@@ -78,6 +78,7 @@ export const createHackathonStep2Schema = z.object({
     registrationEndDate: z.string().min(1, 'Registration end date is required'),
     
     // Step 3 fields
+    teams: z.number().min(0, 'Teams cannot be negative'),
     participants: z.number().min(0, 'Participants cannot be negative'),
     maxParticipants: z.number().min(1, 'Max participants must be at least 1'),
     totalPrizePool: z.string().min(1, 'Prize pool is required'),

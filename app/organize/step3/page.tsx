@@ -79,6 +79,8 @@ export default function OrganizeStep3Page() {
   const [authorizationLetterUrl, setAuthorizationLetterUrl] = useState<string>('')
   const [existingIdentityUrl, setExistingIdentityUrl] = useState<string>('')
   const [existingAuthLetterUrl, setExistingAuthLetterUrl] = useState<string>('')
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
 
   // Form state
   const [formData, setFormData] = useState<{
@@ -94,6 +96,7 @@ export default function OrganizeStep3Page() {
     registrationStartDate: string
     registrationEndDate: string
     participants: number
+    teams: number
     maxParticipants: number
     totalPrizePool: string
     banner: string
@@ -123,6 +126,7 @@ export default function OrganizeStep3Page() {
     registrationStartDate: '',
     registrationEndDate: '',
     participants: 0,
+    teams: 0,
     maxParticipants: 500,
     totalPrizePool: '$5,000',
     banner: '/api/placeholder/1200/400',
@@ -192,6 +196,7 @@ export default function OrganizeStep3Page() {
       registrationStartDate: '',
       registrationEndDate: '',
       participants: 0,
+      teams: 0,
       maxParticipants: 500,
       totalPrizePool: '$5,000',
       bannerUrl: '/api/placeholder/1200/400',
@@ -210,6 +215,8 @@ export default function OrganizeStep3Page() {
       sponsors: []
     }
   })  
+
+  let teamsCount = 0
 
   // Preload data from database
   useEffect(() => {
@@ -232,6 +239,11 @@ export default function OrganizeStep3Page() {
       if (result.success && result.data) {
         const data = result.data as any
 
+        // Check if we're in edit mode (hackathon is already published or completed)
+        const isEditing = data.status === 'published' || data.status === 'completed' || data.status === 'waiting_for_approval'
+        setIsEditMode(isEditing)
+        console.log('Edit mode:', isEditing, '| Status:', data.status)
+
         // Load existing documents if they exist - CHECK IF THESE FIELDS EXIST IN YOUR DATABASE
         if (data.identity_document_url) {
           console.log('Loading existing identity doc:', data.identity_document_url)
@@ -243,7 +255,7 @@ export default function OrganizeStep3Page() {
           setExistingAuthLetterUrl(data.authorization_letter_url)
           setAuthorizationLetterUrl(data.authorization_letter_url)
         }
-      
+
 
         const formValues = {
           title: data.title || 'Your Awesome Hackathon',
@@ -272,10 +284,11 @@ export default function OrganizeStep3Page() {
           timeline: data.timeline || [],
           importantDates: data.important_dates || [],
           faq: data.faq || [],
+          teams: data.teams || 0,
           organizers: data.organizers || [],
           sponsors: data.sponsors || []
         }
-        
+
         setFormData(formValues)
         setOriginalFormData(formValues)
         reset(formValues)
@@ -348,6 +361,23 @@ export default function OrganizeStep3Page() {
     }
   }
 
+  // Helper function to calculate total prize pool from prizes
+  const calculateTotalPrize = (prizes: typeof formData.prizes): string => {
+    const total = prizes.reduce((sum, prize) => {
+      if (prize.type !== 'Certificate' && prize.amount) {
+        // Extract numbers from amount string (e.g., "RM 1,000" or "$1000" -> 1000)
+        const numericValue = parseFloat(prize.amount.replace(/[^0-9.]/g, ''))
+        if (!isNaN(numericValue)) {
+          return sum + numericValue
+        }
+      }
+      return sum
+    }, 0)
+
+    // Format as RM currency
+    return total > 0 ? `RM ${total.toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'RM 0.00'
+  }
+
   const addPrize = () => {
     if (newPrize.position.trim() && newPrize.amount.trim()) {
       setFormData({...formData, prizes: [...formData.prizes, newPrize]})
@@ -356,7 +386,7 @@ export default function OrganizeStep3Page() {
   }
 
   const editPrize = (index: number) => {
-    const prize = formData.prizes[index]
+    const prize = tempFormData.prizes[index]
     setNewPrize(prize)
     setEditingPrizeIndex(index)
   }
@@ -372,14 +402,23 @@ export default function OrganizeStep3Page() {
       (newPrize.type === 'Certificate' || (newPrize.amount && newPrize.amount.trim()));
 
     if (isValid) {
+      let updatedPrizes;
       if (editingPrizeIndex !== null) {
-        const updatedPrizes = [...tempFormData.prizes]
+        updatedPrizes = [...tempFormData.prizes]
         updatedPrizes[editingPrizeIndex] = newPrize
-        setTempFormData({...tempFormData, prizes: updatedPrizes})
         setEditingPrizeIndex(null)
       } else {
-        setTempFormData({...tempFormData, prizes: [...tempFormData.prizes, newPrize]})
+        updatedPrizes = [...tempFormData.prizes, newPrize]
       }
+
+      // Auto-calculate total prize pool
+      const calculatedTotal = calculateTotalPrize(updatedPrizes)
+
+      setTempFormData({
+        ...tempFormData,
+        prizes: updatedPrizes,
+        totalPrizePool: calculatedTotal
+      })
       setNewPrize({ position: '', amount: '', description: '', type: 'Cash' })
       setHasUnsavedChanges(true)
     } else {
@@ -580,6 +619,7 @@ export default function OrganizeStep3Page() {
         registrationStartDate: tempFormData.registrationStartDate,
         registrationEndDate: tempFormData.registrationEndDate,
         participants: tempFormData.participants,
+        teams: tempFormData.teams,
         maxParticipants: tempFormData.maxParticipants,
         totalPrizePool: tempFormData.totalPrizePool,
         bannerUrl: tempFormData.banner,
@@ -719,6 +759,7 @@ export default function OrganizeStep3Page() {
         registrationStartDate: formData.registrationStartDate,
         registrationEndDate: formData.registrationEndDate,
         participants: formData.participants,
+        teams: formData.teams,
         maxParticipants: formData.maxParticipants,
         totalPrizePool: formData.totalPrizePool,
         bannerUrl: formData.banner,
@@ -769,6 +810,31 @@ export default function OrganizeStep3Page() {
       console.error('Publish error:', publishError)
       showCustomToast('error', 'Failed to submit hackathon for approval.')
     } else {
+      // Send email notification to organizer
+      try {
+        const { data: profile } = await supabase
+          .from('user_profiles')
+          .select('full_name, email')
+          .eq('user_id', user.id)
+          .single()
+
+        if (profile) {
+          await fetch('/api/send-organizer-notification', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              hackathonId,
+              hackathonTitle: formData.title,
+              organizerName: profile.full_name || 'Organizer',
+              organizerEmail: profile.email || user.email
+            })
+          })
+        }
+      } catch (emailError) {
+        console.error('Failed to send notification email:', emailError)
+        // Don't fail the publish if email fails
+      }
+
       showCustomToast('success', 'Hackathon submitted for admin approval! ⏳')
       localStorage.removeItem('current_hackathon_id')
       triggerSideCannons()
@@ -783,6 +849,74 @@ export default function OrganizeStep3Page() {
     setIsPublishing(false)
     setShowPublishDialog(false)
   }
+  }
+
+  const handleUpdate = async () => {
+    if (!hackathonId) {
+      showCustomToast('error', 'Hackathon ID not found.')
+      return
+    }
+
+    setIsUpdating(true)
+
+    try {
+      console.log('\n📝 ========== UPDATING HACKATHON ==========')
+      console.log('📝 Hackathon ID:', hackathonId)
+      console.log('📝 Registration End Date:', formData.registrationEndDate)
+
+      const updateData = {
+        title: formData.title,
+        organizer: formData.organizer,
+        websiteUrl: formData.websiteUrl,
+        visibility: formData.visibility,
+        mode: formData.mode,
+        location: formData.location,
+        participationType: formData.participationType,
+        teamSizeMin: formData.teamSizeMin,
+        teamSizeMax: formData.teamSizeMax,
+        registrationStartDate: formData.registrationStartDate,
+        registrationEndDate: formData.registrationEndDate,
+        participants: formData.participants,
+        maxParticipants: formData.maxParticipants,
+        totalPrizePool: formData.totalPrizePool,
+        bannerUrl: formData.banner,
+        logoUrl: formData.logo,
+        about: formData.about,
+        duration: formData.duration,
+        registrationDeadline: formData.registrationDeadline,
+        eligibility: formData.eligibility,
+        requirements: formData.requirements,
+        categories: formData.categories,
+        prizes: formData.prizes,
+        timeline: formData.timeline,
+        importantDates: formData.importantDates,
+        faq: formData.faq,
+        organizers: formData.organizers,
+        sponsors: formData.sponsors
+      }
+
+      const result = await updateHackathonStep3(hackathonId, updateData as CreateHackathonStep3FormData)
+
+      if (result.success) {
+        console.log('📝 ✅ Hackathon updated successfully')
+        showCustomToast('success', 'Hackathon updated successfully!')
+        setOriginalFormData(formData)
+
+        // Optionally redirect to hackathon details page
+        setTimeout(() => {
+          router.push(`/dashboard/organizer/hackathons/${hackathonId}`)
+        }, 1500)
+      } else {
+        console.log('📝 ❌ Update failed:', result.error)
+        showCustomToast('error', result.error || 'Failed to update hackathon. Please try again.')
+      }
+    } catch (error) {
+      console.error('📝 ❌ Update error:', error)
+      showCustomToast('error', 'An unexpected error occurred. Please try again.')
+    } finally {
+      setIsUpdating(false)
+      console.log('📝 ==========================================\n')
+    }
   }
 
   // Helper function to strip HTML tags and decode entities for preview
@@ -840,115 +974,127 @@ export default function OrganizeStep3Page() {
             <p className="text-gray-400 font-mono text-sm">Fine-tune every detail before publishing your hackathon</p>
           </div>
           <div className="flex gap-3">
-            <Button 
-              variant="secondary" 
-              className="bg-gray-800/50 hover:bg-gray-700/50 text-white border border-gray-600 hover:border-gray-500 px-6 py-6 font-mono transition-all hover:scale-105"
-              onClick={handleSaveDraft}
-              disabled={isSavingDraft || isPublishing || isLoading}
-            >
-              {isSavingDraft ? 'Saving...' : 'Save Draft'}
-            </Button>
-            <Button 
-              className="bg-gradient-to-r from-purple-500 via-blue-500 to-teal-500 hover:from-purple-600 hover:via-blue-600 hover:to-teal-600 text-white px-8 py-6 font-mono font-bold transition-all hover:scale-105 shadow-lg hover:shadow-xl disabled:opacity-50"
-              onClick={() => {
-                console.log('Publish clicked')
-                console.log('existingIdentityUrl:', existingIdentityUrl)
-                console.log('existingAuthLetterUrl:', existingAuthLetterUrl)
-                console.log('identityDocumentUrl:', identityDocumentUrl)
-                console.log('authorizationLetterUrl:', authorizationLetterUrl)
+            {isEditMode ? (
+              <Button
+                className="bg-gradient-to-r from-purple-500 via-blue-500 to-teal-500 hover:from-purple-600 hover:via-blue-600 hover:to-teal-600 text-white px-8 py-6 font-mono font-bold transition-all hover:scale-105 shadow-lg hover:shadow-xl disabled:opacity-50"
+                onClick={handleUpdate}
+                disabled={isUpdating || isLoading}
+              >
+                {isUpdating ? 'Updating...' : 'Update Hackathon'}
+              </Button>
+            ) : (
+              <>
+                <Button
+                  variant="secondary"
+                  className="bg-gray-800/50 hover:bg-gray-700/50 text-white border border-gray-600 hover:border-gray-500 px-6 py-6 font-mono transition-all hover:scale-105"
+                  onClick={handleSaveDraft}
+                  disabled={isSavingDraft || isPublishing || isLoading}
+                >
+                  {isSavingDraft ? 'Saving...' : 'Save Draft'}
+                </Button>
+                <Button
+                  className="bg-gradient-to-r from-purple-500 via-blue-500 to-teal-500 hover:from-purple-600 hover:via-blue-600 hover:to-teal-600 text-white px-8 py-6 font-mono font-bold transition-all hover:scale-105 shadow-lg hover:shadow-xl disabled:opacity-50"
+                  onClick={() => {
+                    console.log('Publish clicked')
+                    console.log('existingIdentityUrl:', existingIdentityUrl)
+                    console.log('existingAuthLetterUrl:', existingAuthLetterUrl)
+                    console.log('identityDocumentUrl:', identityDocumentUrl)
+                    console.log('authorizationLetterUrl:', authorizationLetterUrl)
 
-                // Just run validation and show dialog if passes
-                if (!hackathonId) {
-                  showCustomToast('error', 'Hackathon ID not found. Please start from Step 1.')
-                  return
-                }
+                    // Just run validation and show dialog if passes
+                    if (!hackathonId) {
+                      showCustomToast('error', 'Hackathon ID not found. Please start from Step 1.')
+                      return
+                    }
 
-                const validationErrors: string[] = []
+                    const validationErrors: string[] = []
 
-                // All validation checks
-                if (!formData.title || formData.title.length < 5) {
-                  validationErrors.push('Valid hackathon title is required (min 5 characters)')
-                }
-                if (!formData.organizer || formData.organizer.length < 2) {
-                  validationErrors.push('Organization name is required (min 2 characters)')
-                }
-                if (!formData.about || formData.about.length < 100) {
-                  validationErrors.push('About section must be at least 100 characters')
-                }
-                if (!formData.categories || formData.categories.length === 0) {
-                  validationErrors.push('At least one category is required')
-                }
-                if (!formData.eligibility || formData.eligibility.length === 0) {
-                  validationErrors.push('At least one eligibility criteria is required')
-                }
-                if (!formData.banner || formData.banner === '/api/placeholder/1200/400' || formData.banner === '') {
-                  validationErrors.push('Banner image is required')
-                }
-                if (!formData.logo || formData.logo === '') {
-                  validationErrors.push('Logo is required')
-                }
-                if (!formData.registrationStartDate) {
-                  validationErrors.push('Registration start date is required')
-                }
-                if (!formData.registrationEndDate) {
-                  validationErrors.push('Registration end date is required')
-                }
-                if (!formData.duration || formData.duration === '') {
-                  validationErrors.push('Hackathon duration is required')
-                }
-                if (!formData.totalPrizePool || formData.totalPrizePool === '') {
-                  validationErrors.push('Total prize pool is required')
-                }
-                if (!formData.maxParticipants || formData.maxParticipants < 1) {
-                  validationErrors.push('Max participants must be at least 1')
-                }
-                if ((formData.mode === 'offline' || formData.mode === 'hybrid') && !formData.location) {
-                  validationErrors.push('Location is required for offline/hybrid events')
-                }
-                if (formData.participationType === 'team') {
-                  if (!formData.teamSizeMin || !formData.teamSizeMax) {
-                    validationErrors.push('Team size limits are required for team participation')
-                  }
-                  if (formData.teamSizeMin > formData.teamSizeMax) {
-                    validationErrors.push('Team size minimum cannot exceed maximum')
-                  }
-                }
-                if (formData.websiteUrl && formData.websiteUrl !== '') {
-                  try {
-                    new URL(formData.websiteUrl)
-                  } catch {
-                    validationErrors.push('Website URL must be a valid URL')
-                  }
-                }
-                if (formData.registrationStartDate && formData.registrationEndDate) {
-                  const startDate = new Date(formData.registrationStartDate)
-                  const endDate = new Date(formData.registrationEndDate)
-                  if (startDate >= endDate) {
-                    validationErrors.push('Registration end date must be after start date')
-                  }
-                }
+                    // All validation checks
+                    if (!formData.title || formData.title.length < 5) {
+                      validationErrors.push('Valid hackathon title is required (min 5 characters)')
+                    }
+                    if (!formData.organizer || formData.organizer.length < 2) {
+                      validationErrors.push('Organization name is required (min 2 characters)')
+                    }
+                    if (!formData.about || formData.about.length < 100) {
+                      validationErrors.push('About section must be at least 100 characters')
+                    }
+                    if (!formData.categories || formData.categories.length === 0) {
+                      validationErrors.push('At least one category is required')
+                    }
+                    if (!formData.eligibility || formData.eligibility.length === 0) {
+                      validationErrors.push('At least one eligibility criteria is required')
+                    }
+                    if (!formData.banner || formData.banner === '/api/placeholder/1200/400' || formData.banner === '') {
+                      validationErrors.push('Banner image is required')
+                    }
+                    if (!formData.logo || formData.logo === '') {
+                      validationErrors.push('Logo is required')
+                    }
+                    if (!formData.registrationStartDate) {
+                      validationErrors.push('Registration start date is required')
+                    }
+                    if (!formData.registrationEndDate) {
+                      validationErrors.push('Registration end date is required')
+                    }
+                    if (!formData.duration || formData.duration === '') {
+                      validationErrors.push('Hackathon duration is required')
+                    }
+                    if (!formData.totalPrizePool || formData.totalPrizePool === '') {
+                      validationErrors.push('Total prize pool is required')
+                    }
+                    if (!formData.maxParticipants || formData.maxParticipants < 1) {
+                      validationErrors.push('Max participants must be at least 1')
+                    }
+                    if ((formData.mode === 'offline' || formData.mode === 'hybrid') && !formData.location) {
+                      validationErrors.push('Location is required for offline/hybrid events')
+                    }
+                    if (formData.participationType === 'team') {
+                      if (!formData.teamSizeMin || !formData.teamSizeMax) {
+                        validationErrors.push('Team size limits are required for team participation')
+                      }
+                      if (formData.teamSizeMin > formData.teamSizeMax) {
+                        validationErrors.push('Team size minimum cannot exceed maximum')
+                      }
+                    }
+                    if (formData.websiteUrl && formData.websiteUrl !== '') {
+                      try {
+                        new URL(formData.websiteUrl)
+                      } catch {
+                        validationErrors.push('Website URL must be a valid URL')
+                      }
+                    }
+                    if (formData.registrationStartDate && formData.registrationEndDate) {
+                      const startDate = new Date(formData.registrationStartDate)
+                      const endDate = new Date(formData.registrationEndDate)
+                      if (startDate >= endDate) {
+                        validationErrors.push('Registration end date must be after start date')
+                      }
+                    }
 
-                // Show errors if any
-                if (validationErrors.length > 0) {
-                  showCustomToast('error', `Please complete: ${validationErrors.slice(0, 3).join(', ')}${validationErrors.length > 3 ? ` and ${validationErrors.length - 3} more` : ''}`)
-                  return
-                }
+                    // Show errors if any
+                    if (validationErrors.length > 0) {
+                      showCustomToast('error', `Please complete: ${validationErrors.slice(0, 3).join(', ')}${validationErrors.length > 3 ? ` and ${validationErrors.length - 3} more` : ''}`)
+                      return
+                    }
 
-                // Check if documents already exist
-                if (existingIdentityUrl && existingAuthLetterUrl) {
-                  // Documents already uploaded, skip to payment
-                  setIdentityDocumentUrl(existingIdentityUrl)
-                  setAuthorizationLetterUrl(existingAuthLetterUrl)
-                  setShowPaymentModal(true)
-                } else {
-                  // Need to upload documents
-                  setShowVerificationModal(true)
-                }
-              }}
-              disabled={isSavingDraft || isPublishing || isLoading}
-            >
-              {isPublishing ? 'Publishing...' : 'Publish'}
-            </Button>
+                    // Check if documents already exist
+                    if (existingIdentityUrl && existingAuthLetterUrl) {
+                      // Documents already uploaded, skip to payment
+                      setIdentityDocumentUrl(existingIdentityUrl)
+                      setAuthorizationLetterUrl(existingAuthLetterUrl)
+                      setShowPaymentModal(true)
+                    } else {
+                      // Need to upload documents
+                      setShowVerificationModal(true)
+                    }
+                  }}
+                  disabled={isSavingDraft || isPublishing || isLoading}
+                >
+                  {isPublishing ? 'Publishing...' : 'Publish'}
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
@@ -1068,8 +1214,7 @@ export default function OrganizeStep3Page() {
                   </div>
                   <div className="bg-gradient-to-br from-green-500/10 to-green-600/10 backdrop-blur border-2 border-green-500/30 rounded-2xl p-5 text-center hover:scale-105 transition-all shadow-lg hover:shadow-green-500/20">
                     <Users className="w-7 h-7 text-green-400 mx-auto mb-3" />
-                    {/* Need to change to registered teams  */}
-                    <div className="text-3xl font-bold text-white font-mono">{formData.participants}</div>
+                    <div className="text-3xl font-bold text-white font-mono">{formData.teams}</div>
                     <div className="text-sm text-gray-300 font-mono mt-1 font-medium">Teams</div>
                   </div>
                   <div className="bg-gradient-to-br from-yellow-500/10 to-yellow-600/10 backdrop-blur border-2 border-yellow-500/30 rounded-2xl p-5 text-center hover:scale-105 transition-all shadow-lg hover:shadow-yellow-500/20">
@@ -2030,17 +2175,15 @@ export default function OrganizeStep3Page() {
               {activeSection === 'prizes' && (
                 <div className="space-y-6">
                   <div className="space-y-3">
-                    <Label className="text-gray-200 font-mono text-sm">Total Prize Pool</Label>
-                    <Input 
-                      placeholder="$5,000" 
-                      className="bg-black/60 border-gray-700 text-gray-100 h-11 font-mono"
+                    <Label className="text-gray-200 font-mono text-sm">Total Prize Pool (Auto-calculated)</Label>
+                    <Input
+                      placeholder="RM 0.00"
+                      className="bg-gray-900/60 border-gray-700 text-gray-100 h-11 font-mono font-semibold"
                       value={tempFormData.totalPrizePool}
-                      onChange={(e) => {
-                        setTempFormData({...tempFormData, totalPrizePool: e.target.value})
-                        setHasUnsavedChanges(true)
-                      }}
-                      
+                      readOnly
+                      disabled
                     />
+                    <p className="text-xs text-gray-400 font-mono">This is automatically calculated from the prizes you add below</p>
                   </div>
                   <div className="space-y-3">
                     <Label className="text-gray-200 font-mono text-sm">Prize Distribution</Label>
@@ -2062,12 +2205,18 @@ export default function OrganizeStep3Page() {
                                 >
                                   <Edit className="w-4 h-4" />
                                 </Button>
-                                <Button 
-                                  variant="ghost" 
+                                <Button
+                                  variant="ghost"
                                   size="sm"
                                   className="text-red-400 hover:text-red-300 hover:bg-red-500/10 h-6 w-6 p-0"
                                   onClick={() => {
-                                    setTempFormData({...tempFormData, prizes: tempFormData.prizes.filter((_, i) => i !== index)})
+                                    const updatedPrizes = tempFormData.prizes.filter((_, i) => i !== index)
+                                    const calculatedTotal = calculateTotalPrize(updatedPrizes)
+                                    setTempFormData({
+                                      ...tempFormData,
+                                      prizes: updatedPrizes,
+                                      totalPrizePool: calculatedTotal
+                                    })
                                     setHasUnsavedChanges(true)
                                   }}
                                 >
@@ -2108,7 +2257,7 @@ export default function OrganizeStep3Page() {
                       />
                       {newPrize.type !== 'Certificate' && (
                         <Input
-                          placeholder="Amount (e.g., $2,000)"
+                          placeholder="Amount in RM (e.g., RM 2000 or 2000)"
                           className="bg-gray-900/60 border-gray-600 text-gray-100 h-11 font-mono"
                           value={newPrize.amount}
                           onChange={(e) => setNewPrize({...newPrize, amount: e.target.value})}
@@ -2759,6 +2908,7 @@ export default function OrganizeStep3Page() {
                     registrationStartDate: tempFormData.registrationStartDate,
                     registrationEndDate: tempFormData.registrationEndDate,
                     participants: tempFormData.participants,
+                    teams: tempFormData.teams,
                     maxParticipants: tempFormData.maxParticipants,
                     totalPrizePool: tempFormData.totalPrizePool,
                     bannerUrl: tempFormData.banner,

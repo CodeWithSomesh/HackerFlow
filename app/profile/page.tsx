@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
 import { getUserProfile, saveHackerProfile, saveOrganizerProfile, getUserGitHubProjects, uploadProfileImage } from "@/lib/actions/profile-actions"
+import { getHackerDashboardStats, getHackerRecentActivity, getOrganizerDashboardStats } from "@/lib/actions/dashboard-actions"
+import { createClient } from "@/lib/supabase/client"
 import {
   User,
   Mail,
@@ -64,6 +66,9 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false)
   const [loadingGithub, setLoadingGithub] = useState(false)
   const [friendCounts, setFriendCounts] = useState({ friendCount: 0, pendingRequestCount: 0 })
+  const [dashboardStats, setDashboardStats] = useState<any>(null)
+  const [recentActivities, setRecentActivities] = useState<any[]>([])
+  const [earnedBadges, setEarnedBadges] = useState<any[]>([])
 
   // Mock user data - replace with real data from your backend
   const [userData, setUserData] = useState({
@@ -252,6 +257,55 @@ export default function ProfilePage() {
       setLoading(false)
     }
   }
+
+  const loadDashboardData = async () => {
+    try {
+      if (userType === 'hacker') {
+        // Load hacker stats
+        const statsResult = await getHackerDashboardStats()
+        if (statsResult.success) {
+          setDashboardStats(statsResult.data)
+        }
+
+        // Load recent activities
+        const activitiesResult = await getHackerRecentActivity(undefined, 5)
+        if (activitiesResult.success) {
+          setRecentActivities(activitiesResult.data)
+        }
+
+        // Load earned badges
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const { data: badges } = await supabase
+            .from('user_badges')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('earned_at', { ascending: false })
+            .limit(5)
+
+          if (badges) {
+            setEarnedBadges(badges)
+          }
+        }
+      } else if (userType === 'organizer') {
+        // Load organizer stats
+        const statsResult = await getOrganizerDashboardStats()
+        if (statsResult.success) {
+          setDashboardStats(statsResult.data)
+        }
+      }
+    } catch (error) {
+      console.error('Error loading dashboard data:', error)
+    }
+  }
+
+  // Load dashboard data when userType changes
+  useEffect(() => {
+    if (userType && !loading) {
+      loadDashboardData()
+    }
+  }, [userType, loading])
 
   const handleSaveProfile = async () => {
     setSaving(true)
@@ -1730,24 +1784,50 @@ export default function ProfilePage() {
                         </div>
 
                         <div className="space-y-4">
-                        {[
-                            { action: "Registered for", event: "HackMalaysia 2025", time: "2 days ago", icon: Users, color: "blue" },
-                            { action: "Completed profile", event: "Added 15 new skills", time: "5 days ago", icon: Trophy, color: "purple" },
-                            { action: "Joined team", event: "Code Warriors", time: "1 week ago", icon: Users, color: "green" },
-                            { action: "Won prize", event: "Best Innovation Award", time: "2 weeks ago", icon: Trophy, color: "yellow" }
-                        ].map((activity, idx) => (
-                            <div key={idx} className="flex items-start gap-4 p-4 bg-gray-800/30 border border-gray-700/50 rounded-xl hover:bg-gray-700/30 transition-all">
-                            <div className={`p-3 bg-${activity.color}-500/20 border border-${activity.color}-500/50 rounded-lg`}>
-                                <activity.icon className={`w-5 h-5 text-${activity.color}-400`} />
+                        {recentActivities.length > 0 ? (
+                            recentActivities.map((activity) => {
+                            const getActivityIcon = (type: string) => {
+                                switch (type) {
+                                case 'registration': return Users
+                                case 'win': return Trophy
+                                case 'badge': return Award
+                                default: return Calendar
+                                }
+                            }
+                            const getActivityColor = (type: string) => {
+                                switch (type) {
+                                case 'registration': return 'blue'
+                                case 'win': return 'yellow'
+                                case 'badge': return 'purple'
+                                default: return 'gray'
+                                }
+                            }
+                            const Icon = getActivityIcon(activity.type)
+                            const color = getActivityColor(activity.type)
+
+                            return (
+                                <div key={activity.id} className="flex items-start gap-4 p-4 bg-gray-800/30 border border-gray-700/50 rounded-xl hover:bg-gray-700/30 transition-all">
+                                <div className={`p-3 bg-${color}-500/20 border border-${color}-500/50 rounded-lg`}>
+                                    <Icon className={`w-5 h-5 text-${color}-400`} />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-white font-mono">
+                                    <span className="font-bold">{activity.title}</span>
+                                    </p>
+                                    <p className="text-sm text-gray-400 font-mono mt-1">{activity.description}</p>
+                                    <p className="text-xs text-gray-500 font-mono mt-1">
+                                    {new Date(activity.timestamp).toLocaleDateString()}
+                                    </p>
+                                </div>
+                                </div>
+                            )
+                            })
+                        ) : (
+                            <div className="text-center py-8">
+                            <Calendar className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+                            <p className="text-gray-400 font-mono">No recent activity</p>
                             </div>
-                            <div className="flex-1">
-                                <p className="text-white font-mono">
-                                <span className="text-gray-400">{activity.action}</span> <span className="font-bold">{activity.event}</span>
-                                </p>
-                                <p className="text-sm text-gray-500 font-mono mt-1">{activity.time}</p>
-                            </div>
-                            </div>
-                        ))}
+                        )}
                         </div>
                     </div>
                     )}
@@ -1767,28 +1847,28 @@ export default function ProfilePage() {
                                 <Trophy className="w-5 h-5 text-yellow-400" />
                                 <span className="text-gray-300 font-mono text-sm">Hackathons</span>
                             </div>
-                            <span className="text-white font-blackops text-lg">12</span>
+                            <span className="text-white font-blackops text-lg">{dashboardStats?.totalParticipations || 0}</span>
                             </div>
                             <div className="flex items-center justify-between pb-4 border-b border-gray-700/50">
                             <div className="flex items-center gap-2">
                                 <Award className="w-5 h-5 text-purple-400" />
                                 <span className="text-gray-300 font-mono text-sm">Wins</span>
                             </div>
-                            <span className="text-white font-blackops text-lg">4</span>
+                            <span className="text-white font-blackops text-lg">{dashboardStats?.hackathonsWon || 0}</span>
                             </div>
                             <div className="flex items-center justify-between pb-4 border-b border-gray-700/50">
                             <div className="flex items-center gap-2">
                                 <Users className="w-5 h-5 text-blue-400" />
-                                <span className="text-gray-300 font-mono text-sm">Teams</span>
+                                <span className="text-gray-300 font-mono text-sm">Active Registrations</span>
                             </div>
-                            <span className="text-white font-blackops text-lg">8</span>
+                            <span className="text-white font-blackops text-lg">{dashboardStats?.activeRegistrations || 0}</span>
                             </div>
                             <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                                <Code2 className="w-5 h-5 text-pink-400" />
-                                <span className="text-gray-300 font-mono text-sm">Projects</span>
+                                <Star className="w-5 h-5 text-pink-400" />
+                                <span className="text-gray-300 font-mono text-sm">Win Rate</span>
                             </div>
-                            <span className="text-white font-blackops text-lg">24</span>
+                            <span className="text-white font-blackops text-lg">{dashboardStats?.winRate?.toFixed(0) || 0}%</span>
                             </div>
                         </>
                         ) : (
@@ -1798,26 +1878,74 @@ export default function ProfilePage() {
                                 <Calendar className="w-5 h-5 text-teal-400" />
                                 <span className="text-gray-300 font-mono text-sm">Events Organized</span>
                             </div>
-                            <span className="text-white font-blackops text-lg">18</span>
+                            <span className="text-white font-blackops text-lg">{dashboardStats?.totalHackathons || 0}</span>
                             </div>
                             <div className="flex items-center justify-between pb-4 border-b border-gray-700/50">
                             <div className="flex items-center gap-2">
                                 <Users className="w-5 h-5 text-blue-400" />
                                 <span className="text-gray-300 font-mono text-sm">Total Participants</span>
                             </div>
-                            <span className="text-white font-blackops text-lg">2.4K</span>
+                            <span className="text-white font-blackops text-lg">{dashboardStats?.totalParticipants || 0}</span>
                             </div>
                             <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <Trophy className="w-5 h-5 text-yellow-400" />
                                 <span className="text-gray-300 font-mono text-sm">Prize Pool Distributed</span>
                             </div>
-                            <span className="text-white font-blackops text-lg">RM 500K</span>
+                            <span className="text-white font-blackops text-lg">RM {((dashboardStats?.totalPrizePoolDistributed || 0) / 1000).toFixed(0)}K</span>
                             </div>
                         </>
                         )}
                     </div>
                     </div>
+
+                    {/* Badges Section */}
+                    {userType === "hacker" && earnedBadges.length > 0 && (
+                        <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border-2 border-gray-700 p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-xl font-blackops text-white flex items-center gap-2">
+                            <Award className="w-5 h-5 text-yellow-400" />
+                            BADGES
+                            </h3>
+                            <a href="/dashboard/hacker/badges" className="text-teal-400 hover:text-teal-300 font-mono text-xs">
+                            View All
+                            </a>
+                        </div>
+                        <div className="grid grid-cols-3 gap-3">
+                            {earnedBadges.map((badge) => {
+                            const getBadgeIcon = (badgeType: string, badgeIcon: string) => {
+                                // Use the badge_icon from database if available
+                                if (badgeIcon) return badgeIcon;
+
+                                // Fallback to predefined icons
+                                const icons: Record<string, string> = {
+                                'first_participation': '🎯',
+                                'participation_streak_3': '🔥',
+                                'participation_streak_10': '⭐',
+                                'first_win': '🏆',
+                                'win_streak_3': '👑',
+                                'win_streak_5': '💎',
+                                'team_player': '🤝',
+                                'team_leader': '👨‍💼',
+                                'early_bird': '🐦',
+                                'prize_collector': '💰',
+                                }
+                                return icons[badgeType] || '🏅'
+                            }
+
+                            return (
+                                <div
+                                key={badge.id}
+                                className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-3 flex items-center justify-center hover:bg-gray-700/50 transition-all"
+                                title={`Earned on ${new Date(badge.earned_at).toLocaleDateString()}`}
+                                >
+                                <span className="text-3xl">{getBadgeIcon(badge.badge_type, badge.badge_icon)}</span>
+                                </div>
+                            )
+                            })}
+                        </div>
+                        </div>
+                    )}
 
                     {/* GitHub Integration */}
                     {!userData.githubConnected && (
