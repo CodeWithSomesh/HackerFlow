@@ -1,3 +1,5 @@
+<img width="936" height="942" alt="image" src="https://github.com/user-attachments/assets/be97b5b8-a624-45df-a368-1fe1d40e56f7" />
+
 # HackerFlow - The Ultimate One Stop Solution for Hackathons 🚀
 
 <div align="center">
