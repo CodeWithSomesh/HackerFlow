@@ -1,4 +1,4 @@
-# HackerFlow 🚀
+# HackerFlow - The Ultimate One Stop Solution for Hackathons 🚀
 
 <div align="center">
 
